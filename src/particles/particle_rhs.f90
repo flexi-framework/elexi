@@ -124,7 +124,7 @@ INTEGER,INTENT(IN),OPTIONAL      :: iStage
 #endif /* USE_BASSETFORCE || ANALYZE_RHS */
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLE
-INTEGER                          :: iPart
+INTEGER                          :: iPart,nVarPartRHS
 !===================================================================================================================================
 
 ! Drag force
@@ -138,17 +138,21 @@ DO iPart = 1,PDM%ParticleVecLength
 !    IF (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 !#endif
     ! Calculate the drag (and gravity) force
+    nVarPartRHS = 3
+#if USE_PARTTEMP
+    nVarPartRHS = nVarPartRHS + 1
+#endif
 #if !USE_FAXEN_CORR
-    Pt(1:3,iPart) = ParticlePush(iPart,FieldAtParticle(PRIM,iPart))
+    Pt(1:nVarPartRHS,iPart) = ParticlePush(iPart,nVarPartRHS,FieldAtParticle(PRIM,iPart))
 #else
-    Pt(1:3,iPart) = ParticlePush(iPart,FieldAtParticle(PRIM,iPart),GradAtParticle(1:RHS_GRAD,1:3,iPart))
+    Pt(1:nVarPartRHS,iPart) = ParticlePush(iPart,nVarPartRHS,FieldAtParticle(PRIM,iPart),GradAtParticle(1:RHS_GRAD,1:3,iPart))
 #endif /* USE_FAXEN_CORR */
 #if USE_EXTEND_RHS
 #if USE_BASSETFORCE
     bIter(iPart) = MIN(bIter(iPart) + 1,N_Basset + 2)
 #endif /* USE_BASSETFORCE */
     ! Calculate other RHS forces and add all forces to compute the particle push
-    CALL ParticlePushExtend(iPart,FieldAtParticle(PRIM,iPart)                                     ,&
+    CALL ParticlePushExtend(iPart,nVarPartRHS,FieldAtParticle(PRIM,iPart)                                     ,&
                                   GradAtParticle (1:RHS_GRAD,1:3,iPart),Pt(1:PP_nVarPartRHS,iPart) &
 #if USE_BASSETFORCE || ANALYZE_RHS
                                   ,t,dt,iStage)
@@ -166,7 +170,7 @@ END DO
 END SUBROUTINE CalcPartRHS
 
 
-FUNCTION ParticlePush(PartID,FieldAtParticle&
+FUNCTION ParticlePush(PartID,nVarPartRHS,FieldAtParticle&
 #if USE_FAXEN_CORR
   ,GradAtParticle)
 #else
@@ -176,24 +180,29 @@ FUNCTION ParticlePush(PartID,FieldAtParticle&
 ! Push due to Stoke's drag and source terms (gravity)
 !===================================================================================================================================
 ! MODULES
+USE MOD_EoS_Vars,          ONLY: kappa
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars,     ONLY: Species, PartSpecies, PartGravity
 USE MOD_Particle_Vars,     ONLY: PartState
 USE MOD_Particle_Vars,     ONLY: TurbPartState
+#if USE_PARTTEMP
+USE MOD_PreProc,           ONLY: PP_PI
+USE MOD_EoS_Vars,          ONLY: cp,Pr
+#endif /*USE_PARTTEMP*/
 USE MOD_Viscosity
-USE MOD_EoS_Vars,          ONLY: kappa
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)  :: PartID
+INTEGER,INTENT(IN)  :: nVarPartRHS
 REAL,INTENT(IN)     :: FieldAtParticle(PRIM)
 #if USE_FAXEN_CORR
 REAL,INTENT(IN)     :: GradAtParticle(1:RHS_GRAD,1:3)
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL                :: ParticlePush(1:3)           ! The stamp
+REAL                :: ParticlePush(1:nVarPartRHS)           ! The stamp
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: Fdm(1:3)
@@ -205,6 +214,11 @@ REAL                :: udiff(3),urel
 REAL                :: f                           ! Drag factor
 REAL                :: staup                       ! Inverse of the particle relaxation time
 REAL                :: mu                          ! viscosity
+#if USE_PARTTEMP
+REAL                :: Qm
+REAL                :: Nup                         ! Particle Nusselt number
+REAL                :: lambda                      ! thermal diffusivity coefficient
+#endif /*USE_PARTTEMP*/
 !===================================================================================================================================
 
 ! Calculate the dyn. viscosity
@@ -219,6 +233,9 @@ CASE(RHS_NONE)
 ! Debug RHS method for purely inertial particle movement
 !===================================================================================================================================
 Fdm = 0.
+#if USE_PARTTEMP
+Qm  = 0.
+#endif /*USE_PARTTEMP*/
 
 CASE(RHS_TRACER)
 !===================================================================================================================================
@@ -229,12 +246,18 @@ IF (ALLOCATED(TurbPartState)) THEN
 ELSE
   Fdm = FieldAtParticle(VELV)
 END IF
+#if USE_PARTTEMP
+Qm  = FieldAtParticle(TEMP)
+#endif /*USE_PARTTEMP*/
 
 CASE(RHS_SGS1_TRACER)
 !===================================================================================================================================
 ! Passive tracer moving with fluid velocity
 !===================================================================================================================================
 Fdm = FieldAtParticle(VELV)
+#if USE_PARTTEMP
+Qm  = FieldAtParticle(TEMP)
+#endif /*USE_PARTTEMP*/
 
 CASE(RHS_TCONVERGENCE)
 !===================================================================================================================================
@@ -244,6 +267,9 @@ CASE(RHS_TCONVERGENCE)
 Fdm(1) = (FieldAtParticle(VEL1) - PartState(PART_VEL1,PartID)) * 0.5 * 1./Species(PartSpecies(PartID))%StokesIC
 Fdm(2) = PartGravity(2)
 Fdm(3) = 0.
+#if USE_PARTTEMP
+Qm = 0.
+#endif /*USE_PARTTEMP*/
 
 CASE(RHS_HPCONVERGENCE)
 !===================================================================================================================================
@@ -251,6 +277,9 @@ CASE(RHS_HPCONVERGENCE)
 ! Used for h-/p-convergence tests
 !===================================================================================================================================
 Fdm(1) = FieldAtParticle(VEL1); Fdm(2:3) = 0.
+#if USE_PARTTEMP
+Qm = 0.
+#endif /*USE_PARTTEMP*/
 
 CASE(RHS_SGS1)
 !===================================================================================================================================
@@ -264,6 +293,9 @@ udiff(1:3) = TurbPartState(1:3,PartID) - PartState(PART_VELV,PartID)
 urel = VECNORM(udiff(1:3))
 Rep  = urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
+#if USE_PARTTEMP
+Nup  = 2. + 0.6 * sqrt(Rep) * Pr ** (1./3.)
+#endif /*USE_PARTTEMP*/
 
 ! Empirical relation of nonlinear drag from Clift et al. (1978)
 #if USE_SPHERICITY
@@ -280,6 +312,14 @@ Fdm      = udiff * staup * f
 ! Add gravity if required
 IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 
+#if USE_PARTTEMP
+! Add heat exchange due to convection (ideal gas)
+lambda = cp * mu / Pr
+Qm = Nup * PP_PI * lambda * PartState(PART_DIAM,PartID)    &
+         * (FieldAtParticle(TEMP) - PartState(PART_TEMP,PartID)) &
+         / (Species(PartSpecies(PartID))%MassIC * Species(PartSpecies(PartID))%SpecificHeatIC)
+#endif /*USE_PARTTEMP*/
+
 CASE(RHS_SGS2)
 !===================================================================================================================================
 ! Calculation according to Stokes; SGS force is added to RHS
@@ -294,6 +334,9 @@ udiff = udiff + (PartState(PART_DIAM,PartID)**2)/6 * GradAtParticle(RHS_LAPLACEV
 urel = VECNORM(udiff(1:3))
 Rep  = urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
+#if USE_PARTTEMP
+Nup  = 2. + 0.6 * sqrt(Rep) * Pr ** (1./3.)
+#endif /*USE_PARTTEMP*/
 
 #if USE_SPHERICITY
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, PartState(PART_SPHE,PartID), Mp)
@@ -309,6 +352,14 @@ Fdm      = udiff * staup * f
 ! Add gravity and bouyancy if required
 IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 IF(ALLOCATED(TurbPartState)) Fdm = Fdm + TurbPartState(:,PartID)
+
+#if USE_PARTTEMP
+! Add heat exchange due to convection (ideal gas)
+lambda = cp * mu / Pr
+Qm = Nup * PP_PI * lambda * PartState(PART_DIAM,PartID)    &
+         * (FieldAtParticle(TEMP) - PartState(PART_TEMP,PartID)) &
+         / (Species(PartSpecies(PartID))%MassIC * Species(PartSpecies(PartID))%SpecificHeatIC)
+#endif /*USE_PARTTEMP*/
 
 CASE(RHS_INERTIA)
 !===================================================================================================================================
@@ -329,6 +380,11 @@ udiff = udiff + (PartState(PART_DIAM,PartID)**2)/6 * GradAtParticle(RHS_LAPLACEV
 urel = VECNORM(udiff(1:3))
 Rep  = urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)/mu
 Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
+#if USE_PARTTEMP
+Nup  = 2. + 0.6 * sqrt(Rep) * Pr ** (1./3.)
+#endif /*USE_PARTTEMP*/
+print *, FieldAtParticle
+print *, urel,PartState(PART_DIAM,PartID),mu, Rep, Mp
 
 #if USE_SPHERICITY
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, PartState(PART_SPHE,PartID), Mp)
@@ -343,6 +399,14 @@ Fdm      = udiff * staup * f
 
 ! Add gravity and bouyancy if required
 IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
+
+#if USE_PARTTEMP
+! Add heat exchange due to convection (ideal gas)
+lambda = cp * mu / Pr
+Qm = Nup * PP_PI * lambda * PartState(PART_DIAM,PartID)    &
+         * (FieldAtParticle(TEMP) - PartState(PART_TEMP,PartID)) &
+         / (Species(PartSpecies(PartID))%MassIC * Species(PartSpecies(PartID))%SpecificHeatIC)
+#endif /*USE_PARTTEMP*/
 
 CASE(RHS_INERTIA_EULER)
 !===================================================================================================================================
@@ -361,6 +425,9 @@ udiff = udiff + (PartState(PART_DIAM,PartID)**2)/6 * GradAtParticle(RHS_LAPLACEV
 urel = VECNORM(udiff(1:3))
 Rep  = 0.
 Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
+#if USE_PARTTEMP
+Nup  = 2. + 0.6 * sqrt(Rep) * Pr ** (1./3.)
+#endif /*USE_PARTTEMP*/
 
 #if USE_SPHERICITY
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, PartState(PART_SPHE,PartID), Mp)
@@ -376,17 +443,29 @@ Fdm      = 1./24*urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)*udiff*st
 ! Add gravity and bouyancy if required
 IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 
+#if USE_PARTTEMP
+! Add heat exchange due to convection (ideal gas)
+lambda = cp * mu / Pr
+Qm = Nup * PP_PI * lambda * PartState(PART_DIAM,PartID)    &
+         * (FieldAtParticle(TEMP) - PartState(PART_TEMP,PartID)) &
+         / (Species(PartSpecies(PartID))%MassIC * Species(PartSpecies(PartID))%SpecificHeatIC)
+#endif /*USE_PARTTEMP*/
+
 CASE DEFAULT
   CALL Abort(__STAMP__, 'No valid RHS method given. Species',IntInfo=PartSpecies(PartID))
 
 END SELECT
 
 ParticlePush(1:3) = Fdm
+#if USE_PARTTEMP
+print *, Qm
+ParticlePush(4) = Qm
+#endif /*USE_PARTTEMP*/
 
 END FUNCTION ParticlePush
 
 
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 FUNCTION ParticlePushRot(PartID,FieldAtParticle,Omega,Rew)
 !===================================================================================================================================
 ! Push due to Stoke's drag and source terms (gravity)
@@ -416,7 +495,7 @@ END FUNCTION ParticlePushRot
 
 
 #if USE_EXTEND_RHS
-SUBROUTINE ParticlePushExtend(PartID,FieldAtParticle,GradAtParticle,Pt_in&
+SUBROUTINE ParticlePushExtend(PartID,nVarPartRHS,FieldAtParticle,GradAtParticle,Pt_in&
 #if USE_BASSETFORCE || ANALYZE_RHS
   ,t,dt,iStage)
 #else
@@ -456,6 +535,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)          :: PartID
+INTEGER,INTENT(IN)          :: nVarPartRHS
 REAL,INTENT(IN)             :: FieldAtParticle(PRIM)
 REAL,INTENT(IN)             :: GradAtParticle(1:RHS_GRAD,1:3)
 REAL,INTENT(INOUT)          :: Pt_in(1:PP_nVarPartRHS)
@@ -477,7 +557,7 @@ REAL                     :: Fmm(1:3)                    ! Magnus force divided b
 REAL                     :: Fum(1:3)                    ! undisturbed flow force divided by the particle mass
 REAL                     :: Fvm(1:3)                    ! virtual mass force divided by the particle mass
 REAL                     :: Fbm(1:3)                    ! Basset force divided by the particle mass
-#if (USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE || PP_nVarPartRHS == 6)
+#if (USE_UNDISTFLOW || USE_VIRTUALMASS || USE_BASSETFORCE || USE_PARTROT)
 REAL                     :: prefactor                   ! factor divided by the particle mass
 #endif
 #if (USE_UNDISTFLOW || USE_VIRTUALMASS)
@@ -492,16 +572,22 @@ REAL                     :: tmp(1:3)
 ! Convergence1
 ! REAL                     :: Sb,Cb
 #endif /* USE_BASSETFORCE */
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 REAL                     :: Rep                         ! particle Reynolds number
 REAL                     :: Omega(3),Rew                ! relative fluid-particle Angular velocity, rotational Reynolds number
 REAL                     :: rotu(3),rotudiff(3)         ! curl product of the velocity and the velocity difference
 REAL                     :: dotp,beta                   ! dot_product, beta=dp*|\omega|/(2*udiff)
-#endif /* PP_nVarPartRHS == 6 */
+#endif /* USE_PARTROT */
 !===================================================================================================================================
 
 SELECT CASE(Species(PartSpecies(PartID))%RHSMethod)
-  CASE(RHS_NONE,RHS_TCONVERGENCE,RHS_HPCONVERGENCE,RHS_TRACER)
+  CASE(RHS_NONE,RHS_TCONVERGENCE,RHS_HPCONVERGENCE)
+    RETURN
+  CASE(RHS_TRACER)
+    ! Calculate the rotation: \nabla x u
+    Pt_in(nVarPartRHS+1:nVarPartRHS+3) = (/GradAtParticle(RHS_GRADVEL3,2)-GradAtParticle(RHS_GRADVEL2,3),&
+                                           GradAtParticle(RHS_GRADVEL1,3)-GradAtParticle(RHS_GRADVEL3,1),&
+                                           GradAtParticle(RHS_GRADVEL2,1)-GradAtParticle(RHS_GRADVEL1,2)/)
     RETURN
 END SELECT
 
@@ -517,10 +603,10 @@ ELSE
   udiff(1:3) = FieldAtParticle(VELV)                             - PartState(PART_VELV,PartID)
 END IF
 
+Pt(:) = Pt_in(:)
 ! Nullify arrays
-Pt(:) = 0.
 Flm = 0.; Fbm = 0.; Fvm=0.; Fum=0.; Fmm=0.
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 Rew = 0.; Rep = 0.
 #endif
 ! factor before left hand side to add all dv_p/dt terms of the RHS
@@ -531,7 +617,7 @@ globalfactor = 1.
 ! Saffman, P.G.: The lift on a small sphere in a slow shear flow. Journal of Fluid Mechanics,
 ! pp. 385–400, 1965. 10.1017/S0022112065000824.
 !===================================================================================================================================
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 ! Calculate the RHS of the rotation
 IF (Species(PartSpecies(PartID))%CalcMagnusForce .OR. Species(PartSpecies(PartID))%CalcSaffmanForce) THEN
   ! Calculate the rotation: \nabla x u
@@ -566,7 +652,7 @@ IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
   ! Prefactor according to Oesterle and Bui Dinh
   IF (ANY(Omega.NE.0)) THEN
     Rew = FieldAtParticle(DENS) * VECNORM(Omega) * PartState(PART_DIAM,PartID)**2 / (4*mu)
-    Pt(4:6) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
+    Pt(nVarPartRHS+1:nVarPartRHS+3) = ParticlePushRot(PartID,FieldAtParticle(PRIM),Omega,Rew)
     ! Calculate the rotation: (\nabla x u_p) x udiff
     rotudiff = CROSS(Omega, udiff) * VECNORM(udiff) / VECNORM(Omega)
     IF (Rep.GT.0.) THEN
@@ -575,7 +661,7 @@ IF (Species(PartSpecies(PartID))%CalcMagnusForce) THEN
     END IF
   END IF
 END IF
-#endif /* PP_nVarPartRHS */
+#endif /* USE_PARTROT */
 
 #if USE_UNDISTFLOW || USE_VIRTUALMASS
 IF (Species(PartSpecies(PartID))%CalcUndisturbedFlow.OR.Species(PartSpecies(PartID))%CalcVirtualMass) THEN
@@ -1127,6 +1213,7 @@ END FUNCTION DF_Ganser
 
 !==================================================================================================================================
 !> Compute source terms for particles and add them to the nearest DOF
+! TODO: global arrays, communication of source term (see piclas)
 !==================================================================================================================================
 SUBROUTINE CalcSourcePart(Ut)
 ! MODULES
@@ -1144,7 +1231,7 @@ USE MOD_FV_Vars           ,ONLY: FV_Elems
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_FV_Vars           ,ONLY: FV_Vdm
 #endif
-USE MOD_Particle_Vars     ,ONLY: Species,PartSpecies,PartState,Pt,PEM,PDM
+USE MOD_Particle_Vars     ,ONLY: Species,PartSpecies,PartState,Pt,PEM,PDM,DepositionType
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1154,7 +1241,7 @@ REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time deriv
 INTEGER             :: i,j,k,iElem,iPart,ijk(3),iBGM,jBGM,kBGM,imin,imax,jmin,jmax,kmin,kmax,ElemID,CNElemID
 REAL                :: Ut_src(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
 REAL                :: PartSource(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
-REAL                :: Fp(3),Wp,r,Vol
+REAL                :: Fp(3),Wp,Q,r,Vol,sigma,kernel
 REAL                :: min_distance_glob,min_distance_loc
 #if FV_ENABLED
 REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
@@ -1176,39 +1263,145 @@ DO iPart = 1,PDM%ParticleVecLength
     ! Calculate particle force
     Fp(1:3) = -Pt(1:3,iPart)*Species(PartSpecies(iPart))%MassIC
     ! Calculate the work
-    Wp = DOT_PRODUCT(Fp,PartState(4:6,iPart))
+    Wp = DOT_PRODUCT(Fp,PartState(PART_VELV,iPart))
 
-    ! --- get background mesh cell of point
-    imin = FLOOR((PartState(1,iPart)-r-GEO%xminglob)/GEO%FIBGMdeltas(1)+1)
-    imin = MAX(GEO%FIBGMimin,imin)
-    imax = CEILING((PartState(1,iPart)+r-GEO%xminglob)/GEO%FIBGMdeltas(1))
-    imax = MIN(GEO%FIBGMimax,imax)
-    jmin = FLOOR((PartState(2,iPart)-r-GEO%yminglob)/GEO%FIBGMdeltas(2)+1)
-    jmin = MAX(GEO%FIBGMjmin,jmin)
-    jmax = CEILING((PartState(2,iPart)+r-GEO%yminglob)/GEO%FIBGMdeltas(2))
-    jmax = MIN(GEO%FIBGMjmax,jmax)
-    kmin = FLOOR((PartState(3,iPart)-r-GEO%zminglob)/GEO%FIBGMdeltas(3)+1)
-    kmin = MAX(GEO%FIBGMkmin,kmin)
-    kmax = CEILING((PartState(3,iPart)+r-GEO%zminglob)/GEO%FIBGMdeltas(3))
-    kmax = MIN(GEO%FIBGMkmax,kmax)
+#if USE_PARTTEMP
+    ! Calculate particle heat exchange (if activated)
+    Q = - Pt(4,iPart) * Species(PartSpecies(iPart))%MassIC * Species(PartSpecies(iPart))%SpecificHeatIC
+#else
+    ! Set particle heat exchange to zero if not activated
+    Q = 0.
+#endif
 
-    DO kBGM=kmin,kmax; DO jBGM=jmin,jmax; DO iBGM=imin,imax
-      !--- check all cells associated with this background mesh cell
-      DO iElem = 1, FIBGM_nElems(iBGM,jBGM,kBGM)
-        ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
-        CNElemID = GetCNElemID(ElemID)
-        ElemID = ElemID-offsetElem
-        IF (ElemID.LT.1 .OR. ElemID.GT.PP_nElems) CYCLE
+    SELECT CASE (DepositionType)
+      CASE ("cellvol")
+        iElem = PEM%Element(iPart)-offsetElem
         DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-          IF (NORM2(Elem_xGP_Shared(1:2,i,j,k,CNElemID)-PartState(PART_POS1:PART_POS2,iPart)) .LE. r) THEN
-            ! TODO: sJ_shared
-            Vol = Vol + wGPVol(i,j,k)/sJ(i,j,k,ElemID,0)
-            PartSource(MOMV,i,j,k,ElemID) = Fp
-            PartSource(ENER,i,j,k,ElemID) = Wp
-          END IF
+          Vol = Vol + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
+          PartSource(MOMV,i,j,k,iElem) = Fp
+          PartSource(ENER,i,j,k,iElem) = Wp + Q
         END DO; END DO; END DO
-      END DO
-    END DO; END DO; END DO
+
+      CASE ("step")
+        ! --- get background mesh cell of point
+        imin = FLOOR((PartState(1,iPart)-r-GEO%xminglob)/GEO%FIBGMdeltas(1)+1)
+        imin = MAX(GEO%FIBGMimin,imin)
+        imax = CEILING((PartState(1,iPart)+r-GEO%xminglob)/GEO%FIBGMdeltas(1))
+        imax = MIN(GEO%FIBGMimax,imax)
+        jmin = FLOOR((PartState(2,iPart)-r-GEO%yminglob)/GEO%FIBGMdeltas(2)+1)
+        jmin = MAX(GEO%FIBGMjmin,jmin)
+        jmax = CEILING((PartState(2,iPart)+r-GEO%yminglob)/GEO%FIBGMdeltas(2))
+        jmax = MIN(GEO%FIBGMjmax,jmax)
+        kmin = FLOOR((PartState(3,iPart)-r-GEO%zminglob)/GEO%FIBGMdeltas(3)+1)
+        kmin = MAX(GEO%FIBGMkmin,kmin)
+        kmax = CEILING((PartState(3,iPart)+r-GEO%zminglob)/GEO%FIBGMdeltas(3))
+        kmax = MIN(GEO%FIBGMkmax,kmax)
+
+        DO kBGM=kmin,kmax; DO jBGM=jmin,jmax; DO iBGM=imin,imax
+          !--- check all cells associated with this background mesh cell
+          DO iElem = 1, FIBGM_nElems(iBGM,jBGM,kBGM)
+            ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
+            CNElemID = GetCNElemID(ElemID)
+            ElemID = ElemID-offsetElem
+            IF (ElemID.LT.1 .OR. ElemID.GT.PP_nElems) CYCLE
+            DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+              IF (NORM2(Elem_xGP_Shared(1:3,i,j,k,CNElemID)-PartState(PART_POS1:PART_POS3,iPart)) .LE. r) THEN
+                ! TODO: sJ_shared
+                Vol = Vol + wGPVol(i,j,k)/sJ(i,j,k,ElemID,0)
+                PartSource(MOMV,i,j,k,ElemID) = Fp
+                PartSource(ENER,i,j,k,ElemID) = Wp + Q
+              END IF
+            END DO; END DO; END DO
+          END DO
+        END DO; END DO; END DO
+
+      CASE ("dirac")
+        iElem = PEM%Element(iPart)-offsetElem
+        min_distance_glob = VECNORM(Elem_xGP(:,0,0,0,iElem)-PartState(1:3,iPart))
+        ijk(:) = 0
+        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+          min_distance_loc = VECNORM(Elem_xGP(:,i,j,k,iElem)-PartState(1:3,iPart))
+          IF (min_distance_loc .LT. min_distance_glob) THEN; ijk(:) = (/i,j,k/); min_distance_glob = min_distance_loc; END IF
+        END DO; END DO; END DO
+        Vol = Vol + wGPVol(ijk(1),ijk(2),ijk(3))/sJ(ijk(1),ijk(2),ijk(3),iElem,0)
+        PartSource(MOMV,ijk(1),ijk(2),ijk(3),iElem) = Fp
+        PartSource(ENER,ijk(1),ijk(2),ijk(3),iElem) = Wp + Q
+
+      CASE ("shapefunc_gauss")
+        ! --- get background mesh cell of point
+        imin = FLOOR((PartState(1,iPart)-r-GEO%xminglob)/GEO%FIBGMdeltas(1)+1)
+        imin = MAX(GEO%FIBGMimin,imin)
+        imax = CEILING((PartState(1,iPart)+r-GEO%xminglob)/GEO%FIBGMdeltas(1))
+        imax = MIN(GEO%FIBGMimax,imax)
+        jmin = FLOOR((PartState(2,iPart)-r-GEO%yminglob)/GEO%FIBGMdeltas(2)+1)
+        jmin = MAX(GEO%FIBGMjmin,jmin)
+        jmax = CEILING((PartState(2,iPart)+r-GEO%yminglob)/GEO%FIBGMdeltas(2))
+        jmax = MIN(GEO%FIBGMjmax,jmax)
+        kmin = FLOOR((PartState(3,iPart)-r-GEO%zminglob)/GEO%FIBGMdeltas(3)+1)
+        kmin = MAX(GEO%FIBGMkmin,kmin)
+        kmax = CEILING((PartState(3,iPart)+r-GEO%zminglob)/GEO%FIBGMdeltas(3))
+        kmax = MIN(GEO%FIBGMkmax,kmax)
+
+        sigma = 1.0
+        DO kBGM=kmin,kmax; DO jBGM=jmin,jmax; DO iBGM=imin,imax
+          !--- check all cells associated with this background mesh cell
+          DO iElem = 1, FIBGM_nElems(iBGM,jBGM,kBGM)
+            ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
+            CNElemID = GetCNElemID(ElemID)
+            ElemID = ElemID-offsetElem
+            IF (ElemID.LT.1 .OR. ElemID.GT.PP_nElems) CYCLE
+            DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+              min_distance_loc = VECNORM(Elem_xGP_Shared(:,i,j,k,CNElemID)-PartState(1:3,iPart))
+              IF (min_distance_loc .LE. r) THEN
+                ! TODO: sJ_shared
+                kernel = EXP(-0.5*min_distance_loc**2/sigma**2)
+                Vol = Vol + kernel*wGPVol(i,j,k)/sJ(i,j,k,ElemID,0)
+                !kernel = 1./(2*PP_PI*sigma**2) * EXP(-0.5*min_distance_loc**2/sigma**2)
+                PartSource(MOMV,i,j,k,ElemID) = Fp*kernel
+                PartSource(ENER,i,j,k,ElemID) = (Wp+Q)*kernel
+              END IF
+            END DO; END DO; END DO
+          END DO
+        END DO; END DO; END DO
+
+      CASE ("shapefunc_poly")
+        ! --- get background mesh cell of point
+        imin = FLOOR((PartState(1,iPart)-r-GEO%xminglob)/GEO%FIBGMdeltas(1)+1)
+        imin = MAX(GEO%FIBGMimin,imin)
+        imax = CEILING((PartState(1,iPart)+r-GEO%xminglob)/GEO%FIBGMdeltas(1))
+        imax = MIN(GEO%FIBGMimax,imax)
+        jmin = FLOOR((PartState(2,iPart)-r-GEO%yminglob)/GEO%FIBGMdeltas(2)+1)
+        jmin = MAX(GEO%FIBGMjmin,jmin)
+        jmax = CEILING((PartState(2,iPart)+r-GEO%yminglob)/GEO%FIBGMdeltas(2))
+        jmax = MIN(GEO%FIBGMjmax,jmax)
+        kmin = FLOOR((PartState(3,iPart)-r-GEO%zminglob)/GEO%FIBGMdeltas(3)+1)
+        kmin = MAX(GEO%FIBGMkmin,kmin)
+        kmax = CEILING((PartState(3,iPart)+r-GEO%zminglob)/GEO%FIBGMdeltas(3))
+        kmax = MIN(GEO%FIBGMkmax,kmax)
+
+        sigma = (PP_N+1)
+        DO kBGM=kmin,kmax; DO jBGM=jmin,jmax; DO iBGM=imin,imax
+          !--- check all cells associated with this background mesh cell
+          DO iElem = 1, FIBGM_nElems(iBGM,jBGM,kBGM)
+            ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
+            CNElemID = GetCNElemID(ElemID)
+            ElemID = ElemID-offsetElem
+            IF (ElemID.LT.1 .OR. ElemID.GT.PP_nElems) CYCLE
+            DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+              min_distance_loc = VECNORM(Elem_xGP_Shared(:,i,j,k,CNElemID)-PartState(1:3,iPart))
+              IF (min_distance_loc .LE. r) THEN
+                ! TODO: sJ_shared
+                kernel = (1-(min_distance_loc/r)**2)**sigma
+                Vol = Vol + kernel*wGPVol(i,j,k)/sJ(i,j,k,ElemID,0)
+                PartSource(MOMV,i,j,k,ElemID) = Fp*kernel
+                PartSource(ENER,i,j,k,ElemID) = Wp*kernel + Q*kernel
+              END IF
+            END DO; END DO; END DO
+          END DO
+        END DO; END DO; END DO
+
+    END SELECT
+
     IF (Vol .GT. EPSILON(0.)) THEN
       Ut_src = Ut_src + PartSource / Vol
     ELSE
@@ -1224,9 +1417,9 @@ DO iPart = 1,PDM%ParticleVecLength
         Fp*sJ(ijk(1),ijk(2),ijk(3),iElem,0)/wGPVol(ijk(1),ijk(2),ijk(3))
       Ut_src(ENER,ijk(1),ijk(2),ijk(3),iElem) = Ut_src(ENER,ijk(1),ijk(2),ijk(3),iElem)+&
         Wp*sJ(ijk(1),ijk(2),ijk(3),iElem,0)/wGPVol(ijk(1),ijk(2),ijk(3))
-      ! Add source term
     END IF
   END IF
+
 END DO ! iPart
 
 DO iElem = 1, nElems

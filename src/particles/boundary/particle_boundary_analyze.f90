@@ -281,7 +281,7 @@ IF (doWritePartDiam) THEN
 ELSE
   tmp = 18
 END IF
-#if PP_nVarPartRHS==6
+#if USE_PARTROT
 StrVarNames(tmp) = 'E_rot_impact'
 StrVarNames(tmp+1) = 'E_rot_reflected'
 tmp = tmp+2

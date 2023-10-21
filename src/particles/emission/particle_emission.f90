@@ -46,6 +46,9 @@ USE MOD_Globals
 USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists,EmissionTime
 USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PDM,PEM,doPartIndex,PartIndex,sumOfMatchedParticlesSpecies
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticleMass
+#if USE_PARTTEMP
+USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticleTemperature
+#endif
 USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
 USE MOD_Part_Tools             ,ONLY: UpdateNextFreePosition
 USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
@@ -133,6 +136,11 @@ DO i = 1,nSpecies
     ! give the particles their correct velocity
     LBWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle velocities for species ',i,' ... '
     CALL SetParticleVelocity(i,iInit,NbrOfParticle,1)
+#if USE_PARTTEMP
+    ! give the particles their correct temperature
+    LBWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle temperature for species ',i,' ... '
+    CALL SetParticleTemperature(i,iInit,NbrOfParticle,1)
+#endif
     ! give the particles their correct (species) mass
     LBWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle mass for species ',i,' ... '
     CALL SetParticleMass(i,NbrOfParticle)

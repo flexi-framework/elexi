@@ -134,6 +134,13 @@ CALL prms%CreateLogicalOption(      'Part-LowVeloRemove'       , 'Flag if low ve
                                                                , '.FALSE.')
 CALL prms%CreateLogicalOption(      'Part-CalcSource'          , 'Flag to enable two-way coupling'                                 &
                                                                , '.FALSE.')
+CALL prms%CreateStringOption(       'Part-DepositionType'      , 'Deposition method used for two-way coupling .\n'               //&
+                                                      ' - cellvol         : imposed to element the particle resides in \n'       //&
+                                                      ' - step            : step function \n'                                    //&
+                                                      ' - dirac           : dirac impulse \n'                                    //&
+                                                      ' - shapefunc_gauss : Gaussian shape function \n'                          //&
+                                                      ' - shapefunc_poly  : Polynomial shape function \n'                          &
+                                                    , 'cellvol')
 CALL prms%CreateLogicalOption(      'Part-WritePartDiam'       , 'Flag to enable writeout of particle diameter'                    &
                                                                , '.FALSE.')
 CALL prms%CreateLogicalOption(      'Part-RandomPartDiam'      , 'Flag to enable random particle diameter with a certain variance' &
@@ -255,6 +262,16 @@ CALL prms%CreateRealOption(         'Part-Species[$]-ScalePartDiam', 'Scale part
                                                                 , '1.'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-PartSpheVarianceIC', 'Particle sphericity variance of species [$] [-]'        &
                                                                 , '0.'       , numberedmulti=.TRUE.)
+#if USE_PARTTEMP
+CALL prms%CreateRealOption(         'Part-Species[$]-SpecificHeatIC'  , 'Particle specific heat [$] [J/kg/K]'                      &
+                                                                      , '0.'       , numberedmulti=.TRUE.)
+CALL prms%CreateStringOption(       'Part-Species[$]-tempDistribution', 'Particle temperature distribtution. \n'                 //&
+                                                                  ' - constant          : Emission with constant velocity\n'     //&
+                                                                  ' - fluid             : Emission with local fluid velocity'      &
+                                                                , 'constant', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-TemperatureIC'   , 'Absolute value of initial temperature.  '                 &
+                                                                , '0.'      , numberedmulti=.TRUE.)
+#endif /*USE_PARTTEMP*/
 #if USE_EXTEND_RHS
 CALL prms%CreateLogicalOption(      'Part-Species[$]-CalcSaffmanForce', 'Flag to calculate the Saffman lift force'                 &
                                                                 , '.FALSE.' , numberedmulti=.TRUE.)
@@ -351,6 +368,14 @@ CALL prms%CreateRealArrayOption(    'Part-Species[$]-Init[$]-VeloVecIC ', 'Veloc
                                                                 , '0. , 0. , 0.', numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-VeloTurbIC', 'Turbulent fluctuation of initial velocity. (ensemble velocity)'&
                                                                 , '0.'      , numberedmulti=.TRUE.)
+#if USE_PARTTEMP
+CALL prms%CreateStringOption(       'Part-Species[$]-Init[$]-tempDistribution', 'Particle temperature distribtution. \n'         //&
+                                                                  ' - constant          : Emission with constant velocity\n'     //&
+                                                                  ' - fluid             : Emission with local fluid velocity'      &
+                                                                , 'constant', numberedmulti=.TRUE.)
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-TemperatureIC'   , 'Absolute value of initial temperature.  '         &
+                                                                , '0.'      , numberedmulti=.TRUE.)
+#endif /*USE_PARTTEMP*/
 
 ! emission time
 CALL prms%SetSection('Particle Species nInits Emission')
@@ -740,7 +765,11 @@ CHARACTER(30)         :: tmpStr
 !===================================================================================================================================
 doPartIndex             = GETLOGICAL('Part-PartIndex'     )
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
+
+! Fluid-particle coupling
 doCalcSourcePart        = GETLOGICAL('Part-CalcSource'    )
+DepositionType          = GETSTR('Part-DepositionType')
+
 doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' )
 doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam')
 #if USE_SPHERICITY
@@ -909,8 +938,8 @@ ALLOCATE(PartState(1:PP_nVarPart,1:PDM%maxParticleNumber),    &
          PartPosRef(         1:3,1:PDM%MaxParticleNumber),    &
          PartSpecies(            1:PDM%maxParticleNumber),    &
 ! Allocate array for Runge-Kutta time stepping
-         Pt(    1:PP_nVarPartRHS,1:PDM%maxParticleNumber),    &
-         Pt_temp(1:PP_nVarPartRHS+3,1:PDM%maxParticleNumber),   &
+         Pt(     1:PP_nVarPartRHS,1:PDM%maxParticleNumber),  &
+         Pt_temp(1:PP_nVarPartRHS+3,1:PDM%maxParticleNumber), &
 ! Allocate array for particle position in reference coordinates
          PDM%ParticleInside(     1:PDM%maxParticleNumber),    &
          PDM%nextFreePosition(   1:PDM%maxParticleNumber),    &
@@ -1117,6 +1146,10 @@ DO iSpec = 1, nSpecies
   END SELECT
   Species(iSpec)%DensityIC             = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DensityIC'      )
   Species(iSpec)%StokesIC              = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-StokesIC'       )
+#if USE_PARTTEMP
+  Species(iSpec)%SpecificHeatIC        = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-SpecificHeatIC' )
+  IF (Species(iSpec)%SpecificHeatIC .LE. 0.) CALL CollectiveStop(__STAMP__, 'Invalid particle specific heat given, Species=',IntInfo=iSpec)
+#endif /*USE_PARTTEMP*/
 
   IF (Species(iSpec)%RHSMethod .EQ. RHS_TCONVERGENCE) THEN
     IF (Species(iSpec)%StokesIC .EQ. 0) CALL COLLECTIVESTOP(__STAMP__,'Stokes number is zero!')
@@ -1225,6 +1258,11 @@ DO iSpec = 1, nSpecies
     Species(iSpec)%Init(iInit)%VeloIC                = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloIC'                )
     Species(iSpec)%Init(iInit)%VeloTurbIC            = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-VeloTurbIC'            )
     Species(iSpec)%Init(iInit)%velocityDistribution  = TRIM(ADJUSTL(GETSTR( 'Part-Species'//TRIM(tmpStr2)//'-velocityDistribution')))
+#if USE_PARTTEMP
+    Species(iSpec)%Init(iInit)%TemperatureIC         = GETREAL(      'Part-Species'//TRIM(tmpStr2)//'-TemperatureIC' )
+    IF (Species(iSpec)%Init(iInit)%TemperatureIC .LT. 0.) CALL CollectiveStop(__STAMP__, 'Invalid particle initial temperature given, Species=',IntInfo=iSpec)
+    Species(iSpec)%Init(iInit)%tempDistribution  = TRIM(ADJUSTL(GETSTR( 'Part-Species'//TRIM(tmpStr2)//'-tempDistribution')))
+#endif /*USE_PARTTEMP*/
     IF (TRIM(Species(iSpec)%Init(iInit)%velocityDistribution) .EQ. "load_from_file") THEN
       ! load from binary file
       IF (MPIRoot) THEN

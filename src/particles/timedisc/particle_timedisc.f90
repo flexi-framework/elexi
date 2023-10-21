@@ -308,8 +308,8 @@ DO iPart=1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
     !-- Tracer Particles
     IF (Species(PartSpecies(iPart))%RHSMethod.EQ.RHS_TRACER) THEN
-      PartState(PART_POSV,iPart) = PartState(PART_POSV,iPart) + PartState(PART_VELV,iPart)*dt
-      PartState(PART_VELV,iPart) = Pt       (1:3      ,iPart)
+      PartState(PART_POSV,iPart)                  = PartState(PART_POSV,iPart) + PartState(PART_VELV,iPart)*dt
+      PartState(PART_VEL1:3+PP_nVarPartRHS,iPart) = Pt       (:      ,iPart)
     !-- Normal particles
     ELSE
       PartState(PART_POSV,iPart)                  = PartState(PART_POSV                 ,iPart) + PartState(PART_VELV,iPart)*dt
@@ -430,7 +430,7 @@ DO iPart=1,PDM%ParticleVecLength
 
     IF (Species(PartSpecies(iPart))%RHSMethod.EQ.RHS_TRACER)THEN
       Pt_temp  (1:3      ,iPart) = PartState(PART_VELV,iPart)
-      PartState(PART_VELV,iPart) = Pt(       1:3      ,iPart)
+      PartState(PART_VEL1:3+PP_nVarPartRHS,iPart) = Pt       (:      ,iPart)
 
       PartState(PART_POSV,iPart) = PartState(PART_POSV,iPart) + PartState(PART_VELV,iPart)*b_dt(1)
     ELSE
@@ -531,7 +531,7 @@ DO iPart=1,PDM%ParticleVecLength
         Pt_temp(1:3,iPart) = PartState(PART_VELV,iPart) - RKA(iStage) * Pt_temp(1:3,iPart)
 
         PartState(PART_POSV,iPart) = PartState(PART_POSV,iPart) + Pt_temp(1:3,iPart)*b_dt(iStage)
-        PartState(PART_VELV,iPart) = Pt(       1:3      ,iPart)
+        PartState(PART_VEL1:3+PP_nVarPartRHS,iPart) = Pt       (:      ,iPart)
       ELSE
         Pt_temp(1:3,iPart)                  = PartState(PART_VELV       ,iPart) - RKA(iStage) * Pt_temp(1:3               ,iPart)
         Pt_temp(4:3+PP_nVarPartRHS,iPart)   = Pt       (1:PP_nVarPartRHS,iPart) - RKA(iStage) * Pt_temp(4:3+PP_nVarPartRHS,iPart)

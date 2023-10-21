@@ -146,7 +146,7 @@ ASSOCIATE (&
     ALLOCATE(StrVarNames(PartDataSize))
     StrVarNames(1:3) = (/'ParticlePositionX','ParticlePositionY','ParticlePositionZ'/)
     StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityZ'        /)
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
     StrVarNames(7:9) = (/'AngularVelX'      ,'AngularVelY'      ,'AngularVelZ'      /)
 #endif
 #if USE_SPHERICITY

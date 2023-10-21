@@ -113,7 +113,7 @@ IF (.NOT.doParticleImpactTrack) THEN
   RETURN
 END IF
 
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 ImpactDataSize = 19
 #else
 ImpactDataSize = 17
@@ -221,7 +221,7 @@ END SUBROUTINE InitParticleBoundaryTracking
 
 
 SUBROUTINE StoreBoundaryParticleProperties(BCSideID,PartID,PartFaceAngle,v_old,PartFaceAngle_old,PartReflCount,alpha,dp_old&
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
     ,rot_old&
 #endif
     )
@@ -246,7 +246,7 @@ REAL,INTENT(IN)                   :: PartFaceAngle_old
 REAL,INTENT(IN)                   :: alpha
 INTEGER,INTENT(IN)                :: BCSideID,PartID,PartReflCount
 REAL,INTENT(IN)                   :: dp_old
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 REAL,INTENT(IN)                   :: rot_old(1:3)
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -255,7 +255,7 @@ INTEGER              :: dims(2),tmp
 REAL,ALLOCATABLE     :: PartStateBoundary_tmp(:,:) !                 2nd index: 1 to number of boundary-crossed particles
 INTEGER              :: ALLOCSTAT
 REAL                 :: e_kin_old,e_kin_new
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 REAL                 :: e_rot_old, e_rot_new
 #endif
 REAL                 :: t_loc
@@ -264,7 +264,7 @@ REAL                 :: t_loc
 !----  Calculating values before and after reflection
 e_kin_old = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,dp_old,v_old(1:3))
 e_kin_new = ENERGY_KINETIC(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID),PartState(PART_VELV,PartID))
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 e_rot_old = ENERGY_ROTATION(Species(PartSpecies(PartID))%DensityIC,dp_old,rot_old(1:3))
 e_rot_new = ENERGY_ROTATION(Species(PartSpecies(PartID))%DensityIC,PartState(PART_DIAM,PartID),PartState(PART_AMOMV,PartID))
 #endif
@@ -328,7 +328,7 @@ ASSOCIATE( iMax => PartStateBoundaryVecLength )
   ELSE
     tmp = 18
   END IF
-#if PP_nVarPartRHS==6
+#if USE_PARTROT
   PartStateBoundary(tmp ,iMax) = e_rot_old
   PartStateBoundary(tmp+1 ,iMax) = e_rot_new
   tmp = tmp+2

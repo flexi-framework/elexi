@@ -36,6 +36,8 @@ INTEGER(KIND=8), ALLOCATABLE  :: PartIndex(:)                                ! (
 REAL    , ALLOCATABLE         :: Pt(:,:)                                     ! Derivative of PartState (vx,xy,vz) only
 REAL    , ALLOCATABLE         :: Pt_temp(:,:)                                ! LSERK4 additional derivative of PartState
                                                                              ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz
+CHARACTER(LEN=256)            :: DepositionType                              ! Type of Deposition-Method
+
 
 ! Particle information ordered along SFC
 REAL    , ALLOCATABLE         :: PartData(:,:)                               ! PartState ordered along SFC, particle number per
@@ -97,6 +99,9 @@ TYPE tInit                                                                   ! P
   LOGICAL                                :: UseForEmission                   ! Use Init/Emission for emission?
   CHARACTER(40)                          :: SpaceIC                          ! specifying Keyword for Particle Space condition
   CHARACTER(30)                          :: velocityDistribution             ! specifying keyword for velocity distribution
+#if USE_PARTTEMP
+  CHARACTER(30)                          :: tempDistribution                 ! specifying keyword for temperature distribution
+#endif /*USE_PARTTEMP*/
   INTEGER(8)                             :: initialParticleNumber            ! Number of Particles at time 0.0
   REAL                                   :: RadiusIC                         ! Radius for IC circle
   REAL                                   :: Radius2IC                        ! Radius2 for IC cylinder (ring)
@@ -117,6 +122,9 @@ TYPE tInit                                                                   ! P
   REAL                                   :: VeloIC                           ! velocity for inital Data
   REAL                                   :: VeloTurbIC                       ! turbulent velocity fluctuation for inital Data
   REAL                                   :: VeloVecIC(3)                     ! normalized velocity vector
+#if USE_PARTTEMP
+  REAL                                   :: TemperatureIC                    ! Particle initial temperature
+#endif /*USE_PARTTEMP*/
   REAL                                   :: Alpha                            ! WaveNumber for sin-deviation initiation.
   REAL                                   :: PartDensity                      ! PartDensity (real particles per m^3)
   INTEGER                                :: ParticleEmissionType             ! Emission Type 1 = emission rate in 1/s,
@@ -201,6 +209,9 @@ TYPE tSpecies                                                                ! P
   REAL                                   :: DiameterIC                       ! Particle diameter (without MPF)
   REAL                                   :: DensityIC                        ! Particle density (without MPF)
   REAL                                   :: StokesIC                         ! Particle Stokes number (without MPF)
+#if USE_PARTTEMP
+  REAL                                   :: SpecificHeatIC                   ! Particle specific heat
+#endif /*USE_PARTTEMP*/
   INTEGER                                :: NumberOfInits                    ! Number of different initial particle placements
   ! SurfaceFlux
   TYPE(typeSurfaceflux),ALLOCATABLE      :: SurfaceFlux(:)                   ! Particle Data for each SurfaceFlux emission

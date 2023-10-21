@@ -208,10 +208,17 @@
 #define PART_VEL2       5
 #define PART_VEL3       6
 #define PART_VELV       PART_VEL1:PART_VEL3
-#if PP_nVarPart >= 10
+#if USE_PARTTEMP
+#define PART_TEMP       7
+#endif
+#if USE_PARTROT
+#if USE_PARTTEMP
+#define PART_AMOM1      8
+#else
 #define PART_AMOM1      7
-#define PART_AMOM2      8
-#define PART_AMOM3      9
+#endif
+#define PART_AMOM2      PART_AMOM1+1
+#define PART_AMOM3      PART_AMOM2+1
 #define PART_AMOMV      PART_AMOM1:PART_AMOM3
 #endif
 #define PART_DIAM       PP_nVarPart

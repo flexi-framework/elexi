@@ -97,9 +97,9 @@ INTEGER                        :: PP_nVarPart_loc
 IF (nSpecies.LE.0) RETURN
 
 ! Size and location of particle data
-PP_nVarPart_loc = PP_nVarPart-1
-PartDataSize    = PP_nVarPart_loc + 1
-PartDataVarSpecies       = PartDataSize
+PP_nVarPart_loc    = PP_nVarPart-1
+PartDataSize       = PP_nVarPart_loc + 1
+PartDataVarSpecies = PartDataSize
 IF (doWritePartDiam) THEN
   PP_nVarPart_loc = PP_nVarPart
   PartDataSize    = PartDataSize + 1

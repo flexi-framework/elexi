@@ -160,7 +160,7 @@ CASE(1) !PartBound%OpenBC)
                                         ,PartReflCount   = PartReflCount(iPart)              &
                                         ,alpha           = alpha                             &
                                         ,dp_old          = PartState(PART_DIAM,iPart)        &
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
                                         ,rot_old         = PartState(PART_AMOMV,iPart)       &
 #endif
                                         )
@@ -217,7 +217,7 @@ SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 USE MOD_Mathtools                  ,ONLY: CROSS
 #endif
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
@@ -248,7 +248,7 @@ LOGICAL                           :: Symmetry
 REAL                              :: PartFaceAngle,PartFaceAngle_old
 REAL                              :: v_magnitude
 INTEGER                           :: locBCID
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 REAL                              :: rot_old(1:3)
 #endif
 !===================================================================================================================================
@@ -267,7 +267,7 @@ END IF
 
 ! Make sure we have the old values safe
 v_old   = PartState(PART_VELV,PartID)
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 rot_old = PartState(PART_AMOMV,PartID)
 #endif
 IF (doParticleImpactTrack) THEN
@@ -294,7 +294,7 @@ PartTrajectory          = PartState(PART_POSV,PartID) - LastPartPos(1:3,PartID)
 lengthPartTrajectory    = VECNORM(PartTrajectory)
 PartTrajectory          = PartTrajectory/lengthPartTrajectory
 
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 ! rotation: I_2*w_2-I_1*w_1 = - r x J , J=m_2*v_2-m_1*v_1, r=d/2*n_loc
 ! for a constant particle volume: I_2=I_1, m_1=m_2
 PartState(PART_AMOMV,PartID) = rot_old(1:3) - 5/PartState(PART_DIAM,PartID)*CROSS(n_loc,(PartState(PART_VELV,PartID)-v_old))
@@ -312,7 +312,7 @@ IF (doParticleImpactTrack) THEN
                                       ,PartReflCount   = PartReflCount(PartID)             &
                                       ,alpha           = alpha                             &
                                       ,dp_old          = PartState(PART_DIAM,PartID)       &
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
                                       ,rot_old         = rot_old                           &
 #endif
                                       )
@@ -330,7 +330,7 @@ ELSE
   ! Reflect also force history for symmetry
   IF (Symmetry) THEN
     Pt_temp(4:6,PartID) = Pt_temp(4:6,PartID) - 2.*DOT_PRODUCT(Pt_temp(4:6,PartID),n_loc)*n_loc
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
     Pt_temp(7:9,PartID) = Pt_temp(7:9,PartID) - 2.*DOT_PRODUCT(Pt_temp(7:9,PartID),n_loc)*n_loc
 #endif
   ! Produces best result compared to analytical solution in place capacitor ...
@@ -361,7 +361,7 @@ SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 USE MOD_Mathtools                  ,ONLY: CROSS
 #endif
 USE MOD_Particle_Globals
@@ -397,7 +397,7 @@ REAL                              :: v_magnitude,v_norm(3),v_tang1(3),v_tang2(3)
 REAL                              :: intersecRemain
 REAL                              :: eps_n, eps_t1, eps_t2
 REAL                              :: tang1(1:3),tang2(1:3)
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 REAL                              :: rot_old(1:3)
 #endif
 ! Bons particle rebound model
@@ -416,7 +416,7 @@ WallVelo   = PartBound%WallVelo(1:3,locBCID)
 ! Make sure we have the old velocity/dp/rot safe
 v_old   = PartState(PART_VELV,PartID)
 dp_old  = PartState(PART_DIAM,PartID)
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 rot_old = PartState(PART_AMOMV,PartID)
 #endif
 
@@ -680,7 +680,7 @@ PartState(PART_VELV,PartID) = eps_t1 * v_tang1 + eps_t2 * v_tang2 - eps_n * v_no
 lengthPartTrajectory  = VECNORM(PartTrajectory)
 PartTrajectory        = PartTrajectory/lengthPartTrajectory
 
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 ! rotation: I_2*w_2-I_1*w_1 = - r x J , J=m_2*v_2-m_1*v_1, r=d/2*n_loc
 ! for a constant particle volume: I_2=I_1, m_1=m_2
 PartState(PART_AMOMV,PartID) = (dp_old/PartState(PART_DIAM,PartID))**5*rot_old - &
@@ -706,7 +706,7 @@ IF (doParticleImpactTrack) THEN
                                       ,PartReflCount      = PartReflCount(PartID)                         &
                                       ,alpha              = alpha                                         &
                                       ,dp_old             = dp_old                                        &
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
                                       ,rot_old            = rot_old                                       &
 #endif
                                       )

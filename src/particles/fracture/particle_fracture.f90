@@ -168,7 +168,7 @@ SUBROUTINE DiffuseReflectionFracture(PartTrajectory,lengthPartTrajectory,alpha,P
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 USE MOD_Mathtools                  ,ONLY: CROSS
 #endif
 USE MOD_Particle_Globals
@@ -197,7 +197,7 @@ REAL                              :: PartFaceAngle,PartFaceAngle_old
 REAL                              :: PartTrajectoryTang1(3),PartTrajectoryTang2(3),PartTrajectoryNorm(3)
 REAL                              :: v_norm(3),v_tang1(3),v_tang2(3)
 REAL                              :: intersecRemain,v_magnitude
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 REAL                              :: rot_old(1:3)
 #endif
 REAL                              :: PartState_tmp(1:PP_nVarPart),PartTrajectory_tmp(1:3)
@@ -213,7 +213,7 @@ PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,n_loc)))
 ! Make sure we have the old values safe
 IF (doParticleImpactTrack) PartFaceAngle_old = PartFaceAngle
 v_old = PartState(PART_VELV,PartID)
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 rot_old = PartState(PART_AMOMV,PartID)
 #endif
 
@@ -239,7 +239,7 @@ PartState_tmp(PART_VELV) = eps_t1 * v_tang1 + eps_t2 * v_tang2 - eps_n * v_norm 
 ! Calculate new particle diameter
 PartState_tmp(PART_DIAM) = VOL_SPHERE_INV((VOL_SPHERE(dp_old)-VOL_SPHERE(PartState(PART_DIAM,PartID))))
 
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
 ! rotation: I_2*w_2-I_1*w_1 = - r x J , J=m_2*v_2-m_1*v_1, r=d/2*n_loc
 ! for a constant particle volume: I_2=I_1, m_1=m_2
 PartState_tmp(PART_AMOMV) = (dp_old/PartState_tmp(PART_DIAM))**5*rot_old - &
@@ -270,7 +270,7 @@ IF (doParticleImpactTrack) THEN
                                       ,PartReflCount     = PartReflCount(NewPartID)                      &
                                       ,alpha             = alpha                                         &
                                       ,dp_old            = dp_old                                        &
-#if PP_nVarPartRHS == 6
+#if USE_PARTROT
                                       ,rot_old           = rot_old                                       &
 #endif
                                       )

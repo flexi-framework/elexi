@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 #include "particle.h"
 
 MODULE MOD_Part_Pos_and_Velo
@@ -35,8 +36,17 @@ INTERFACE SetParticleVelocity
   MODULE PROCEDURE SetParticleVelocity
 END INTERFACE
 
+#if USE_PARTTEMP
+INTERFACE SetParticleTemperature
+  MODULE PROCEDURE SetParticleTemperature
+END INTERFACE
+#endif
+
 !===================================================================================================================================
 PUBLIC         :: SetParticleVelocity,SetParticlePosition
+#if USE_PARTTEMP
+PUBLIC         :: SetParticleTemperature
+#endif
 !===================================================================================================================================
 CONTAINS
 
@@ -597,7 +607,7 @@ CASE('fluid')
 !#endif
 
       ! Calculate velocity from momentum and density
-      PartState(4:6,PositionNbr) = FieldAtParticle(2:4,PositionNbr)
+      PartState(PART_VELV,PositionNbr) = FieldAtParticle(VELV,PositionNbr)
 
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
@@ -616,5 +626,150 @@ END SELECT
 
 END SUBROUTINE SetParticleVelocity
 
+
+#if USE_PARTTEMP
+SUBROUTINE SetParticleTemperature(FractNbr,iInit,NbrOfParticle,init_or_sf)
+!===================================================================================================================================
+! Determine the particle velocity of each inserted particle
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_DG_Vars,                 ONLY: U
+USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
+USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,FieldAtParticle
+USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
+USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef
+USE MOD_Mesh_Vars,               ONLY: offsetElem
+#if USE_RW
+USE MOD_DG_Vars,                 ONLY: UTurb
+USE MOD_Restart_Vars,            ONLY: RestartTurb
+USE MOD_Equation_Vars,           ONLY: nVarTurb
+! USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
+USE MOD_Particle_Vars,           ONLY: TurbPartState
+#endif /* USE_RW */
+#if FV_ENABLED
+USE MOD_Eval_xyz,                ONLY: EvaluateField_FV
+USE MOD_FV_Vars,                 ONLY: FV_Elems
+#endif /* FV_ENABLED */
+!IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)               :: FractNbr
+INTEGER,INTENT(IN)               :: iInit
+INTEGER,INTENT(IN)               :: init_or_sf
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+INTEGER,INTENT(INOUT)            :: NbrOfParticle
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                          :: PositionNbr,i,iElem
+REAL                             :: field(PP_nVarPrim)
+CHARACTER(30)                    :: tempDistribution                 ! specifying keyword for temperature distribution
+REAL                             :: TemperatureIC                    ! temperature for inital Data
+#if USE_RW
+REAL                             :: turbField(nVarTurb)
+#endif
+!===================================================================================================================================
+
+! Abort if we don't have any/too many particles
+IF(NbrOfParticle.LT.1) RETURN
+IF(NbrOfParticle.GT.PDM%maxParticleNumber) &
+    CALL Abort(__STAMP__,'NbrOfParticle > PDM%maxParticleNumber!')
+
+SELECT CASE (init_or_sf)
+  CASE(1) !iInit
+    ! Collect velocity parameters for current Init
+    tempDistribution  = Species(FractNbr)%Init(iInit)%tempDistribution
+    TemperatureIC     = Species(FractNbr)%Init(iInit)%TemperatureIC
+  CASE(2) !SurfaceFlux
+    ! TODO
+    CALL Abort(__STAMP__,'surface flux not yet implemented in FLEXI')
+  CASE DEFAULT
+    CALL Abort(__STAMP__,'neither iInit nor Surfaceflux defined as reference!')
+END SELECT
+
+! Set velocity according to velocityDistribution
+SELECT CASE(TRIM(tempDistribution))
+
+!===================================================================================================================================
+! Emission with constant velocity
+!===================================================================================================================================
+CASE('constant')
+  i = 1
+  DO WHILE (i .le. NbrOfParticle)
+    PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
+    IF (PositionNbr .ne. 0) PartState(PART_TEMP,PositionNbr) = TemperatureIC
+    i = i + 1
+  END DO
+
+!===================================================================================================================================
+! Emission with local fluid velocity.
+!===================================================================================================================================
+CASE('fluid')
+  ! null field vector
+  field = 0.
+  i     = 1
+
+  ! Get background field
+  FieldAtParticle(:,:) = 0.
+
+  ! Interpolate fluid and field to particle
+  DO WHILE (i .LE. NbrOfParticle)
+    PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
+
+    ! Valid particle which got recently position
+    IF (PositionNbr .NE. 0) THEN
+
+      ! Return if no interpolation is wanted
+      IF (.NOT.DoInterpolation) RETURN
+
+      iElem = PEM%Element(PositionNbr) - offsetElem
+
+#if FV_ENABLED
+      IF (FV_Elems(iElem).EQ.1) THEN ! FV Element
+        IF (TrackingMethod.EQ.REFMAPPING) THEN
+          CALL EvaluateField_FV(PartPosRef(1:3,PositionNbr),PP_nVar,PP_N,U(:,:,:,:,iElem),PP_nVarPrim,field,iElem)
+        ELSE
+          CALL EvaluateField_FV(PartState (1:3,PositionNbr),PP_nVar,PP_N,U(:,:,:,:,iElem),PP_nVarPrim,field,iElem)
+        END IF
+      ELSE
+#endif /*FV_ENABLED*/
+        ! RefMapping, evaluate in reference space
+        IF (TrackingMethod.EQ.REFMAPPING) THEN
+          CALL EvaluateFieldAtRefPos  (PartPosRef(1:3,PositionNbr),PP_nVar ,PP_N,U(1:PP_nVar ,:,:,:,iElem),PP_nVarPrim,field    (1:PP_nVar))
+#if USE_RW
+          IF (RestartTurb) &
+            CALL EvaluateFieldAtRefPos(PartPosRef(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),nVarTurb,turbfield(1:nVarTurb))
+#endif
+        ! not RefMapping, evaluate in physical space
+        ELSE
+          CALL EvaluateFieldAtPhysPos(PartState(1:3,PositionNbr),PP_nVar,PP_N,U(:,:,:,:,iElem),PP_nVarPrim,field,PEM%Element(PositionNbr),PositionNbr)
+#if USE_RW
+          IF (RestartTurb) &
+            CALL EvaluateFieldAtPhysPos(TurbPartState(1:3,PositionNbr),nVarTurb,PP_N,UTurb(1:nVarTurb,:,:,:,iElem),nVarTurb,turbField(1:nVarTurb),PEM%Element(PositionNbr),PositionNbr)
+#endif
+        END IF ! TrackingMethod.EQ.REFMAPPING
+#if FV_ENABLED
+      END IF
+#endif /* FV_ENABLED */
+
+      ! Add the interpolated field to the background field (TODO: check if already calculated)
+      FieldAtParticle(    1:PP_nVarPrim, PositionNbr) = FieldAtParticle(1:PP_nVarPrim,PositionNbr) + field(1:PP_nVarPrim)
+
+      ! Calculate velocity from momentum and density
+      PartState(PART_TEMP,PositionNbr) = FieldAtParticle(TEMP,PositionNbr)
+    END IF
+    i=i+1
+  END DO
+
+CASE DEFAULT
+    CALL Abort(__STAMP__,'Wrong particle temperature distribution!')
+
+END SELECT
+
+END SUBROUTINE SetParticleTemperature
+#endif
 
 END  MODULE MOD_Part_Pos_and_Velo

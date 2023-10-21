@@ -104,7 +104,7 @@ USE MOD_Viscosity
 USE MOD_ReadInTools
 USE MOD_Equation_Vars     ,ONLY: EquationInitIsDone
 USE MOD_Equation_Vars     ,ONLY: nRefState,BCData,BCDataPrim,nBCByType,BCSideID
-USE MOD_Equation_Vars     ,ONLY: BCStateFile,RefStatePrim
+USE MOD_Equation_Vars     ,ONLY: BCStateFile,RefStatePrim,IniRefState
 USE MOD_Interpolation_Vars,ONLY: InterpolationInitIsDone
 USE MOD_Mesh_Vars         ,ONLY: MeshInitIsDone,nBCSides,BC,BoundaryType,nBCs,Face_xGP
 USE MOD_Exactfunc_Vars    ,ONLY: JetRadius,RoundJetInitDone,Ramping
@@ -162,6 +162,7 @@ DO iSide=1,nBCSides
                'No exactfunc defined for BC_TYPE',locType)
 #if FV_RECONSTRUCT
   IF((locType.EQ.3).OR.(locType.EQ.4))THEN
+    IF (locState.EQ.0) locState = IniRefState
     ASSOCIATE(prim => RefStatePrim(:,locState))
 #if PARABOLIC
     IF(VISCOSITY_PRIM(prim).LE.0.) &

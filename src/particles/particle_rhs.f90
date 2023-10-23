@@ -383,8 +383,6 @@ Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
 #if USE_PARTTEMP
 Nup  = 2. + 0.6 * sqrt(Rep) * Pr ** (1./3.)
 #endif /*USE_PARTTEMP*/
-print *, FieldAtParticle
-print *, urel,PartState(PART_DIAM,PartID),mu, Rep, Mp
 
 #if USE_SPHERICITY
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, PartState(PART_SPHE,PartID), Mp)
@@ -458,7 +456,6 @@ END SELECT
 
 ParticlePush(1:3) = Fdm
 #if USE_PARTTEMP
-print *, Qm
 ParticlePush(4) = Qm
 #endif /*USE_PARTTEMP*/
 

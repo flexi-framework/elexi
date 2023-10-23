@@ -85,6 +85,7 @@ CALL addStrListEntry('IniExactFunc','cavity'         ,9)
 CALL addStrListEntry('IniExactFunc','shock'          ,10)
 CALL addStrListEntry('IniExactFunc','sod'            ,11)
 CALL addStrListEntry('IniExactFunc','dmr'            ,13)
+CALL addStrListEntry('IniExactFunc','mshock'         ,14)
 CALL addStrListEntry('IniExactFunc','roundjet'       ,33)
 CALL addStrListEntry('IniExactFunc','convergence'    ,34)
 CALL addStrListEntry('IniExactFunc','sinevelx'       ,35)
@@ -99,8 +100,8 @@ CALL prms%CreateRealArrayOption(    'AdvVel',       "Advection velocity (v1,v2,v
 CALL prms%CreateRealArrayOption(    'AdvArray',     "Advection velocity array for linear setup.")
 CALL prms%CreateRealOption(         'IniAmplitude', "Amplitude for synthetic test case")
 CALL prms%CreateRealOption(         'IniFrequency', "Frequency for synthetic test case")
-CALL prms%CreateRealOption(         'MachShock',    "Parameter required for CASE(10)", '1.5')
-CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE(10)", '1.0')
+CALL prms%CreateRealOption(         'MachShock',    "Parameter required for CASE(10,14)", '1.5')
+CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE(10,14)", '1.0')
 CALL prms%CreateRealArrayOption(    'IniCenter',    "Shu Vortex CASE(7) (x,y,z)")
 CALL prms%CreateRealArrayOption(    'IniAxis',      "Shu Vortex CASE(7) (x,y,z)")
 CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
@@ -109,6 +110,7 @@ CALL prms%CreateRealOption(         'JetEnd',       "Roundjet CASE(5/33)", '10.0
 CALL prms%CreateRealOption(         'Ramping',      "Subsonic mass inflow CASE(28)"  , '1.0')
 CALL prms%CreateRealOption(         'P_Parameter',  "Couette-Poiseuille flow CASE(8)", '0.0')
 CALL prms%CreateRealOption(         'U_Parameter',  "Couette-Poiseuille flow CASE(8)", '0.01')
+CALL prms%CreateRealOption(         'xs'         ,  "1D shock position", '0.5')
 #if PARABOLIC
 CALL prms%CreateRealOption(         'delta99_in',   "Blasius boundary layer CASE(1338,1339,1340)")
 CALL prms%CreateRealArrayOption(    'x_in',         "Blasius boundary layer CASE(1338,1339,1340)")
@@ -168,9 +170,12 @@ SELECT CASE (IniExactFunc)
   CASE(8) ! couette-poiseuille flow
     P_Parameter      = GETREAL('P_Parameter')
     U_Parameter      = GETREAL('U_Parameter')
-  CASE(10) ! shock
+  CASE(10,14) ! shock
     MachShock        = GETREAL('MachShock')
     PreShockDens     = GETREAL('PreShockDens')
+    xShock           = GETREAL('xs')
+  CASE(11) ! sod
+    xShock           = GETREAL('xs')
   CASE(33) ! Roundjet
     JetRadius        = GETREAL('JetRadius')
     JetEnd           = GETREAL('JetEnd')
@@ -217,7 +222,7 @@ USE MOD_Globals        ,ONLY: Abort
 USE MOD_Mathtools      ,ONLY: CROSS
 USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
 USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniFrequency,IniAxis,AdvVel,AdvArray
-USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens
+USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens,xShock
 USE MOD_Exactfunc_Vars ,ONLY: P_Parameter,U_Parameter
 USE MOD_Exactfunc_Vars ,ONLY: JetRadius,JetEnd
 USE MOD_Equation_Vars  ,ONLY: IniRefState,RefStateCons,RefStatePrim
@@ -700,12 +705,28 @@ CASE(10) ! shock
   END IF
   prim(3)=0. ! reset temporal storage
   CALL PrimToCons(prim,Resul)
-  xs=5.+Ms*tEval ! 5. bei 10x10x10 Rechengebiet
+  xs=xShock+Ms*tEval ! 5. bei 10x10x10 Rechengebiet
   ! Tanh boundary
   Resu=-0.5*(Resul-Resur)*TANH(5.0*(x(1)-xs))+Resur+0.5*(Resul-Resur)
+CASE(14) ! shock
+  prim=0.
+  Ms  = MachShock
+
+  IF (x(1) .LE. xShock) THEN
+    ! post-shock
+    prim(DENS) = PreShockDens*((KappaP1)*Ms*Ms)/(KappaM1*Ms*Ms+2.)
+    prim(PRES) = 1.*(2.*Kappa*Ms*Ms-KappaM1)/(KappaP1)
+    prim(TEMP) = prim(PRES)/(prim(DENS)*R)
+    prim(VEL1) = Ms*(1.-PreShockDens/prim(DENS))
+  ELSE
+    ! pre-shock
+    prim(DENS) = PreShockDens
+    prim(PRES) = 1.
+    prim(TEMP) = prim(PRES)/(prim(DENS)*R)
+  END IF
+  CALL PrimToCons(prim,Resu)
 CASE(11) ! Sod Shock tube
-  xs = 0.5
-  IF (X(1).LE.xs) THEN
+  IF (X(1).LE.xShock) THEN
     Resu = RefStateCons(:,1)
   ELSE
     Resu = RefStateCons(:,2)

@@ -38,6 +38,7 @@ REAL              :: U_Parameter       !< parameter for Couette-Poiseuille flow
 REAL              :: JetRadius         !< parameter for Roundjet
 REAL              :: JetEnd            !< parameter for Roundjet
 REAL              :: Ramping           !< parameter for subsonic mass inflow BC
+REAL              :: xShock            !< parameter for shock tube
 LOGICAL           :: RoundJetInitDone=.FALSE.
 #if PARABOLIC
 REAL              :: delta99_in        !< boundary layer thickness for Blasius solution

@@ -91,6 +91,7 @@ CHARACTER(LEN=255),INTENT(IN)  :: FileName
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER,PARAMETER              :: PartIntSize=2
+INTEGER                        :: idx
 CHARACTER(LEN=255),ALLOCATABLE :: StrVarNames(:)
 LOGICAL                        :: reSwitch
 ! Particle turbulence models
@@ -146,13 +147,20 @@ ASSOCIATE (&
     ALLOCATE(StrVarNames(PartDataSize))
     StrVarNames(1:3) = (/'ParticlePositionX','ParticlePositionY','ParticlePositionZ'/)
     StrVarNames(4:6) = (/'VelocityX'        ,'VelocityY'        ,'VelocityZ'        /)
+    idx = 7
+#if USE_PARTTEMP
+    StrVarNames(idx)   = 'Temperature'
+    idx = idx+1
+#endif
 #if USE_PARTROT
-    StrVarNames(7:9) = (/'AngularVelX'      ,'AngularVelY'      ,'AngularVelZ'      /)
+    StrVarNames(idx:idx+2) = (/'AngularVelX'      ,'AngularVelY'      ,'AngularVelZ'      /)
+    idx = idx+3
 #endif
 #if USE_SPHERICITY
-    StrVarNames(PP_nVarPart-1) = 'Sphericity'
+    StrVarNames(idx) = 'Sphericity'
+    idx = idx+1
 #endif
-    IF (doWritePartDiam) StrVarNames(PP_nVarPart) = 'PartDiam'
+    IF (doWritePartDiam) StrVarNames(idx) = 'PartDiam'
     StrVarNames(PartDataVarSpecies) = 'Species'
     IF (doPartIndex) StrVarNames(PartDataVarSpecies+1) = 'Index'
     IF (doParticleReflectionTrack) &

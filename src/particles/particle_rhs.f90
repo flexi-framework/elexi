@@ -187,9 +187,13 @@ USE MOD_Particle_Vars,     ONLY: PartState
 USE MOD_Particle_Vars,     ONLY: TurbPartState
 #if USE_PARTTEMP
 USE MOD_PreProc,           ONLY: PP_PI
+#endif /*USE_PARTTEMP*/
+#if PARABOLIC
+USE MOD_Viscosity
+#if USE_PARTTEMP
 USE MOD_EoS_Vars,          ONLY: cp,Pr
 #endif /*USE_PARTTEMP*/
-USE MOD_Viscosity
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -281,6 +285,7 @@ Fdm(1) = FieldAtParticle(VEL1); Fdm(2:3) = 0.
 Qm = 0.
 #endif /*USE_PARTTEMP*/
 
+#if PARABOLIC
 CASE(RHS_SGS1)
 !===================================================================================================================================
 ! Calculation according to Stokes; SGS model provides full fluid velocity seen, see Jean-Pierre Minier & Eric Peirano [2001]
@@ -405,6 +410,7 @@ Qm = Nup * PP_PI * lambda * PartState(PART_DIAM,PartID)    &
          * (FieldAtParticle(TEMP) - PartState(PART_TEMP,PartID)) &
          / (Species(PartSpecies(PartID))%MassIC * Species(PartSpecies(PartID))%SpecificHeatIC)
 #endif /*USE_PARTTEMP*/
+#endif /*PARABOLIC*/
 
 CASE(RHS_INERTIA_EULER)
 !===================================================================================================================================
@@ -423,9 +429,6 @@ udiff = udiff + (PartState(PART_DIAM,PartID)**2)/6 * GradAtParticle(RHS_LAPLACEV
 urel = VECNORM(udiff(1:3))
 Rep  = 0.
 Mp   = urel/SPEEDOFSOUND_H(FieldAtParticle(PRES),(1./FieldAtParticle(DENS)))
-#if USE_PARTTEMP
-Nup  = 2. + 0.6 * sqrt(Rep) * Pr ** (1./3.)
-#endif /*USE_PARTTEMP*/
 
 #if USE_SPHERICITY
 f = Species(PartSpecies(PartID))%DragFactor_pointer%op(Rep, PartState(PART_SPHE,PartID), Mp)
@@ -442,11 +445,7 @@ Fdm      = 1./24*urel*PartState(PART_DIAM,PartID)*FieldAtParticle(DENS)*udiff*st
 IF(ANY(PartGravity.NE.0)) Fdm  = Fdm + PartGravity * (1.-FieldAtParticle(DENS)/Species(PartSpecies(PartID))%DensityIC)
 
 #if USE_PARTTEMP
-! Add heat exchange due to convection (ideal gas)
-lambda = cp * mu / Pr
-Qm = Nup * PP_PI * lambda * PartState(PART_DIAM,PartID)    &
-         * (FieldAtParticle(TEMP) - PartState(PART_TEMP,PartID)) &
-         / (Species(PartSpecies(PartID))%MassIC * Species(PartSpecies(PartID))%SpecificHeatIC)
+Qm = 0.
 #endif /*USE_PARTTEMP*/
 
 CASE DEFAULT
@@ -470,7 +469,9 @@ FUNCTION ParticlePushRot(PartID,FieldAtParticle,Omega,Rew)
 ! MODULES
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars,     ONLY : Species, PartSpecies
+#if PARABOLIC
 USE MOD_Viscosity
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -518,7 +519,9 @@ USE MOD_Particle_Vars,          ONLY: Pt_ext
 !USE MOD_Output,                 ONLY: OutputToFile
 #endif /* ANALYZE_RHS */
 USE MOD_PreProc,                ONLY: PP_pi
+#if PARABOLIC
 USE MOD_Viscosity
+#endif
 #if USE_BASSETFORCE
 USE MOD_Equation_Vars,          ONLY: s43,s23
 USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter,FbCoeff,FbCoeffa,Fbdt,FbCoefft!,Fbi,FbCoeffm
@@ -591,6 +594,8 @@ END SELECT
 #if PARABOLIC
 ! Calculate the dyn. viscosity
 mu = VISCOSITY_PRIM(FieldAtParticle)
+#else
+RETURN
 #endif
 
 ! Calcuate velocity difference

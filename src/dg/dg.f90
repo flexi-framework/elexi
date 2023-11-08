@@ -502,6 +502,7 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 ! Compute the gradients using Lifting (BR1 scheme,BR2 scheme ...)
 ! The communication of the gradients is initialized within the lifting routines
 CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
+#endif /*PARABOLIC*/
 
 #if USE_PARTICLES
 IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN
@@ -517,6 +518,7 @@ IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN
 END IF
 #endif /*PARTICLES*/
 
+#if PARABOLIC
 #if EDDYVISCOSITY
 ! 7. [ After the lifting we can now compute the eddy viscosity, which then has to be evaluated at the boundary. ]
 ! 7.1) - [ Open receive channel ]

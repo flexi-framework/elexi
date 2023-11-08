@@ -72,10 +72,12 @@ USE MOD_Particle_Tracking_Vars,     ONLY: CountNbrOfLostParts
 #endif /*USE_MPI*/
 ! Particle turbulence models
 USE MOD_Particle_Vars,              ONLY: TurbPartState
+#if PARABOLIC
 USE MOD_Particle_SGS_Vars,          ONLY: nSGSVars
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars,   ONLY: nRWVars
 #endif /*USE_RW*/
+#endif
 ! Restart
 USE MOD_Restart_Vars,               ONLY: RestartTime
 ! IMPLICIT VARIABLE HANDLING
@@ -179,10 +181,12 @@ IF(PartIntExists)THEN
       PDM%ParticleInside(1:locnPart) = .TRUE.
     END IF ! PartDataExists
 
+#if PARABOLIC
     ! Total size of turbulent properties
     TurbPartDataSize = nSGSVars
 #if USE_RW
     TurbPartDataSize = TurbPartDataSize + nRWVars
+#endif
 #endif
 
     ! Check if TurbPartData exists in HDF5 file

@@ -133,8 +133,10 @@ USE MOD_Part_RHS,                    ONLY: CalcPartRHS
 USE MOD_Particle_Interpolation,      ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars, ONLY: FieldAtParticle
 USE MOD_Particle_Vars,               ONLY: PartState,LastPartPos,PDM,PEM
+#if PARABOLIC
 USE MOD_Particle_SGS,                ONLY: ParticleSGS
 USE MOD_Particle_SGS_Vars,           ONLY: SGSinUse
+#endif
 USE MOD_Particle_Surface_Flux,       ONLY: ParticleSurfaceflux
 #if USE_MPI
 USE MOD_Particle_MPI_Vars,           ONLY: PartMPIExchange
@@ -211,7 +213,9 @@ t,dt,iStage)
 #else
 )
 #endif /* USE_BASSETFORCE || ANALYZE_RHS */
+#if PARABOLIC
 IF (SGSinUse) CALL ParticleSGS(dt,iStage)
+#endif
 #if USE_LOADBALANCE
 CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
 #endif /*USE_LOADBALANCE*/

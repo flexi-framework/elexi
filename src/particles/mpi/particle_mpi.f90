@@ -137,11 +137,13 @@ USE MOD_Preproc
 USE MOD_Particle_Analyze_Vars,    ONLY:doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars,   ONLY:doParticleReflectionTrack
 USE MOD_Particle_MPI_Vars
-USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
 USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
 USE MOD_Particle_Vars,            ONLY:PDM,doPartIndex
+#if PARABOLIC
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
+#endif
+USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
 #endif
 #if USE_BASSETFORCE
 USE MOD_Particle_Vars,            ONLY:nBassetVars,N_Basset!,FbCoeffm
@@ -158,11 +160,13 @@ INTEGER         :: ALLOCSTAT
 PartCommSize   = 0
 ! PartState: position and velocity
 PartCommSize   = PartCommSize + PP_nVarPart
+#if PARABOLIC
 ! TurbPartState: SGS turbulent velocity and random draw
 PartCommSize   = PartCommSize + nSGSVars
 #if USE_RW
 ! TurbPartState: RW turbulent velocity, interaction time and random draw
 PartCommSize   = PartCommSize + nRWVars
+#endif
 #endif
 ! Tracking: Include Reference coordinates
 IF(TrackingMethod.EQ.REFMAPPING) PartCommSize=PartCommSize+3
@@ -310,9 +314,9 @@ DO iPart=1,PDM%ParticleVecLength
   IF (ProcID.EQ.myRank) CYCLE
 
   ! Add particle to target proc count
-    PartMPIExchange%nPartsSend(1,GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,ProcID)) =  &
-      PartMPIExchange%nPartsSend(1,GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,ProcID)) + 1
-    PartTargetProc(iPart) = GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,ProcID)
+  PartMPIExchange%nPartsSend(1,GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,ProcID)) =  &
+    PartMPIExchange%nPartsSend(1,GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,ProcID)) + 1
+  PartTargetProc(iPart) = GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,ProcID)
 END DO ! iPart
 
 ! 2) send number of send particles
@@ -361,11 +365,13 @@ USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
 ! Variables for impact tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Boundary_Vars
-! Variables for SGS model
-USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
+#if PARABOLIC
 #if USE_RW
 ! Variables for RW model
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
+#endif
+! Variables for SGS model
+USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
 #endif
 #if USE_BASSETFORCE
 USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars,bIter,N_Basset,Fbdt!,FbCoeffm,Fbi
@@ -413,6 +419,7 @@ DO iProc=0,nExchangeProcessors-1
       !>> particle position in physical space
       PartSendBuf(iProc)%content(1+iPos:PP_nVarPart+iPos) = PartState(1:PP_nVarPart,iPart)
       jpos=iPos+PP_nVarPart
+#if PARABOLIC
       IF (ALLOCATED(TurbPartState)) THEN
         !>> SGS turbulent velocity and random draw
         PartSendBuf(iProc)%content(1+jPos:nSGSVars+jPos) = TurbPartState(1:nSGSVars,iPart)
@@ -423,6 +430,7 @@ DO iProc=0,nExchangeProcessors-1
         jpos=jpos+nRWVars
 #endif
       END IF
+#endif
       !>> particle position in reference space
       IF(TrackingMethod.EQ.REFMAPPING) THEN
         PartSendBuf(iProc)%content(1+jPos:3+jPos) = PartPosRef(1:3,iPart)
@@ -609,11 +617,13 @@ USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
 ! variables for impact tracking
 USE MOD_Particle_Vars,            ONLY:PartReflCount
 USE MOD_Particle_Boundary_Vars
-! Variables for SGS model
-USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
+#if PARABOLIC
 #if USE_RW
 ! Variables for RW model
 USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
+#endif
+! Variables for SGS model
+USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
 #endif
 #if USE_BASSETFORCE
 USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars,N_Basset,bIter,Fbdt!,FbCoeffm,Fbi
@@ -671,6 +681,7 @@ DO iProc=0,nExchangeProcessors-1
     !>> position and velocity in physical space
     PartState(1:PP_nVarPart,PartID)   = PartRecvBuf(iProc)%content(1+iPos:PP_nVarPart+iPos)
     jpos=iPos+PP_nVarPart
+#if PARABOLIC
     IF (ALLOCATED(TurbPartState)) THEN
       !>> SGS turbulent velocity and random draw
       TurbPartState(1:nSGSVars,PartID) = PartRecvBuf(iProc)%content(1+jpos:nSGSVars+jpos)
@@ -681,6 +692,7 @@ DO iProc=0,nExchangeProcessors-1
       jpos=jpos+nRWVars
 #endif
     END IF
+#endif
     !>> particle position in reference space
     IF(TrackingMethod.EQ.REFMAPPING) THEN
       PartPosRef(1:3,PartID) = PartRecvBuf(iProc)%content(1+jPos:3+jPos)

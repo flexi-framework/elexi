@@ -75,9 +75,11 @@ USE MOD_Particle_Vars           ,ONLY: PartInt,PartData,TurbPartData
 USE MOD_Particle_Vars           ,ONLY: useLinkedList,doPartIndex,doWritePartDiam
 ! Particle turbulence models
 USE MOD_Particle_Vars           ,ONLY: TurbPartState
+#if PARABOLIC
 USE MOD_Particle_SGS_Vars       ,ONLY: nSGSVars
 #if USE_RW
 USE MOD_Particle_RandomWalk_Vars,ONLY: nRWVars
+#endif
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -121,6 +123,7 @@ END IF
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) &
   PartDataSize = PartDataSize + 3
 
+#if PARABOLIC
 ! Add turbulent dispersion data to output
 IF (ALLOCATED(TurbPartState)) THEN
   TurbPartDataSize = nSGSVars
@@ -128,6 +131,7 @@ IF (ALLOCATED(TurbPartState)) THEN
   TurbPartDataSize = TurbPartDataSize + nRWVars
 #endif
 END IF
+#endif
 
 nInvalidPart = 0
 ! Make sure to eliminate invalid particles as we cannot restart from NaN

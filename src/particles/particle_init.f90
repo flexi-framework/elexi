@@ -157,6 +157,7 @@ CALL prms%CreateIntOption(          'Part-IniRefState'         , 'IniRefState fo
 CALL prms%CreateIntOption(          'Part-NBasset    '         , 'Number of previous steps used in Basset force'                   &
                                                                 , '20')
 
+#if PARABOLIC
 #if USE_RW
 CALL prms%SetSection("Particle Random Walk")
 !===================================================================================================================================
@@ -188,6 +189,7 @@ CALL prms%CreateStringOption(       'Part-SGSModel' , 'SGS model used for recons
                                                     , 'none')
 CALL prms%CreateIntOption(          'Part-SGSNFilter','Number of cut-off modes in the high-pass SGS filter'                        &
                                                     , '2')
+#endif
 
 !===================================================================================================================================
 ! > Species
@@ -607,10 +609,12 @@ USE MOD_ReadInTools,                ONLY: PrintOption
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
 #endif
+#if PARABOLIC
 #if USE_RW
 USE MOD_Particle_RandomWalk,        ONLY: ParticleInitRandomWalk
 #endif
 USE MOD_Particle_SGS,               ONLY: ParticleInitSGS
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -682,11 +686,13 @@ IF (nSpecies.LE.0) THEN
 END IF
 
 ! InitRandomWalk must be called after InitializeVariables to know the size of TurbPartState
+#if PARABOLIC
 #if USE_RW
 CALL ParticleInitRandomWalk()
 #endif
 ! InitSGS must be called after InitRandomWalk and will abort FLEXI if an RW model is defined
 CALL ParticleInitSGS()
+#endif
 
 ! Requires information about initialized variables
 CALL InitParticleAnalyze()
@@ -1136,7 +1142,11 @@ DO iSpec = 1, nSpecies
   Species(iSpec)%RHSMethod             = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-RHSMethod'      )
   SELECT CASE (Species(iSpec)%RHSMethod)
     CASE (RHS_INERTIA)
+#if PARABOLIC
       drag_factor                      = GETINTFROMSTR('Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DragFactor'     )
+#else
+      drag_factor                      = DF_PART_STOKES
+#endif
       CALL InitRHS(drag_factor, Species(iSpec)%DragFactor_pointer)
     CASE (RHS_INERTIA_EULER)
       drag_factor                      = DF_PART_STOKES
@@ -1156,6 +1166,7 @@ DO iSpec = 1, nSpecies
   ELSEIF (Species(iSpec)%StokesIC .GT. 0.) THEN
     IF (Species(iSpec)%RHSMethod .EQ. RHS_INERTIA_EULER) &
       CALL COLLECTIVESTOP(__STAMP__,'Stokes number greater than zero are not allowed with RHS_INERTIA_EULER!')
+#if PARABOLIC
     ! dyn. viscosity
     prim = RefStatePrim(:,RefStatePart)
     mu   = VISCOSITY_PRIM(prim)
@@ -1165,6 +1176,7 @@ DO iSpec = 1, nSpecies
     LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Diameter of species (spherical) ', iSpec, ' = ', Species(iSpec)%DiameterIC
     Species(iSpec)%MassIC = MASS_SPHERE(Species(iSpec)%DensityIC, Species(iSpec)%DiameterIC)
     LBWRITE(UNIT_stdOut,'(A,I0,A,E16.5)') ' | Mass of species (spherical)     ', iSpec, ' = ', Species(iSpec)%MassIC
+#endif
   ELSE
     Species(iSpec)%MassIC                = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-MassIC'         )
     Species(iSpec)%DiameterIC            = GETREAL(      'Part-Species'//TRIM(ADJUSTL(tmpStr))//'-DiameterIC'     )
@@ -1771,7 +1783,6 @@ USE MOD_Particle_Boundary_Sampling, ONLY: FinalizeParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking, ONLY: FinalizeParticleBoundaryTracking
 USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
-USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
 USE MOD_Particle_Surfaces,          ONLY: FinalizeParticleSurfaces
 USE MOD_Particle_TimeDisc,          ONLY: Particle_FinalizeTimeDisk
 USE MOD_Particle_TimeDisc_Vars,     ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
@@ -1780,9 +1791,12 @@ USE MOD_Particle_Vars
 USE MOD_Particle_MPI_Emission,      ONLY: FinalizeEmissionComm
 USE MOD_Particle_MPI_Halo,          ONLY: FinalizePartExchangeProcs
 #endif /*USE_MPI*/
+#if PARABOLIC
 #if USE_RW
 USE MOD_Particle_RandomWalk,        ONLY: ParticleFinalizeRandomWalk
 #endif /*USE_RW*/
+USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1903,7 +1917,9 @@ CALL Particle_FinalizeTimeDisk()
 SDEALLOCATE(Seeds)
 
 ! subgrid-scale model
+#if PARABOLIC
 CALL ParticleFinalizeSGS()
+#endif
 
 ! particle impact tracking
 CALL FinalizeParticleBoundaryTracking()

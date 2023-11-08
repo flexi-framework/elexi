@@ -24,6 +24,7 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
+#if PARABOLIC
 INTERFACE ParticleInitSGS
   MODULE PROCEDURE ParticleInitSGS
 END INTERFACE
@@ -1422,5 +1423,6 @@ SDEALLOCATE(gradUz2)
 ParticleSGSInitIsDone=.FALSE.
 
 END SUBROUTINE ParticleFinalizeSGS
+#endif
 
 END MODULE MOD_Particle_SGS

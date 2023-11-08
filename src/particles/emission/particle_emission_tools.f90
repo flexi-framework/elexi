@@ -680,13 +680,13 @@ DO i = 1,chunkSize
 
     CASE ('cylinder')
       radius = Species(FractNbr)%Init(iInit)%RadiusIC + 1.
-      DO WHILE((radius.GT.Species(FractNbr)%Init(iInit)%RadiusIC).OR.(radius.LT.Species(FractNbr)%Init(iInit)%Radius2IC))
-         CALL RANDOM_NUMBER(RandVal)
-         Particle_pos = Species(FractNbr)%Init(iInit)%BaseVector1IC * (RandVal(1)*2.-1.) &
-                      + Species(FractNbr)%Init(iInit)%BaseVector2IC * (RandVal(2)*2.-1.)
-         radius = SQRT( Particle_pos(1) * Particle_pos(1) + &
-                        Particle_pos(2) * Particle_pos(2) + &
-                        Particle_pos(3) * Particle_pos(3) )
+      DO WHILE((radius.GT.Species(FractNbr)%Init(iInit)%RadiusIC))!.OR.(radius.LT.Species(FractNbr)%Init(iInit)%Radius2IC))
+        CALL RANDOM_NUMBER(RandVal)
+        Particle_pos = Species(FractNbr)%Init(iInit)%BaseVector1IC * (RandVal(1)*2.-1.) &
+                     + Species(FractNbr)%Init(iInit)%BaseVector2IC * (RandVal(2)*2.-1.)
+        radius = SQRT( Particle_pos(1) * Particle_pos(1) + &
+                       Particle_pos(2) * Particle_pos(2) + &
+                       Particle_pos(3) * Particle_pos(3) )
       END DO
       Particle_pos = Particle_pos + Species(FractNbr)%Init(iInit)%BasePointIC
       ! Height directly calculated by timestep

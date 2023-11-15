@@ -164,6 +164,11 @@ INTEGER,ALLOCATABLE,TARGET            :: globalcellidsSurf_DG(:)      !< nodeIDs
 INTEGER,ALLOCATABLE,TARGET            :: globalnodeidsSurf_FV(:)      !< nodeIDs for FV surface coordinates
 INTEGER,ALLOCATABLE,TARGET            :: globalcellidsSurf_FV(:)      !< nodeIDs for FV surface coordinates
 
+! ==============================================================================================================================
+! Partitioning
+! ==============================================================================================================================
+LOGICAL                           :: Partition_exists            !< graph partitioning of elements
+INTEGER                           :: nPartitions                 !< number of graph partionings available
 
 ! ==============================================================================================================================
 ! Avg2D

@@ -217,9 +217,9 @@ changedDGonly         = .FALSE.
 
 IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   SWRITE(UNIT_stdOut,'(A3,A30,A3,A33,A13)')' | ','                   Mode ',' | ','Mesh',' | HDF5    |'
-  MeshFileMode = .TRUE.
-  MeshFile      = statefile
-  nVar_State    = 0
+  MeshFileMode   = .TRUE.
+  MeshFile       = statefile
+  nVar_State     = 0
   withDGOperator = .FALSE.
   doSurfVisu     = .FALSE.
   CALL visu_getVarNamesAndFileType(MeshFile,'',VarNamesAll,BCNamesAll)

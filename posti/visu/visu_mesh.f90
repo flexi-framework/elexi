@@ -69,7 +69,7 @@ CHARACTER(LEN=255),INTENT(IN):: meshfile_in
 LOGICAL,INTENT(IN),OPTIONAL  :: UseCurveds
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iElem,iVar,jVar,iVarVisu,meshModeLoc
+INTEGER             :: iElem,iVar,jVar,nVar,iVarVisu,meshModeLoc
 CHARACTER(LEN=255)  :: VarName
 !===================================================================================================================================
 #if USE_MPI
@@ -119,27 +119,33 @@ DEALLOCATE(mapDGElemsToAllElems)
 
 ! Do we need to visualize the scaled Jacobian, or the max scaled Jacobian?
 IF (nVarIni.GT.0) THEN
-  ! A very simple mapping is build: There are two depending variables, either one or both of them can be visualized
-  NCalc = PP_N
+  ! A very simple mapping is build
+  NCalc    = PP_N
   nVarVisu = nVarIni
+  nVarDep  = 2
+  nVarAll  = 2
   IF (IJK_exists) THEN
-    nVarDep = 5
-    nVarAll = 5
-  ELSE
-    nVarDep = 2
-    nVarAll = 2
+    nVarDep = nVarDep + 3
+    nVarAll = nVarAll + 3
   END IF
+  IF (Partition_exists) THEN
+    nVarDep = nVarDep + nPartitions + 1 ! SFC and graph partitions
+    nVarAll = nVarAll + nPartitions + 1 ! SFC and graph partitions
+  END IF
+
   SDEALLOCATE(mapDepToCalc)
   SDEALLOCATE(mapAllVarsToVisuVars)
   SDEALLOCATE(mapAllVarsToSurfVisuVars)
-  ALLOCATE(mapDepToCalc(nVarDep))
+
+  ALLOCATE(mapDepToCalc(            1:nVarDep))
+  ALLOCATE(mapAllVarsToVisuVars(    1:nVarAll))
+  ALLOCATE(mapAllVarsToSurfVisuVars(1:nVarAll))
   DO iVar = 1, nVarDep
     mapDepToCalc(iVar) = iVar
   END DO ! iVar
-  ALLOCATE(mapAllVarsToVisuVars(nVarAll))
   mapAllVarsToVisuVars = 0
-  ALLOCATE(mapAllVarsToSurfVisuVars(1:nVarAll))
   mapAllVarsToSurfVisuVars = 0
+
   iVarVisu = 1
   DO iVar = 1, nVarIni
     VarName = GETSTR("VarName")
@@ -150,6 +156,7 @@ IF (nVarIni.GT.0) THEN
       END IF
     END DO ! jVar = 1, nVarAll
   END DO ! iVar = 1, nVarIni
+
   SDEALLOCATE(UCalc_DG)
   ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG,nVarDep))
 
@@ -158,6 +165,7 @@ IF (nVarIni.GT.0) THEN
   DO iElem=1,nElems
     UCalc_DG(:,:,:,iElem,2) = MINVAL(UCalc_DG(:,:,:,iElem,1))
   END DO ! iElem
+  nVar = 2
 
   IF (IJK_exists) THEN
     ALLOCATE(Elem_IJK(3,nElems))
@@ -170,6 +178,27 @@ IF (nVarIni.GT.0) THEN
     END DO
     DEALLOCATE(Elem_IJK)
     CALL CloseDataFile()
+    nVar = nVar + 3
+  END IF
+
+  IF (Partition_exists) THEN
+    ! Add the SFC
+    DO iElem = 1,nElems
+      UCalc_DG(:,:,:,iElem,nVar+1) = iElem + offsetElem
+    END DO
+    nVar = nVar + 1
+
+    ! Add the graph partitions
+    ALLOCATE(Elem_IJK(nPartitions,nElems))
+    CALL OpenDataFile(meshfile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+    CALL ReadArray('Partitions',2,(/nPartitions,nElems/),offsetElem,2,IntArray=Elem_IJK)
+    DO iElem = 1,nElems
+      DO iVar = 1,nPartitions
+        UCalc_DG(:,:,:,iElem,nVar+iVar) = Elem_IJK(iVar,iElem)
+      END DO
+    END DO
+    DEALLOCATE(Elem_IJK)
+    CALL CloseDataFile()
   END IF
 
   CALL ConvertToVisu_DG()
@@ -179,6 +208,7 @@ END IF
 
 CALL FinalizeInterpolation()
 CALL FinalizeParameters()
+
 END SUBROUTINE VisualizeMesh
 
 END MODULE MOD_Posti_ReadMesh

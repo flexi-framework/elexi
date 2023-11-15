@@ -56,7 +56,7 @@ USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
 USE MOD_StringTools    ,ONLY: STRICMP
 USE MOD_Restart        ,ONLY: InitRestartFile
 USE MOD_Restart_Vars   ,ONLY: RestartMode
-USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni,nVar_State,IJK_exists
+USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni,nVar_State,IJK_exists,Partition_exists,nPartitions
 USE MOD_Visu_Vars      ,ONLY: statefile_old,changedStateFile
 #if USE_PARTICLES
 USE MOD_Posti_Part_Tools  ,ONLY: InitPartState,InitPartStatistics
@@ -77,6 +77,7 @@ LOGICAL                                             :: varnames_found,readDGsolu
 CHARACTER(LEN=255),ALLOCATABLE                      :: datasetNames(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: varnames_tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: tmp(:)
+CHARACTER(LEN=30)                                   :: tmpName
 CHARACTER(LEN=255)                                  :: MeshFile_loc
 INTEGER                                             :: Offset=0 ! Every process reads all BCs
 !===================================================================================================================================
@@ -86,19 +87,39 @@ IF (ISVALIDMESHFILE(statefile)) THEN      ! MESH
 
   ! IJK-sorted mesh
   CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-  CALL DatasetExists(File_ID,'Elem_IJK',IJK_exists)
-  IF (IJK_exists) THEN
-    ALLOCATE(varnames_loc(5))
-  ELSE
-    ALLOCATE(varnames_loc(2))
+  CALL DatasetExists(File_ID,'Elem_IJK'  ,IJK_exists)
+  CALL DatasetExists(File_ID,'Partitions',Partition_exists)
+  IF (Partition_exists) THEN
+    CALL GetDataSize(File_ID,'Partitions',nDims,HSize)
+    nPartitions = INT(HSize(1))
   END IF
+
+  nVar = 2
+  IF (IJK_exists)       nVar = nVar + 3
+  IF (Partition_exists) nVar = nVar + nPartitions + 1  ! SFC and graph partitions
+  ALLOCATE(varnames_loc(nVar))
 
   varnames_loc(1) = 'ScaledJacobian'
   varnames_loc(2) = 'ScaledJacobianElem'
+  nVar            = 2
   IF (IJK_exists) THEN
-    varnames_loc(3) = 'Elem_I'
-    varnames_loc(4) = 'Elem_J'
-    varnames_loc(5) = 'Elem_K'
+    varnames_loc(nVar+1) = 'Elem_I'
+    varnames_loc(nVar+2) = 'Elem_J'
+    varnames_loc(nVar+3) = 'Elem_K'
+    nVar                 = nVar + 3
+  END IF
+  IF (Partition_exists) THEN
+    ! Add the SFC
+    WRITE(tmpName,'(A)') 'ElemID'
+    nVar = nVar + 1
+    varnames_loc(nVar) = TRIM(tmpName)
+
+    ! Add the graph partitions
+    DO i = 1,nPartitions
+      WRITE(tmpName,'(A,I0)') 'Partition',i
+      nVar = nVar + 1
+      varnames_loc(nVar) = TRIM(tmpName)
+    END DO
   END IF
 
   FileType='Mesh'

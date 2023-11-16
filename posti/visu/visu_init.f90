@@ -82,39 +82,37 @@ CHARACTER(LEN=255)                                  :: MeshFile_loc
 INTEGER                                             :: Offset=0 ! Every process reads all BCs
 !===================================================================================================================================
 
-IF (ISVALIDMESHFILE(statefile)) THEN      ! MESH
+IF (ISVALIDMESHFILE(statefile)) THEN ! MESH
   SDEALLOCATE(varnames_loc)
 
-  ! IJK-sorted mesh
   CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  ! IJK-sorted mesh
   CALL DatasetExists(File_ID,'Elem_IJK'  ,IJK_exists)
+  ! Graph-partitioned mesh
   CALL DatasetExists(File_ID,'Partitions',Partition_exists)
   IF (Partition_exists) THEN
     CALL GetDataSize(File_ID,'Partitions',nDims,HSize)
     nPartitions = INT(HSize(1))
   END IF
 
-  nVar = 2
-  IF (IJK_exists)       nVar = nVar + 3
-  IF (Partition_exists) nVar = nVar + nPartitions + 1  ! SFC and graph partitions
+  nVar = 3
+  IF (IJK_exists)       nVar = nVar + 3            ! IJK sorting
+  IF (Partition_exists) nVar = nVar + nPartitions  ! Graph partitions
   ALLOCATE(varnames_loc(nVar))
 
   varnames_loc(1) = 'ScaledJacobian'
   varnames_loc(2) = 'ScaledJacobianElem'
-  nVar            = 2
+  varnames_loc(3) = 'ElemID'
+  nVar            = 3
+  ! Add IJK sorting
   IF (IJK_exists) THEN
     varnames_loc(nVar+1) = 'Elem_I'
     varnames_loc(nVar+2) = 'Elem_J'
     varnames_loc(nVar+3) = 'Elem_K'
     nVar                 = nVar + 3
   END IF
+  ! Add graph partitions
   IF (Partition_exists) THEN
-    ! Add the SFC
-    WRITE(tmpName,'(A)') 'ElemID'
-    nVar = nVar + 1
-    varnames_loc(nVar) = TRIM(tmpName)
-
-    ! Add the graph partitions
     DO i = 1,nPartitions
       WRITE(tmpName,'(A,I0)') 'Partition',i
       nVar = nVar + 1

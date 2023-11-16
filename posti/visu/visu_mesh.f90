@@ -122,15 +122,15 @@ IF (nVarIni.GT.0) THEN
   ! A very simple mapping is build
   NCalc    = PP_N
   nVarVisu = nVarIni
-  nVarDep  = 2
-  nVarAll  = 2
+  nVarDep  = 3
+  nVarAll  = 3
   IF (IJK_exists) THEN
-    nVarDep = nVarDep + 3
-    nVarAll = nVarAll + 3
+    nVarDep = nVarDep + 3           ! IJK sorting
+    nVarAll = nVarAll + 3           ! IJK sorting
   END IF
   IF (Partition_exists) THEN
-    nVarDep = nVarDep + nPartitions + 1 ! SFC and graph partitions
-    nVarAll = nVarAll + nPartitions + 1 ! SFC and graph partitions
+    nVarDep = nVarDep + nPartitions ! Graph partitions
+    nVarAll = nVarAll + nPartitions ! Graph partitions
   END IF
 
   SDEALLOCATE(mapDepToCalc)
@@ -167,6 +167,13 @@ IF (nVarIni.GT.0) THEN
   END DO ! iElem
   nVar = 2
 
+  ! Add SFC elemID
+  DO iElem = 1,nElems
+    UCalc_DG(:,:,:,iElem,nVar+1) = iElem + offsetElem
+  END DO ! iElem
+  nVar = nVar + 1
+
+  ! Add IJK sorting
   IF (IJK_exists) THEN
     ALLOCATE(Elem_IJK(3,nElems))
     CALL OpenDataFile(meshfile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -175,28 +182,22 @@ IF (nVarIni.GT.0) THEN
       UCalc_DG(:,:,:,iElem,3) = Elem_IJK(1,iElem)
       UCalc_DG(:,:,:,iElem,4) = Elem_IJK(2,iElem)
       UCalc_DG(:,:,:,iElem,5) = Elem_IJK(3,iElem)
-    END DO
+    END DO ! iElem
     DEALLOCATE(Elem_IJK)
     CALL CloseDataFile()
     nVar = nVar + 3
   END IF
 
+  ! Add graph partitions
   IF (Partition_exists) THEN
-    ! Add the SFC
-    DO iElem = 1,nElems
-      UCalc_DG(:,:,:,iElem,nVar+1) = iElem + offsetElem
-    END DO
-    nVar = nVar + 1
-
-    ! Add the graph partitions
     ALLOCATE(Elem_IJK(nPartitions,nElems))
     CALL OpenDataFile(meshfile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
     CALL ReadArray('Partitions',2,(/nPartitions,nElems/),offsetElem,2,IntArray=Elem_IJK)
     DO iElem = 1,nElems
       DO iVar = 1,nPartitions
         UCalc_DG(:,:,:,iElem,nVar+iVar) = Elem_IJK(iVar,iElem)
-      END DO
-    END DO
+      END DO ! iVar
+    END DO ! iElem
     DEALLOCATE(Elem_IJK)
     CALL CloseDataFile()
   END IF

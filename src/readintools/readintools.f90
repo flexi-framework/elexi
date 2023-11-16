@@ -1276,16 +1276,17 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
 CLASS(*)                             :: value    !< parameter value
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CLASS(link),POINTER   :: current
-CLASS(Option),POINTER :: opt
-CHARACTER(LEN=255)    :: proposal_loc
+CLASS(link),POINTER          :: current
+CLASS(Option),POINTER        :: opt
+CHARACTER(LEN=255)           :: proposal_loc
+CHARACTER(LEN=20)            :: fmtName
+INTEGER                      :: ind,mode
 #if USE_PARTICLES
 CLASS(link),POINTER          :: check
 CLASS(Option),POINTER        :: multi
 CLASS(OPTION),ALLOCATABLE    :: newopt
 CHARACTER(LEN=:),ALLOCATABLE :: testname
 INTEGER                      :: i,k
-CHARACTER(LEN=20)            :: fmtName
 ! Temporary arrays to create new options
 CHARACTER(LEN=255)           :: tmpValue
 CLASS(LogicalOption),ALLOCATABLE,TARGET :: logicalopt
@@ -1315,31 +1316,55 @@ DO WHILE (ASSOCIATED(current))
           RETURN
         END IF
       END IF
+
+      ! reset mode to default
+      mode = 0
+
       ! copy value from option to result variable
       SELECT TYPE (opt)
-        CLASS IS (IntOption)
-          SELECT TYPE(value)
-            TYPE IS (INTEGER)
-              value = opt%value
-          END SELECT
-        CLASS IS (RealOption)
-          SELECT TYPE(value)
-            TYPE IS (REAL)
-              value = opt%value
-          END SELECT
-        CLASS IS (LogicalOption)
-          SELECT TYPE(value)
-            TYPE IS (LOGICAL)
-              value = opt%value
-          END SELECT
-        CLASS IS (StringOption)
-          SELECT TYPE(value)
-            TYPE IS (STR255)
-              value%chars = opt%value
-          END SELECT
+      CLASS IS (IntOption)
+        SELECT TYPE(value)
+        TYPE IS (INTEGER)
+          value = opt%value
+        END SELECT
+      CLASS IS (RealOption)
+        SELECT TYPE(value)
+        TYPE IS (REAL)
+          value = opt%value
+        END SELECT
+      CLASS IS (LogicalOption)
+        SELECT TYPE(value)
+        TYPE IS (LOGICAL)
+          value = opt%value
+        END SELECT
+      CLASS IS (StringOption)
+        SELECT TYPE(value)
+        TYPE IS (STR255)
+          ! If the string contains a comma, strip it and provide the first part of this string. This might occur when directly running a regressioncheck file
+          ind = INDEX(opt%value,",")
+          IF (ind.GT.0) THEN
+            opt%value = opt%value(1:ind-1)
+            ! Print option and value to stdout. Custom print, so do it here
+            WRITE(fmtName,*) prms%maxNameLen
+            SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
+            CALL set_formatting("blue")
+            SWRITE(UNIT_stdOut,"(A"//fmtName//")", ADVANCE='NO') TRIM(name)
+            CALL clear_formatting()
+            SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
+            CALL opt%printValue(prms%maxValueLen)
+            SWRITE(UNIT_stdOut,"(A3)", ADVANCE='NO') ' | '
+            CALL set_formatting("cyan")
+            SWRITE(UNIT_stdOut,'(A7)', ADVANCE='NO')  "*SPLIT"
+            CALL clear_formatting()
+            SWRITE(UNIT_stdOut,"(A3)") ' | '
+            ! Set mode to indicate print already occured
+            mode = 1
+          END IF
+          value%chars = opt%value
+        END SELECT
       END SELECT
       ! print option and value to stdout
-      CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+      IF (mode.EQ.0) CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
       ! remove the option from the linked list of all parameters
       IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
       RETURN
@@ -1942,13 +1967,13 @@ INTEGER                       :: i
 LOGICAL                       :: found
 INTEGER                       :: listSize         ! current size of list
 INTEGER                       :: ind
+CHARACTER(LEN=20)             :: fmtName
 #if USE_PARTICLES
 CLASS(link),POINTER           :: check
 CLASS(Option),POINTER         :: multi
 CLASS(OPTION),ALLOCATABLE     :: newopt
 CHARACTER(LEN=:),ALLOCATABLE  :: testname
 INTEGER                       :: iChar,kChar
-CHARACTER(LEN=20)             :: fmtName
 #endif /*USE_PARTICLES*/
 !==================================================================================================================================
 ! iterate over all options and compare names
@@ -1996,7 +2021,7 @@ DO WHILE (ASSOCIATED(current))
           RETURN
         END IF
       END DO
-#if USE_PARTICLES
+
       ! If a string contains a comma, check if the first part of this string exists in the list and set its integer representation
       ! according to the mapping. This might occur when directly running a regressioncheck file
       DO i=1,listSize
@@ -2023,7 +2048,6 @@ DO WHILE (ASSOCIATED(current))
           RETURN
         END IF
       END DO
-#endif /*USE_PARTICLES*/
       CALL Abort(__STAMP__,"Unknown value for option: "//TRIM(name))
     END SELECT
   END IF
@@ -2402,7 +2426,7 @@ IF (MPIRoot) THEN
     CALL CollectiveStop(__STAMP__,"File '"//TRIM(prmfile)//"' does not exist.")
 
   ! 1. First copy the parameter file to a temporary file and change the parameter values if necessary
-  OPEN(NEWUNIT=copyUnit,FILE=TRIM(prmfile)     ,STATUS='UNKNOWN',ACTION='READ' ,ACCESS='SEQUENTIAL',IOSTAT=stat)
+  OPEN(NEWUNIT=copyUnit,FILE=TRIM(prmfile),STATUS='UNKNOWN',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
   IF (stat.NE.0) CALL Abort(__STAMP__,"Could not open '"//TRIM(prmfile)//"'")
 
   OPEN(NEWUNIT=fileUnit,FILE=TRIM(prmfile_copy),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)

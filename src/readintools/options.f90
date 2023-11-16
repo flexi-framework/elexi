@@ -397,7 +397,7 @@ END IF
 ! print delimiter between name and value
 SELECT CASE(mode)
 CASE(0)
-  SWRITE(UNIT_stdOut,'(A3)', ADVANCE='NO')  " | "
+  SWRITE(UNIT_stdOut,'(A3)',ADVANCE='NO') " | "
 CASE(1)
   SWRITE(UNIT_stdOut,"(A3)",ADVANCE='NO') " = "
 CASE(2)

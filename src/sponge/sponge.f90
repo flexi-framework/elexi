@@ -468,12 +468,13 @@ SUBROUTINE ReadBaseFlow(FileName)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Sponge_Vars
-USE MOD_Mesh_Vars  ,       ONLY: offsetElem,nGlobalElems,nElems
-USE MOD_HDF5_input ,       ONLY: OpenDataFile,CloseDataFile,ReadArray,GetDataProps
-USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume
-USE MOD_Interpolation,     ONLY: GetVandermonde
-USE MOD_Interpolation_Vars,ONLY: NodeType
+USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
+USE MOD_HDF5_Input,         ONLY: File_ID
+USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetDataProps,DatasetExists
+USE MOD_Interpolation,      ONLY: GetVandermonde
+USE MOD_Interpolation_Vars, ONLY: NodeType
+USE MOD_Mesh_Vars,          ONLY: offsetElem,nGlobalElems,nElems
+USE MOD_Sponge_Vars,        ONLY: SpBaseFlow
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -481,13 +482,24 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: FileName                 !< HDF5 filename
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+LOGICAL            :: WriteSuccessful
 INTEGER            :: iElem
 INTEGER            :: N_Base,nVar_Base,nElems_Base
 CHARACTER(LEN=255) :: NodeType_Base
 REAL,ALLOCATABLE   :: UTmp(:,:,:,:,:),Vdm_NBase_N(:,:)
-!==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A,A)')' Read Sponge Base Flow from file "',TRIM(FileName)
+REAL               :: StartT,EndT
+! ==================================================================================================================================
+
+SWRITE(UNIT_stdOut,'(A,A)')' |> Reading sponge base flow from file "',TRIM(FileName)
+GETTIME(StartT)
+
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+
+! Check if restart file was written successfully
+CALL DatasetExists(File_ID,'TIME',WriteSuccessful,attrib=.TRUE.)
+IF (.NOT.WriteSuccessful) &
+  CALL Abort(__STAMP__,'BaseFlow file missing WriteSuccessful marker. Aborting...')
+
 CALL GetDataProps(nVar_Base,N_Base,nElems_Base,NodeType_Base)
 
 IF(nElems_Base.NE.nGlobalElems)THEN
@@ -512,7 +524,10 @@ ELSE
   DEALLOCATE(UTmp,Vdm_NBase_N)
 END IF
 CALL CloseDataFile()
-SWRITE(UNIT_stdOut,*)'DONE READING BASE FLOW!'
+
+GETTIME(EndT)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)')' |> Reading sponge base flow from file DONE! [',EndT-StartT,'s]'
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE ReadBaseFlow
 

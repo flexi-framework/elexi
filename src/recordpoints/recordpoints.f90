@@ -580,7 +580,7 @@ SUBROUTINE WriteRP(nVar,StrVarNames,OutputTime,resetCounters)
 USE MOD_PreProc
 USE MOD_Globals
 USE HDF5
-USE MOD_HDF5_Output           ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessfull
+USE MOD_HDF5_Output           ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessful
 USE MOD_IO_HDF5               ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Mesh_Vars             ,ONLY: MeshFile
 USE MOD_Output_Vars           ,ONLY: ProjectName
@@ -696,7 +696,7 @@ CALL CloseDataFile()
 #if USE_MPI
 IF (myRPrank.EQ.0) THEN
 #endif /* USE_MPI */
-  CALL MarkWriteSuccessfull(Filestring)
+  CALL MarkWriteSuccessful(Filestring)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' WRITE RECORDPOINT DATA TO HDF5 FILE DONE! [',EndT-StartT,'s]'
 #if USE_MPI

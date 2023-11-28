@@ -253,6 +253,7 @@ CALL H5DCLOSE_F(DSet_ID, iError)
 DEALLOCATE(SizeMax)
 END SUBROUTINE GetDataSize
 
+
 !==================================================================================================================================
 !> Subroutine to determine HDF5 size of attribute
 !==================================================================================================================================
@@ -348,7 +349,7 @@ INTEGER(HID_T)                          :: Dset_ID,FileSpace
 INTEGER(HSIZE_T), DIMENSION(7)          :: Dims,DimsMax
 !==================================================================================================================================
 LBWRITE(UNIT_stdOut,'(132("-"))')
-LBWRITE(UNIT_stdOut,'(A,A)')' GET SIZE OF DATA IN HDF5 FILE...'
+LBWRITE(UNIT_stdOut,'(A)')' GET SIZE OF DATA IN HDF5 FILE...'
 
 IF(.NOT.PRESENT(ArrayName_opt)) THEN
     ArrayName = 'DG_Solution'
@@ -393,7 +394,7 @@ CHECKSAFEINT(Dims(5),4)
 nElems_HDF5 = INT(Dims(5),4)
 LBWRITE(UNIT_stdOut,'(A3,A30,A3,I33,A13)')' | ','GeometricnElems',' | ',nElems_HDF5,' | HDF5    |'
 
-LBWRITE(UNIT_stdOut,'(A)')' DONE!'
+LBWRITE(UNIT_stdOut,'(A)')' GET SIZE OF DATA IN HDF5 FILE DONE'
 LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE GetDataProps
@@ -646,7 +647,6 @@ IF(Loc_ID.NE.Loc_ID_in)THEN
 END IF
 LOGWRITE(*,*)'...DONE!'
 END SUBROUTINE ReadAttribute
-
 
 
 !==================================================================================================================================

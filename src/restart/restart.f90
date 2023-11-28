@@ -240,7 +240,7 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL            :: ResetTime,validHDF5,prmChanged,userblockFound
+LOGICAL            :: ResetTime,validHDF5,prmChanged,userblockFound,WriteSuccessful
 REAL               :: StartT,EndT
 CHARACTER(LEN=255) :: ParameterFileOld
 !==================================================================================================================================
@@ -267,6 +267,11 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   DoRestart = .TRUE.
   ! Read in parameters of restart solution
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  ! Check if restart file was written successfully
+  CALL DatasetExists(File_ID,'TIME',WriteSuccessful,attrib=.TRUE.)
+  IF (.NOT.WriteSuccessful) &
+    CALL Abort(__STAMP__,'Restart file missing WriteSuccessful marker. Aborting...')
+
   ! Read in time from restart file
   CALL ReadAttribute(File_ID,'Time',1,RealScalar=RestartTime)
   ! Option to set the calculation time to 0 even tho performing a restart

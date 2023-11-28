@@ -212,7 +212,7 @@ CALL WriteAdditionalElemData( FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
 
 IF(MPIRoot)THEN
-  CALL MarkWriteSuccessfull(FileName)
+  CALL MarkWriteSuccessful(FileName)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
 END IF

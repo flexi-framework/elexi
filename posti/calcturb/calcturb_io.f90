@@ -158,7 +158,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_CalcTurb_Vars
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
-USE MOD_HDF5_Output       ,ONLY: GatheredWriteArray,MarkWriteSuccessfull
+USE MOD_HDF5_Output       ,ONLY: GatheredWriteArray,MarkWriteSuccessful
 USE MOD_Mesh_Vars         ,ONLY: offsetElem,nGlobalElems,sJ,nElems
 USE MOD_Output_Vars       ,ONLY: ProjectName,NOut,Vdm_N_NOut
 ! IMPLICIT VARIABLE HANDLING
@@ -228,9 +228,9 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
 IF(NOut.NE.NCalc) DEALLOCATE(UOut)
 
 IF(MPIRoot)THEN
-    CALL MarkWriteSuccessfull(FileName)
-    GETTIME(EndT)
-    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
+  CALL MarkWriteSuccessful(FileName)
+  GETTIME(EndT)
+  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
 END IF
 
 END SUBROUTINE WriteStateFile

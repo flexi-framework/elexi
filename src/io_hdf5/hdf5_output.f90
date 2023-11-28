@@ -52,8 +52,8 @@ INTERFACE WriteAttribute
   MODULE PROCEDURE WriteAttribute
 END INTERFACE
 
-INTERFACE MarkWriteSuccessfull
-  MODULE PROCEDURE MarkWriteSuccessfull
+INTERFACE MarkWriteSuccessful
+  MODULE PROCEDURE MarkWriteSuccessful
 END INTERFACE
 
 INTERFACE WriteAdditionalElemData
@@ -77,7 +77,7 @@ INTERFACE GenerateFileSkeleton
 END INTERFACE
 
 PUBLIC :: FlushFiles,RemoveHDF5,WriteHeader,WriteTimeAverage,WriteBaseflow,GenerateFileSkeleton
-PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,WriteAdditionalFieldData,MarkWriteSuccessfull
+PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,WriteAdditionalFieldData,MarkWriteSuccessful
 !==================================================================================================================================
 
 CONTAINS
@@ -465,7 +465,7 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
 IF(.NOT.output2D) DEALLOCATE(UOut)
 #endif
 IF(MPIRoot)THEN
-  CALL MarkWriteSuccessfull(FileName)
+  CALL MarkWriteSuccessful(FileName)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
 END IF
@@ -598,7 +598,7 @@ DO i=1,2
 #endif
 END DO
 
-IF(MPIRoot) CALL MarkWriteSuccessfull(FileName)
+IF(MPIRoot) CALL MarkWriteSuccessful(FileName)
 
 IF(MPIRoot)THEN
   GETTIME(EndT)
@@ -719,47 +719,47 @@ IF(withUserblock_loc) CALL copy_userblock(TRIM(FileName)//C_NULL_CHAR,TRIM(Userb
 END SUBROUTINE GenerateFileSkeleton
 
 
-SUBROUTINE GenerateNextFileInfo(TypeString,OutputTime,PreviousTime)
-!===================================================================================================================================
-!> Subroutine that opens the previous written file on root processor and writes the necessary nextfile info
-!===================================================================================================================================
-! MODULES
-USE MOD_PreProc
-USE MOD_Globals
-USE MOD_Output_Vars        ,ONLY: ProjectName
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)    :: TypeString
-REAL,INTENT(IN)                :: OutputTime
-REAL,INTENT(IN)                :: PreviousTime
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-CHARACTER(LEN=255)             :: FileName,MeshFile255
-!===================================================================================================================================
-! Set old file name
-FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),PreviousTime))//'.h5'
-! The restart file name and the file name set here might differ (renamed restart file or changed project name).
-! Therefore, the attribute is only written if the file exists.
-IF(FILEEXISTS(Filename))THEN
-  CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-
-  MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),OutputTime))//'.h5'
-  CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
-  CALL CloseDataFile()
-END IF ! FILEEXISTS(Filename)
-
-END SUBROUTINE GenerateNextFileInfo
+! SUBROUTINE GenerateNextFileInfo(TypeString,OutputTime,PreviousTime)
+! !===================================================================================================================================
+! !> Subroutine that opens the previous written file on root processor and writes the necessary nextfile info
+! !===================================================================================================================================
+! ! MODULES
+! USE MOD_PreProc
+! USE MOD_Globals
+! USE MOD_Output_Vars        ,ONLY: ProjectName
+! ! IMPLICIT VARIABLE HANDLING
+! IMPLICIT NONE
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT VARIABLES
+! CHARACTER(LEN=*),INTENT(IN)    :: TypeString
+! REAL,INTENT(IN)                :: OutputTime
+! REAL,INTENT(IN)                :: PreviousTime
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! OUTPUT VARIABLES
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! CHARACTER(LEN=255)             :: FileName,MeshFile255
+! !===================================================================================================================================
+! ! Set old file name
+! FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),PreviousTime))//'.h5'
+! ! The restart file name and the file name set here might differ (renamed restart file or changed project name).
+! ! Therefore, the attribute is only written if the file exists.
+! IF(FILEEXISTS(Filename))THEN
+!   CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+!
+!   MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),OutputTime))//'.h5'
+!   CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
+!   CALL CloseDataFile()
+! END IF ! FILEEXISTS(Filename)
+!
+! END SUBROUTINE GenerateNextFileInfo
 
 
 !==================================================================================================================================
 !> Add time attribute, after all relevant data has been written to a file,
 !> to indicate the writing process has been finished successfully
 !==================================================================================================================================
-SUBROUTINE MarkWriteSuccessfull(FileName)
+SUBROUTINE MarkWriteSuccessful(FileName)
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -774,7 +774,7 @@ CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
 CALL DATE_AND_TIME(VALUES=time)
 CALL WriteAttribute(File_ID,'TIME',8,IntArray=time)
 CALL CloseDataFile()
-END SUBROUTINE MarkWriteSuccessfull
+END SUBROUTINE MarkWriteSuccessful
 
 
 !==================================================================================================================================

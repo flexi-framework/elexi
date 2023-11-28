@@ -717,7 +717,7 @@ REAL                              :: v_magnitude
 REAL                              :: e_kin
 REAL                              :: mp
 !#if USE_MPI
-!REAL                              :: increment = 1.
+!REAL,PARAMETER                    :: increment = 1.
 !#endif
 !===================================================================================================================================
 nShift        = PartSpecies(PartID) * nImpactVars

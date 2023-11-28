@@ -342,7 +342,7 @@ REAL                            :: tFuture
 REAL                            :: dtStep
 REAL                            :: vel(3), Mach
 REAL                            :: tmpVars(nVarAvg,0:PP_N,0:PP_N,0:PP_NZ)
-LOGICAL                         :: getPrims=.FALSE.
+LOGICAL                         :: getPrims
 REAL                            :: prim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),UE(PP_2Var)
 #if PARABOLIC
 INTEGER                         :: p,q
@@ -358,7 +358,9 @@ dtStep = (dtOld+dt)*0.5
 IF(Finalize) dtStep = dt*0.5
 dtAvg  = dtAvg+dtStep
 dtOld  = dt
-IF(ANY(CalcAvg(6:nMaxVarAvg))) getPrims=.TRUE.
+
+getPrims = .FALSE.
+IF(ANY(CalcAvg(6:nMaxVarAvg))) getPrims = .TRUE.
 
 DO iElem=1,nElems
 

@@ -7,19 +7,20 @@
 function(add_unit_test target)
     # Add executable and libraries
     ADD_EXECUTABLE(${target} ${ARGN})
+    # INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/unitTests)
     TARGET_LINK_LIBRARIES(${target} libflexishared)
     # Set properties of target
-    SET_TARGET_PROPERTIES(${target}  PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
-    SET_TARGET_PROPERTIES(${target}  PROPERTIES LINKER_LANGUAGE Fortran)
-    SET_TARGET_PROPERTIES( ${target} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/lib"
-                                                LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/lib"
-                                                RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/bin")
+    SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+    SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
+    SET_TARGET_PROPERTIES(${target} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/lib"
+                                               LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/lib"
+                                               RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/unitTests/bin")
     # Add this test to the global list of tests
     SET(UNIT_TEST_TARGETS ${UNIT_TEST_TARGETS} ${target} PARENT_SCOPE)
     # Add the test
     ADD_TEST(NAME ${target}
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/unitTests
-		COMMAND  ${CMAKE_BINARY_DIR}/unitTests/bin/${target})
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/unitTests
+    COMMAND ${CMAKE_BINARY_DIR}/unitTests/bin/${target})
 endfunction()
 
 # Enable testing in general

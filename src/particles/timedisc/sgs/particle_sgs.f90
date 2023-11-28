@@ -372,11 +372,11 @@ REAL                          :: G_SGS(3,3)         ! Drift (analytic) / diffusi
 REAL                          :: B_SGS(3,3)         ! Covariance (analytic) / exp. of the drift (num) matrix
 REAL                          :: gradUxPart(1:3), gradUyPart(1:3),gradUzPart(1:3),gradpPart(1:3),divTauPart(1:3)
 ! SOMMERFELD SGS MODEL
-REAL                          :: C_eps_Shotorban=19./12  ! model constant of Shotorban (according to HEINZ)
-REAL                          :: C_T=0.24           ! model constant for lagrangian time scale
-REAL                          :: C_L=3              ! model constant for eulerian time scale
+REAL,PARAMETER                :: C_eps_Shotorban=19./12  ! model constant of Shotorban (according to HEINZ)
+REAL,PARAMETER                :: C_T=0.24           ! model constant for lagrangian time scale
+REAL,PARAMETER                :: C_L=3              ! model constant for eulerian time scale
 ! MINIER & PEIRANO SGS MODEL
-REAL                          :: C_0=2.1            ! model constant for lagrangian time scale MINIER (according to HEINZ)
+REAL,PARAMETER                :: C_0=2.1            ! model constant for lagrangian time scale MINIER (according to HEINZ)
 REAL                          :: trace_HR           ! trace matrix H*R
 REAL                          :: trace_H            ! trace matrix H
 REAL                          :: aux                ! auxiliary variable

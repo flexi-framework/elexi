@@ -295,8 +295,8 @@ REAL,INTENT(INOUT),OPTIONAL            :: xyzNod(3) ,Vectors(3,3)
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                :: CNSideID
-INTEGER                                :: CNElemID =-1                              ! Initial value to eliminate compiler warning
-INTEGER                                :: LocSideID=-1                              ! Initial value to eliminate compiler warning
+INTEGER                                :: CNElemID
+INTEGER                                :: LocSideID
 INTEGER                                :: Node1,Node2
 REAL                                   :: xNod,zNod,yNod,Vector1(3),Vector2(3)
 REAL                                   :: nVal,ndistVal,nx,ny,nz,dotpr
@@ -309,6 +309,8 @@ ELSE IF (PRESENT(SideID)) THEN
   CNElemID  = GetCNElemID(SideInfo_Shared(SIDE_ELEMID ,SideID))
   LocSideID = SideInfo_Shared(SIDE_LOCALID,SideID)
 ELSE
+  CNElemID  = -1 ! Initial value to eliminate compiler warning
+  LocSideID = -1 ! Initial value to eliminate compiler warning
   CALL Abort(__STAMP__, 'Either SideID or ElemID+LocSideID have to be given to CalcNormAndTangTriangle!')
 END IF
 

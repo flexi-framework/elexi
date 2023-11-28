@@ -935,9 +935,9 @@ INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray(PRODUCT(nVal))  !< num
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(PRODUCT(nVal))  !< number of array entries (length 255)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER(SIZE_T),PARAMETER      :: SizeSet=255
 INTEGER(HID_T)                 :: PList_ID,DSet_ID,MemSpace,FileSpace,Type_ID,dsetparams
 INTEGER(HSIZE_T)               :: Dimsf(Rank),OffsetHDF(Rank),nValMax(Rank)
-INTEGER(SIZE_T)                :: SizeSet=255
 LOGICAL                        :: chunky,exists
 TYPE(C_PTR)                    :: buf
 !==================================================================================================================================

@@ -110,7 +110,7 @@ USE MOD_EOS_Vars      ,ONLY: Tref,ExpoSuth
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: BulkMach,BulkReynolds
-LOGICAL :: UseNonDimensionalEqn=.FALSE.
+LOGICAL :: UseNonDimensionalEqn
 !==================================================================================================================================
 LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INIT IDEAL GAS...'

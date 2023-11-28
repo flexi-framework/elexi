@@ -35,6 +35,8 @@ INTEGER,PARAMETER ::UNIT_stdOut=6                                             !<
 INTEGER,PARAMETER ::UNIT_logOut=133                                           !< unit for writing log files
 INTEGER           ::UNIT_errOut=999                                           !< unit for writing error files
 LOGICAL           ::Logging                                                   !< switch to turn log file writing on or of
+LOGICAL           ::use_escape_codes=.TRUE.                                   !< If set to .FALSE., output will consist only of standard text, allowing the
+                                                                              !< escape characters to be switched off in environments which don't support them.
 LOGICAL           ::ErrorFiles                                                !< switch to turn error file writing on or of
 CHARACTER(LEN=255)::ErrorFileName='NOT_SET'                                   !< file to write error data into
 INTEGER           ::iError                                                    !< default error handle

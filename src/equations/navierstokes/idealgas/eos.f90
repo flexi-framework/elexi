@@ -85,6 +85,7 @@ CALL prms%CreateRealOption(     'ExpoSuth',     "Sutherland's law for variable v
 
 END SUBROUTINE DefineParametersEos
 
+
 !==================================================================================================================================
 !> Initialize variables needed by the ideal gas equation of state.
 !==================================================================================================================================
@@ -112,12 +113,12 @@ USE MOD_EOS_Vars      ,ONLY: Tref,ExpoSuth
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: BulkMach,BulkReynolds
-LOGICAL :: UseNonDimensionalEqn=.FALSE.
+LOGICAL :: UseNonDimensionalEqn
 !==================================================================================================================================
 LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INIT IDEAL GAS...'
 
-UseNonDimensionalEqn=GETLOGICAL('UseNonDimensionalEqn')
+UseNonDimensionalEqn = GETLOGICAL('UseNonDimensionalEqn')
 IF(UseNonDimensionalEqn)THEN
   BulkMach     = GETREAL('BulkMach')
   BulkReynolds = GETREAL('BulkReynolds')
@@ -181,6 +182,7 @@ LBWRITE(UNIT_stdOut,'(A)')' INIT IDEAL GAS DONE!'
 LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitEos
 
+
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables for a single state
 !==================================================================================================================================
@@ -212,6 +214,7 @@ prim(PRES)=KappaM1*(cons(ENER)-0.5*SUM(cons(MOMV)*prim(VELV)))
 prim(TEMP) = prim(PRES)*sRho / R
 END SUBROUTINE ConsToPrim
 
+
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables on a single side
 !==================================================================================================================================
@@ -232,6 +235,7 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
 END DO; END DO
 END SUBROUTINE ConsToPrim_Side
 
+
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables in the whole volume
 !==================================================================================================================================
@@ -251,6 +255,7 @@ DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
   CALL ConsToPrim(prim(:,i,j,k),cons(:,i,j,k))
 END DO; END DO; END DO! i,j,k=0,Nloc
 END SUBROUTINE ConsToPrim_Elem
+
 
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables in the whole volume
@@ -274,6 +279,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO! i,j,k=0,Nloc
 END DO ! iElem
 END SUBROUTINE ConsToPrim_Volume
+
 
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables for a single state
@@ -302,6 +308,7 @@ cons(MOM3)=0.
 cons(ENER)=sKappaM1*prim(PRES)+0.5*SUM(cons(MOMV)*prim(VELV))
 END SUBROUTINE PrimToCons
 
+
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables on a single side
 !==================================================================================================================================
@@ -322,6 +329,7 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
 END DO; END DO ! p,q=0,Nloc
 END SUBROUTINE PrimToCons_Side
 
+
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
@@ -341,6 +349,7 @@ DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
   CALL PrimToCons(prim(:,i,j,k),cons(:,i,j,k))
 END DO; END DO; END DO
 END SUBROUTINE PrimToCons_Elem
+
 
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
@@ -364,6 +373,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO
 END DO
 END SUBROUTINE PrimToCons_Volume
+
 
 !==================================================================================================================================
 !> Riemann solver function to get pressure at BCs
@@ -392,6 +402,5 @@ ELSE ! shock
 END IF
 PRESSURE_RIEMANN=P_RP
 END FUNCTION PRESSURE_RIEMANN
-
 
 END MODULE MOD_EOS

@@ -218,7 +218,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 ! Local variable declaration
 INTEGER                          :: i,k,iPart,PositionNbr,iInit,IntSample,particle_count
-INTEGER                , SAVE    :: NbrOfParticle=0
+INTEGER                          :: NbrOfParticle
 INTEGER(KIND=8)                  :: inserted_Particle_iter,inserted_Particle_time
 INTEGER(KIND=8)                  :: inserted_Particle_diff
 REAL                             :: PartIns, RandVal1

@@ -364,8 +364,8 @@ REAL,INTENT(OUT)          :: xGP(0:N_in)       !< Gauss point positions for the 
 REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)       !< Gauss point weights
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: nIter = 10        ! max. number of newton iterations
-REAL                      :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
+INTEGER,PARAMETER         :: nIter = 10        ! max. number of newton iterations
+REAL,PARAMETER            :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
 INTEGER                   :: iGP,iter
 REAL                      :: L_Np1,Lder_Np1    ! L_{N_in+1},Lder_{N_in+1}
 REAL                      :: q,qder,L          ! \f$ q=L_{N_in+1}-L_{N_in-1} \f$ ,qder is derivative, \f$ L=L_{N_in} \f$
@@ -436,8 +436,8 @@ REAL,INTENT(OUT)          :: xGP(0:N_in)       !< Gauss point positions for the 
 REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)       !< Gauss point weights
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: nIter = 10        ! max. number of newton iterations
-REAL                      :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
+INTEGER,PARAMETER         :: nIter = 10        ! max. number of newton iterations
+REAL,PARAMETER            :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
 INTEGER                   :: iGP,iter
 REAL                      :: L_Np1,Lder_Np1    ! L_{N_in+1},Lder_{N_in+1}
 REAL                      :: dx                ! Newton step
@@ -597,8 +597,8 @@ REAL,INTENT(OUT)          :: xGP(0:N_in)      !< Gauss point positions for the r
 REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)      !< Gauss point weights
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: nIter = 10       ! max. number of newton iterations
-REAL                      :: Tol   = 1.E-15   ! tolerance for Newton iteration : TODO: use variable tolerance here!
+INTEGER,PARAMETER         :: nIter = 10       ! max. number of newton iterations
+REAL,PARAMETER            :: Tol   = 1.E-15   ! tolerance for Newton iteration : TODO: use variable tolerance here!
 INTEGER                   :: iGP,iter
 REAL                      :: q,qder,L         ! \f$ q=L_{N_in+1}-L_{N_in-1} \f$ ,qder is derivative, \f$ L=L_{N_in} \f$
 REAL                      :: dx               ! Newton step

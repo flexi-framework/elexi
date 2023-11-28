@@ -930,6 +930,7 @@ END DO
 
 ! check for colored output
 use_escape_codes = GETLOGICAL("ColoredOutput")
+
 END SUBROUTINE read_options
 
 !==================================================================================================================================

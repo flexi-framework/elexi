@@ -151,12 +151,14 @@ REAL                         :: muSGSmax
 REAL                         :: Max_Lambda_v(3),mu,prim(PP_nVarPrim)
 #endif /*PARABOLIC*/
 INTEGER                      :: FVE
-LOGICAL                      :: firstRun = .TRUE.
+LOGICAL                      :: firstRun
 !==================================================================================================================================
 errType=0
 
-TimeStepConv=HUGE(1.)
-TimeStepVisc=HUGE(1.)
+firstRun     = .TRUE.
+TimeStepConv = HUGE(1.)
+TimeStepVisc = HUGE(1.)
+
 DO iElem=1,nElems
   FVE = FV_Elems(iElem)
   Max_Lambda=0.

@@ -804,19 +804,24 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: nInitRegions,iInitRegions,iSpec
+INTEGER                         :: iInit,nInitRegions,iInitRegions,iSpec
 !===================================================================================================================================
 
-nInitRegions=0
-DO iSpec=1,nSpecies
-  nInitRegions = nInitRegions + Species(iSpec)%NumberOfInits !+ (1-Species(iSpec)%StartnumberOfInits)
-  ! old style parameters has been defined for inits/emissions but might have no particles
-  IF (Species(iSpec)%Init(0)%UseForEmission) nInitRegions = nInitRegions + 1
+DO iSpec = 1,nSpecies
+  DO iInit = Species(iSpec)%StartnumberOfInits, Species(iSpec)%NumberOfInits
+    ! Ignore disabled emissions
+    IF (.NOT.Species(iSpec)%Init(iInit)%UseForEmission .AND. .NOT.Species(iSpec)%Init(iInit)%UseForInit) CYCLE
+
+    nInitRegions = nInitRegions+1
+  END DO ! iInit
 END DO ! iSpec
+
 IF(nInitRegions.GT.0) THEN
   DO iInitRegions=1,nInitRegions
     IF(PartMPI%InitGroup(iInitRegions)%COMM.NE.MPI_COMM_NULL) THEN
-      IF(PartMPI%InitGroup(iInitRegions)%Comm.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(PartMPI%InitGroup(iInitRegions)%Comm,iERROR)
+      SDEALLOCATE(PartMPI%InitGroup(nInitRegions)%GroupToComm)
+      SDEALLOCATE(PartMPI%InitGroup(nInitRegions)%CommToGroup)
+      CALL MPI_COMM_FREE(PartMPI%InitGroup(iInitRegions)%COMM,iError)
     END IF
   END DO ! iInitRegions
 END IF

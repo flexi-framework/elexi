@@ -122,6 +122,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems_Shared,FIBGM_nElems_Shared_Wi
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_Element_Shared,FIBGM_Element_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_offsetElem_Shared,FIBGM_offsetElem_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMToProc_Shared,FIBGMToProc_Shared_Win
+USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProcExtent,FIBGMToProcExtent_Shared,FIBGMToProcExtent_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMProcs,FIBGMProcs_Shared,FIBGMProcs_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalSide2CNTotalSide_Shared,GlobalSide2CNTotalSide_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalSide2GlobalSide_Shared,CNTotalSide2GlobalSide_Shared_Win
@@ -1239,10 +1240,19 @@ END IF
 
 ! Allocate flags which procs belong to which FIGBM cell
 CALL Allocate_Shared((/(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1)*nComputeNodeProcessors/),FIBGMToProcFlag_Shared_Win,FIBGMToProcFlag_Shared)
+CALL Allocate_Shared((/2*3*nComputeNodeProcessors/),FIBGMToProcExtent_Shared_Win,FIBGMToProcExtent_Shared)
 CALL MPI_WIN_LOCK_ALL(0,FIBGMToProcFlag_Shared_Win,iError)
+CALL MPI_WIN_LOCK_ALL(0,FIBGMToProcExtent_Shared_Win,iError)
 FIBGMToProcFlag  (BGMiminglob:BGMimaxglob,BGMjminglob:BGMjmaxglob,BGMkminglob:BGMkmaxglob,0:nComputeNodeProcessors-1) => FIBGMToProcFlag_Shared
-IF (myComputeNodeRank.EQ.0) FIBGMToProcFlag = .FALSE.
+FIBGMToProcExtent(1:2                    ,1:3                    ,                        0:nComputeNodeProcessors-1) => FIBGMToProcExtent_Shared
+IF (myComputeNodeRank.EQ.0) THEN
+  FIBGMToProcFlag          = .FALSE.
+  FIBGMToProcExtent(1,:,:) =  HUGE(1)
+  FIBGMToProcExtent(2,:,:) = -HUGE(1)
+END IF
+
 CALL BARRIER_AND_SYNC(FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(FIBGMToProcExtent_Shared_Win,MPI_COMM_SHARED)
 
 ! 1.1) Count number of elements on compute node
 DO iElem = offsetElem+1,offsetElem+nElems
@@ -1265,6 +1275,14 @@ DO iElem = offsetElem+1,offsetElem+nElems
       END DO
     END DO
   END DO
+
+  ! Store the min/max extent
+  CALL MPI_FETCH_AND_OP(ElemToBGM_Shared(1,iElem),dummyInt,MPI_INTEGER,0,INT(((ProcRank)*(3)*(2) + (1-1)*(2) + (1-1))*SIZE_INT,MPI_ADDRESS_KIND),MPI_MIN,FIBGMToProcExtent_Shared_Win,IERROR)
+  CALL MPI_FETCH_AND_OP(ElemToBGM_Shared(3,iElem),dummyInt,MPI_INTEGER,0,INT(((ProcRank)*(3)*(2) + (2-1)*(2) + (1-1))*SIZE_INT,MPI_ADDRESS_KIND),MPI_MIN,FIBGMToProcExtent_Shared_Win,IERROR)
+  CALL MPI_FETCH_AND_OP(ElemToBGM_Shared(5,iElem),dummyInt,MPI_INTEGER,0,INT(((ProcRank)*(3)*(2) + (3-1)*(2) + (1-1))*SIZE_INT,MPI_ADDRESS_KIND),MPI_MIN,FIBGMToProcExtent_Shared_Win,IERROR)
+  CALL MPI_FETCH_AND_OP(ElemToBGM_Shared(2,iElem),dummyInt,MPI_INTEGER,0,INT(((ProcRank)*(3)*(2) + (1-1)*(2) + (2-1))*SIZE_INT,MPI_ADDRESS_KIND),MPI_MAX,FIBGMToProcExtent_Shared_Win,IERROR)
+  CALL MPI_FETCH_AND_OP(ElemToBGM_Shared(4,iElem),dummyInt,MPI_INTEGER,0,INT(((ProcRank)*(3)*(2) + (2-1)*(2) + (2-1))*SIZE_INT,MPI_ADDRESS_KIND),MPI_MAX,FIBGMToProcExtent_Shared_Win,IERROR)
+  CALL MPI_FETCH_AND_OP(ElemToBGM_Shared(6,iElem),dummyInt,MPI_INTEGER,0,INT(((ProcRank)*(3)*(2) + (3-1)*(2) + (2-1))*SIZE_INT,MPI_ADDRESS_KIND),MPI_MAX,FIBGMToProcExtent_Shared_Win,IERROR)
 END DO
 
 #if USE_LOADBALANCE
@@ -1280,8 +1298,10 @@ IF (.NOT.PerformLoadBalance) THEN
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/
-CALL MPI_WIN_FLUSH(   0,FIBGMToProcFlag_Shared_Win  ,iError)
-CALL BARRIER_AND_SYNC(  FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
+CALL MPI_WIN_FLUSH(0, FIBGMToProcFlag_Shared_Win  ,iError)
+CALL MPI_WIN_FLUSH(0, FIBGMToProcExtent_Shared_Win,iError)
+CALL BARRIER_AND_SYNC(FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(FIBGMToProcExtent_Shared_Win,MPI_COMM_SHARED)
 
 ! Allocate shared array to hold the mapping
 CALL Allocate_Shared((/2,BGMiglobDelta+1,BGMjglobDelta+1,BGMkglobDelta+1/),FIBGMToProc_Shared_Win,FIBGMToProc_Shared)
@@ -1297,11 +1317,12 @@ IF (myComputeNodeRank.EQ.0) THEN
   FIBGM_LocalProcs = 0
 
   ! 2.1) Count the number of procs on the current root
-  DO kBGM = BGMkminglob,BGMkmaxglob
-    DO jBGM = BGMjminglob,BGMjmaxglob
-      DO iBGM = BGMiminglob,BGMimaxglob
+  DO iProc = 0,nComputeNodeProcessors-1
         ! Save number of procs per FIBGM element
-        DO iProc = 0,nComputeNodeProcessors-1
+    DO kBGM = FIBGMToProcExtent(1,3,iProc),FIBGMToProcExtent(2,3,iProc)
+      DO jBGM = FIBGMToProcExtent(1,2,iProc),FIBGMToProcExtent(2,2,iProc)
+        DO iBGM = FIBGMToProcExtent(1,1,iProc),FIBGMToProcExtent(2,1,iProc)
+
           ! Proc belongs to current FIBGM cell
           IF (FIBGMToProcFlag(iBGM,jBGM,kBGM,iProc)) THEN
             FIBGM_LocalProcs(FIBGM_NLOCALPROCS,iBGM,jBGM,kBGM) = FIBGM_LocalProcs(FIBGM_NLOCALPROCS,iBGM,jBGM,kBGM) + 1
@@ -1387,13 +1408,17 @@ END IF ! myComputeNodeRank.EQ.0
 
 ! De-allocate FLAG array
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
-CALL MPI_WIN_UNLOCK_ALL(FIBGMToProcFlag_Shared_Win,iError)
-CALL MPI_WIN_FREE(FIBGMToProcFlag_Shared_Win,iError)
+CALL MPI_WIN_UNLOCK_ALL(FIBGMToProcFlag_Shared_Win  ,iError)
+CALL MPI_WIN_FREE(      FIBGMToProcFlag_Shared_Win  ,iError)
+CALL MPI_WIN_UNLOCK_ALL(FIBGMToProcExtent_Shared_Win,iError)
+CALL MPI_WIN_FREE(      FIBGMToProcExtent_Shared_Win,iError)
 CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
 
 ! Then, free the pointers or arrays
 MDEALLOCATE(FIBGMToProcFlag_Shared)
+MDEALLOCATE(FIBGMToProcExtent_Shared)
 MDEALLOCATE(FIBGMToProcFlag)
+MDEALLOCATE(FIBGMToProcExtent)
 
 CALL BARRIER_AND_SYNC(FIBGMProcs_Shared_Win ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(FIBGMToProc_Shared_Win,MPI_COMM_SHARED)

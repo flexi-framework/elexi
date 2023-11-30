@@ -516,7 +516,6 @@ REAL,ALLOCATABLE   :: SpBaseFlowTmp(:,:,:,:,:)
 #if USE_LOADBALANCE
 ! In case of load balancing, all dimensions match. Only shift the solution along the SFC!
 IF (PerformLoadBalance) THEN
-#endif /*USE_LOADBALANCE*/
   StartT = MPI_WTIME()
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' REDISTRIBUTING BASEFLOW DURING LOADBALANCE...'
 
@@ -534,8 +533,6 @@ IF (PerformLoadBalance) THEN
   GETTIME(EndT)
   SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
   SWRITE(UNIT_stdOut,'(132("-"))')
-
-#if USE_LOADBALANCE
 ! Full restart
 ELSE
 #endif /*USE_LOADBALANCE*/

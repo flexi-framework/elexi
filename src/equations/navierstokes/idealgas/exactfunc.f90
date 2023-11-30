@@ -66,54 +66,58 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Exactfunc")
 CALL prms%CreateIntFromStringOption('IniExactFunc', "Exact function to be used for computing initial solution.")
-CALL addStrListEntry('IniExactFunc','testcase'       ,-1)
-CALL addStrListEntry('IniExactFunc','testcase'       ,0)
-CALL addStrListEntry('IniExactFunc','refstate'       ,1)
-CALL addStrListEntry('IniExactFunc','sinedens'       ,2)
-CALL addStrListEntry('IniExactFunc','sinedensx'      ,21)
-CALL addStrListEntry('IniExactFunc','lindens'        ,3)
-CALL addStrListEntry('IniExactFunc','sinevel'        ,4)
-CALL addStrListEntry('IniExactFunc','sinevelxt'      ,41)
-CALL addStrListEntry('IniExactFunc','sinevelyt'      ,42)
-CALL addStrListEntry('IniExactFunc','sinevelz'       ,43)
-CALL addStrListEntry('IniExactFunc','sinevelnorho'   ,44)
-CALL addStrListEntry('IniExactFunc','roundjet'       ,5)
-CALL addStrListEntry('IniExactFunc','cylinder'       ,6)
-CALL addStrListEntry('IniExactFunc','shuvortex'      ,7)
-CALL addStrListEntry('IniExactFunc','couette'        ,8)
-CALL addStrListEntry('IniExactFunc','cavity'         ,9)
-CALL addStrListEntry('IniExactFunc','shock'          ,10)
-CALL addStrListEntry('IniExactFunc','sod'            ,11)
-CALL addStrListEntry('IniExactFunc','dmr'            ,13)
-CALL addStrListEntry('IniExactFunc','mshock'         ,14)
-CALL addStrListEntry('IniExactFunc','roundjet'       ,33)
-CALL addStrListEntry('IniExactFunc','convergence'    ,34)
-CALL addStrListEntry('IniExactFunc','sinevelx'       ,35)
-CALL addStrListEntry('IniExactFunc','sinevely'       ,36)
-CALL addStrListEntry('IniExactFunc','sinevelty'      ,37)
+CALL addStrListEntry('IniExactFunc','testcase'          ,-1)
+CALL addStrListEntry('IniExactFunc','testcase'          ,0)
+CALL addStrListEntry('IniExactFunc','refstate'          ,1)
+CALL addStrListEntry('IniExactFunc','sinedens'          ,2)
+CALL addStrListEntry('IniExactFunc','sinedensx'         ,21)
+CALL addStrListEntry('IniExactFunc','lindens'           ,3)
+CALL addStrListEntry('IniExactFunc','sinevel'           ,4)
+CALL addStrListEntry('IniExactFunc','sinevelxt'         ,41)
+CALL addStrListEntry('IniExactFunc','sinevelyt'         ,42)
+CALL addStrListEntry('IniExactFunc','sinevelz'          ,43)
+CALL addStrListEntry('IniExactFunc','sinevelnorho'      ,44)
+CALL addStrListEntry('IniExactFunc','roundjet'          ,5)
+CALL addStrListEntry('IniExactFunc','cylinder'          ,6)
+CALL addStrListEntry('IniExactFunc','shuvortex'         ,7)
+CALL addStrListEntry('IniExactFunc','couette'           ,8)
+CALL addStrListEntry('IniExactFunc','cavity'            ,9)
+CALL addStrListEntry('IniExactFunc','shock'             ,10)
+CALL addStrListEntry('IniExactFunc','sod'               ,11)
+CALL addStrListEntry('IniExactFunc','dmr'               ,13)
+CALL addStrListEntry('IniExactFunc','mshock'            ,14)
+CALL addStrListEntry('IniExactFunc','harmonicgausspulse',15)
+CALL addStrListEntry('IniExactFunc','roundjet'          ,33)
+CALL addStrListEntry('IniExactFunc','convergence'       ,34)
+CALL addStrListEntry('IniExactFunc','sinevelx'          ,35)
+CALL addStrListEntry('IniExactFunc','sinevely'          ,36)
+CALL addStrListEntry('IniExactFunc','sinevelty'         ,37)
 #if PARABOLIC
 CALL addStrListEntry('IniExactFunc','blasius'        ,1338)
 CALL addStrListEntry('IniExactFunc','blasius_round_x',1339)
 CALL addStrListEntry('IniExactFunc','blasius_round_y',1340)
 #endif
-CALL prms%CreateRealArrayOption(    'AdvVel',       "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
-CALL prms%CreateRealArrayOption(    'AdvArray',     "Advection velocity array for linear setup.")
-CALL prms%CreateRealOption(         'IniAmplitude', "Amplitude for synthetic test case")
-CALL prms%CreateRealOption(         'IniFrequency', "Frequency for synthetic test case")
-CALL prms%CreateRealOption(         'MachShock',    "Parameter required for CASE(10,14)", '1.5')
-CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE(10,14)", '1.0')
-CALL prms%CreateRealArrayOption(    'IniCenter',    "Shu Vortex CASE(7) (x,y,z)")
-CALL prms%CreateRealArrayOption(    'IniAxis',      "Shu Vortex CASE(7) (x,y,z)")
-CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
-CALL prms%CreateRealOption(         'JetRadius',    "Roundjet CASE(5/33)", '1.0')
-CALL prms%CreateRealOption(         'JetEnd',       "Roundjet CASE(5/33)", '10.0')
-CALL prms%CreateRealOption(         'Ramping',      "Subsonic mass inflow CASE(28)"  , '1.0')
-CALL prms%CreateRealOption(         'P_Parameter',  "Couette-Poiseuille flow CASE(8)", '0.0')
-CALL prms%CreateRealOption(         'U_Parameter',  "Couette-Poiseuille flow CASE(8)", '0.01')
-CALL prms%CreateRealOption(         'xs'         ,  "1D shock position", '0.5')
+CALL prms%CreateRealArrayOption(    'AdvVel',                  "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
+CALL prms%CreateRealArrayOption(    'AdvArray',                "Advection velocity array for linear setup.")
+CALL prms%CreateRealOption(         'IniAmplitude',            "Amplitude for synthetic test case")
+CALL prms%CreateRealOption(         'IniFrequency',            "Frequency for synthetic test case")
+CALL prms%CreateRealOption(         'MachShock',               "Parameter required for CASE(10,14)", '1.5')
+CALL prms%CreateRealOption(         'PreShockDens',            "Parameter required for CASE(10,14)", '1.0')
+CALL prms%CreateRealArrayOption(    'IniCenter',               "Shu Vortex CASE(7) (x,y,z)")
+CALL prms%CreateRealArrayOption(    'IniAxis',                 "Shu Vortex CASE(7) (x,y,z)")
+CALL prms%CreateRealOption(         'IniHalfwidth',            "Shu Vortex CASE(7)", '0.2')
+CALL prms%CreateRealOption(         'JetRadius',               "Roundjet CASE(5/33)", '1.0')
+CALL prms%CreateRealOption(         'JetEnd',                  "Roundjet CASE(5/33)", '10.0')
+CALL prms%CreateRealOption(         'Ramping',                 "Subsonic mass inflow CASE(28)"  , '1.0')
+CALL prms%CreateRealOption(         'P_Parameter',             "Couette-Poiseuille flow CASE(8)", '0.0')
+CALL prms%CreateRealOption(         'U_Parameter',             "Couette-Poiseuille flow CASE(8)", '0.01')
+CALL prms%CreateRealOption(         'xs'         ,             "1D shock position", '0.5')
+CALL prms%CreateRealOption(         'AmplitudeFactor',         "Harmonic Gauss Pulse CASE(15)", '0.1')
+CALL prms%CreateRealOption(         'HarmonicFrequency',       "Harmonic Gauss Pulse CASE(15)", '400')
+CALL prms%CreateRealOption(         'SigmaSqr',                "Harmonic Gauss Pulse CASE(15)", '0.1')
 #if PARABOLIC
-CALL prms%CreateRealOption(         'delta99_in',   "Blasius boundary layer CASE(1338,1339,1340)")
-CALL prms%CreateRealArrayOption(    'x_in',         "Blasius boundary layer CASE(1338,1339,1340)")
+CALL prms%CreateRealOption(         'delta99_in',              "Blasius boundary layer CASE(1338,1339,1340)")
+CALL prms%CreateRealArrayOption(    'x_in',                    "Blasius boundary layer CASE(1338,1339,1340)")
 #endif
 
 END SUBROUTINE DefineParametersExactFunc
@@ -176,6 +180,10 @@ SELECT CASE (IniExactFunc)
     xShock           = GETREAL('xs')
   CASE(11) ! sod
     xShock           = GETREAL('xs')
+CASE(15)
+    HarmonicFrequency= GETREAL('HarmonicFrequency')
+    AmplitudeFactor  = GETREAL('AmplitudeFactor')
+    SiqmaSqr         = GETREAL('SigmaSqr')
   CASE(33) ! Roundjet
     JetRadius        = GETREAL('JetRadius')
     JetEnd           = GETREAL('JetEnd')
@@ -756,6 +764,8 @@ CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone
     END IF
   END IF
   CALL PrimToCons(prim,resu)
+CASE(15) ! harmonic gauss pulse
+  Resu = RefStateCons(:,RefState)
 #if PARABOLIC
 CASE(1338) ! blasius
   prim=RefStatePrim(:,RefState)
@@ -925,6 +935,7 @@ USE MOD_PreProc
 USE MOD_EOS_Vars         ,ONLY: Kappa,KappaM1
 USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel,IniAmplitude,IniFrequency
+USE MOD_Exactfunc_Vars   ,ONLY: HarmonicFrequency,AmplitudeFactor,SiqmaSqr
 USE MOD_Mesh_Vars        ,ONLY: Elem_xGP,sJ,nElems
 #if PARABOLIC
 USE MOD_EOS_Vars         ,ONLY: mu0,Pr
@@ -1006,6 +1017,16 @@ CASE(4) ! exact function
     END IF
 #endif
   END DO ! iElem
+CASE(15) ! Harmonic Gausspulse
+  DO iElem=1,nElems
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      Ut_src(1,i,j,k) = AmplitudeFactor*cos(2.*PP_Pi*HarmonicFrequency*t)*1/sqrt(((2*PP_Pi)**2)*2*SiqmaSqr)*EXP(-0.5*SUM(Elem_xGP(1:2,i,j,k,iElem)**2)/SiqmaSqr)
+      Ut_src(2:5,i,j,k) = 0.0
+    END DO; END DO; END DO ! i,j,k
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+        Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
+      END DO; END DO; END DO ! i,j,k
+  END DO
 CASE(41) ! Sinus in x
   Frequency=IniFrequency
   Amplitude=IniAmplitude

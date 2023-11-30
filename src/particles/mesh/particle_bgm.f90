@@ -1266,11 +1266,17 @@ DO iElem = offsetElem+1,offsetElem+nElems
 
           ! Increment number of elements on FIBGM cell
 #if USE_LOADBALANCE
-          IF (.NOT.PerformLoadBalance) &
+          IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
-          CALL MPI_FETCH_AND_OP(increment,dummyInt,MPI_INTEGER,0,INT(posElem*SIZE_INT,MPI_ADDRESS_KIND),MPI_SUM,FIBGM_nTotalElems_Shared_Win,iError)
+            CALL MPI_FETCH_AND_OP(increment,dummyInt,MPI_INTEGER,0,INT(posElem*SIZE_INT,MPI_ADDRESS_KIND),MPI_SUM,FIBGM_nTotalElems_Shared_Win,iError)
+            CALL MPI_WIN_FLUSH(0,FIBGM_nTotalElems_Shared_Win,iError)
+#if USE_LOADBALANCE
+          END IF
+#endif /*USE_LOADBALANCE*/
           ! Perform logical OR and place data on CN root
           CALL MPI_FETCH_AND_OP(.TRUE.   ,dummyLog,MPI_LOGICAL,0,INT(posRank*SIZE_INT,MPI_ADDRESS_KIND),MPI_LOR,FIBGMToProcFlag_Shared_Win  ,iError)
+          ! MPI_FETCH_AND_OP does guarantee completion before MPI_WIN_FLUSH, so ensure it before leaving the scope
+          CALL MPI_WIN_FLUSH(0,FIBGMToProcFlag_Shared_Win  ,iError)
         END ASSOCIATE
       END DO
     END DO
@@ -1283,23 +1289,23 @@ DO iElem = offsetElem+1,offsetElem+nElems
   CALL MPI_FETCH_AND_OP(ElemToBGM_Shared(2,iElem),dummyInt,MPI_INTEGER,0,INT(((ProcRank)*(3)*(2) + (1-1)*(2) + (2-1))*SIZE_INT,MPI_ADDRESS_KIND),MPI_MAX,FIBGMToProcExtent_Shared_Win,IERROR)
   CALL MPI_FETCH_AND_OP(ElemToBGM_Shared(4,iElem),dummyInt,MPI_INTEGER,0,INT(((ProcRank)*(3)*(2) + (2-1)*(2) + (2-1))*SIZE_INT,MPI_ADDRESS_KIND),MPI_MAX,FIBGMToProcExtent_Shared_Win,IERROR)
   CALL MPI_FETCH_AND_OP(ElemToBGM_Shared(6,iElem),dummyInt,MPI_INTEGER,0,INT(((ProcRank)*(3)*(2) + (3-1)*(2) + (2-1))*SIZE_INT,MPI_ADDRESS_KIND),MPI_MAX,FIBGMToProcExtent_Shared_Win,IERROR)
+  ! MPI_FETCH_AND_OP does guarantee completion before MPI_WIN_FLUSH, so ensure it before leaving the scope
+  CALL MPI_WIN_FLUSH(0,FIBGMToProcExtent_Shared_Win,iError)
 END DO
 
 #if USE_LOADBALANCE
 IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
-  CALL MPI_WIN_FLUSH( 0,FIBGM_nTotalElems_Shared_Win,iError)
   CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
   ! 1.2) FIBGM_nTotalElems can just be added up
   IF (myComputeNodeRank.EQ.0) &
     ! All-reduce between node leaders
     CALL MPI_ALLREDUCE(MPI_IN_PLACE,FIBGM_nTotalElems_Shared,(BGMiglobDelta+1)*(BGMjglobDelta+1)*(BGMkglobDelta+1),MPI_INTEGER,MPI_SUM,MPI_COMM_LEADERS_SHARED,iError)
+  ! Sync shared memory array
   CALL BARRIER_AND_SYNC(FIBGM_nTotalElems_Shared_Win,MPI_COMM_SHARED)
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/
-CALL MPI_WIN_FLUSH(0, FIBGMToProcFlag_Shared_Win  ,iError)
-CALL MPI_WIN_FLUSH(0, FIBGMToProcExtent_Shared_Win,iError)
 CALL BARRIER_AND_SYNC(FIBGMToProcFlag_Shared_Win  ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(FIBGMToProcExtent_Shared_Win,MPI_COMM_SHARED)
 

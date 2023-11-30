@@ -400,10 +400,10 @@ SUBROUTINE WriteBaseflow(MeshFileName,OutputTime,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Output_Vars  ,ONLY: ProjectName
-USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
-USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
 USE MOD_Equation_Vars,ONLY: StrVarNames
+USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
+USE MOD_Output_Vars  ,ONLY: ProjectName,WriteStateFiles
+USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -421,6 +421,9 @@ INTEGER                        :: NZ_loc
 INTEGER                        :: iElem,i,j,iVar
 #endif
 !==================================================================================================================================
+
+IF (.NOT.WriteStateFiles) RETURN
+
 IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE BASE FLOW TO HDF5 FILE...'
   GETTIME(StartT)

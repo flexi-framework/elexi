@@ -42,11 +42,11 @@ SUBROUTINE WriteState(MeshFileName,OutputTime,FutureTime,isErrorFile)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_DG_Vars           ,ONLY: U
-USE MOD_Output_Vars       ,ONLY: ProjectName,NOut,Vdm_N_NOut,WriteStateFiles
-USE MOD_Mesh_Vars         ,ONLY: offsetElem,nGlobalElems,sJ,nElems
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_Equation_Vars     ,ONLY: StrVarNames
+USE MOD_DG_Vars           ,ONLY: U
+USE MOD_Mesh_Vars         ,ONLY: offsetElem,nGlobalElems,sJ,nElems
+USE MOD_Output_Vars       ,ONLY: ProjectName,NOut,Vdm_N_NOut,WriteStateFiles
 #if PP_dim == 2
 USE MOD_2D                ,ONLY: ExpandArrayTo3D
 #endif

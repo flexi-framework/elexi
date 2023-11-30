@@ -273,6 +273,7 @@ ELSE
       CALL GetDataSize(File_ID,'PartData',PartDim,HSize)
       CHECKSAFEINT(HSize(2),4)
       PartDataSize = INT(HSize(1))
+      DEALLOCATE(HSize)
       CALL PrintOption('Number of particle variables','INFO',IntOpt=PartDataSize)
 
       ! For files, where no particle diameter was saved
@@ -307,6 +308,7 @@ ELSE
         CALL GetDataSize(File_ID,'TurbPartData',PartDim,HSize)
         CHECKSAFEINT(HSize(2),4)
         TurbPartHDF5Size = INT(HSize(1))
+        DEALLOCATE(HSize)
         SWRITE(UNIT_stdOut,'(A3,A38,A3,I25)')' | ','Number of turbulent particle variables',' | ',TurbPartHDF5Size
 
         ! Compare number of turbulent properties of current run against HDF5
@@ -346,6 +348,7 @@ ELSE
       CALL GetDataSize(File_ID,'ImpactData',PartDim,HSize)
       CHECKSAFEINT(HSize(2),4)
       PartStateBoundaryVecLengthGlob    = INT(HSize(2))
+      DEALLOCATE(HSize)
 
 #if USE_MPI
       ! Distribute impacts between procs

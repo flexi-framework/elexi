@@ -500,7 +500,8 @@ WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF:            ['
 #if USE_PARTICLES && USE_LOADBALANCE
 IF (ElemTimeFieldTot.GT.0 .AND. ElemTimePartTot.GT.0) THEN
   PID_cont =       ElemTimeFieldTot/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*LoadBalanceSample*nRKStages)
-  PID_disc = MERGE(ElemTimePartTot /(REAL(nGlobalNbrOfParticles(3))),0.,nGlobalNbrOfParticles(3).GT.0)
+  IF (nGlobalNbrOfParticles(3).GT.0) THEN; PID_disc = ElemTimePartTot/(REAL(nGlobalNbrOfParticles(3)))
+  ELSE                                   ; PID_disc = 0.; END IF
   WRITE(UNIT_stdOut,'(A,ES12.5,A)')' > Continuous Phase (last time step)        [',PID_cont          ,' sec/DOF  ]'
   WRITE(UNIT_stdOut,'(A,ES12.5,A)')' > Discrete   Phase (last time step)        [',PID_disc          ,' sec/Part ]'
 END IF

@@ -72,7 +72,12 @@ INTEGER,ALLOCATABLE             :: FV_ElemsTmp(:)
 #elif FV_ENABLED == 2
 REAL,ALLOCATABLE                :: FV_alphaTmp(:)
 #endif /*FV_ENABLED*/
+! Timers
+REAL                            :: StartT,EndT
 !===================================================================================================================================
+
+StartT = MPI_WTIME()
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' REDISTRIBUTING FIELD DURING LOADBALANCE...'
 
 ALLOCATE(UTmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ASSOCIATE (&
@@ -127,6 +132,10 @@ END ASSOCIATE
 CALL MOVE_ALLOC(FV_alphaTmp,FV_alpha)
 CALL AddToElemData(ElementOut,'FV_alpha',RealArray=FV_alpha)
 #endif /*FV_ENABLED*/
+
+GETTIME(EndT)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE FieldRestart
 #endif /*USE_LOADBALANCE*/

@@ -117,15 +117,18 @@ SUBROUTINE InitSponge
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ReadInTools
-USE MOD_Sponge_Vars
 USE MOD_Exactfunc,    ONLY:ExactFunc
 USE MOD_Equation_Vars,ONLY:RefStateCons
+USE MOD_Equation_Vars,ONLY:IniExactFunc
 USE MOD_Mesh_Vars,    ONLY:Elem_xGP,nElems
 USE MOD_Output_Vars,  ONLY:ProjectName
 USE MOD_PruettDamping,ONLY:InitPruettDamping
+USE MOD_ReadInTools,  ONLY:GETLOGICAL,GETINT,GETINTFROMSTR,GETREAL,GETSTR
 USE MOD_Restart_Vars, ONLY:DoRestart,RestartTime,RestartFile
-USE MOD_Equation_Vars,ONLY:IniExactFunc
+USE MOD_Sponge_Vars
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars  ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -137,8 +140,10 @@ INTEGER             :: SpongeExactFunc,SpongeRefState,SpBaseFlowType
 CHARACTER(LEN=255)  :: BaseFlowFile
 LOGICAL             :: validBaseFlowFile
 !==================================================================================================================================
+
 doSponge = GETLOGICAL('SpongeLayer')
 IF(.NOT.doSponge) RETURN
+
 LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INIT SPONGE...'
 
@@ -162,84 +167,94 @@ CalcPruettDamping=.FALSE.
 ! Readin of Baseflow parameters
 SpBaseFlowType = GETINTFROMSTR('SpongeBaseFlow')
 SELECT CASE(SpBaseflowType)
-CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
-  spongeRefState  = GETINT('SpongeRefState')
-CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exactfunction
-  spongeExactFunc = GETINT('SpongeExactFunc')
-CASE(SPONGEBASEFLOW_FILE) ! Base Flow from .h5 File
-  BaseFlowFile = GETSTR('SpongeBaseFlowFile')
-CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
-  CalcPruettDamping=.TRUE.
-  CALL InitPruettDamping()
-  IF(DoRestart)THEN
-    BaseFlowFile    = GETSTR('SpongeBaseFlowFile','none')
-    IF (TRIM(BaseFlowFile) .EQ. 'none') THEN
-      ! If no base flow file has been specified, assume a standard name for the base flow file
-      BaseFlowFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
-      ! Check if this file exists
-      validBaseFlowFile = FILEEXISTS(BaseFlowFile)
-      IF (.NOT.validBaseFlowFile) THEN
-        ! If the assumed base flow file does not exist, use the restart state to initialize the sponge base flow
-        BaseFlowFile = RestartFile
-        SWRITE(UNIT_stdOut,'(A)') 'WARNING: No baseflow file found! Using the restart state to initialize sponge base flow.'
+  CASE(SPONGEBASEFLOW_CONSTANT)  ! Constant baseflow from refstate
+    spongeRefState  = GETINT('SpongeRefState')
+  CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exact function
+    spongeExactFunc = GETINT('SpongeExactFunc')
+  CASE(SPONGEBASEFLOW_FILE)      ! Base Flow from .h5 File
+    BaseFlowFile    = GETSTR('SpongeBaseFlowFile')
+  CASE(SPONGEBASEFLOW_PRUETT)    ! Pruett
+    CalcPruettDamping = .TRUE.
+    CALL InitPruettDamping()
+
+#if USE_LOADBALANCE
+    ! In case of load balance, shift information instead of reading from disk
+    IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+      IF (DoRestart) THEN
+        BaseFlowFile    = GETSTR('SpongeBaseFlowFile','none')
+        IF (TRIM(BaseFlowFile).EQ.'none') THEN
+          ! If no base flow file has been specified, assume a standard name for the base flow file
+          BaseFlowFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
+          ! Check if this file exists
+          validBaseFlowFile = FILEEXISTS(BaseFlowFile)
+          IF (.NOT.validBaseFlowFile) THEN
+            ! If the assumed base flow file does not exist, use the restart state to initialize the sponge base flow
+            BaseFlowFile = RestartFile
+            SWRITE(UNIT_stdOut,'(A)') 'WARNING: No baseflow file found! Using the restart state to initialize sponge base flow.'
+          END IF
+        ELSE
+          ! check if baseflow exists
+          validBaseFlowFile = FILEEXISTS(BaseFlowFile)
+          IF (.NOT.validBaseFlowFile) CALL CollectiveStop(__STAMP__,'ERROR: Sponge base flow file '//TRIM(BaseFlowFile)//' does not exist.')
+        END IF
+      ELSE
+        spongeExactFunc = GETINT('SpongeExactFunc','-1')
       END IF
-    ELSE
-      ! check if baseflow exists
-      validBaseFlowFile = FILEEXISTS(BaseFlowFile)
-      IF (.NOT.validBaseFlowFile) THEN
-        CALL CollectiveStop(__STAMP__,&
-          'ERROR: Sponge base flow file '//TRIM(BaseFlowFile)//' does not exist.')
-      END IF
+#if USE_LOADBALANCE
     END IF
-  ELSE
-    spongeExactFunc = GETINT('SpongeExactFunc','-1')
-  END IF
-CASE DEFAULT
-  CALL CollectiveStop(__STAMP__,"Undefined SpongeBaseFlow!")
+#endif /*USE_LOADBALANCE*/
+  CASE DEFAULT
+    CALL CollectiveStop(__STAMP__,"Undefined SpongeBaseFlow!")
 END SELECT
 
 ! Preparation of the baseflow on each Gauss Point
 LBWRITE(UNIT_stdOut,'(A)') ' | Initialize Sponge Base Flow...'
+#if USE_LOADBALANCE
+! In case of load balancing, all dimensions match. Only shift the solution along the SFC!
+IF (.NOT.PerformLoadBalance) &
+#endif /*USE_LOADBALANCE*/
 ALLOCATE(SpBaseFlow(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+
 SELECT CASE(SpBaseflowType)
-CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
-  DO iElem=1,nElems
-    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      SpBaseFlow(:,i,j,k,iElem)=RefStateCons(:,spongeRefState)
-    END DO; END DO; END DO
-  END DO
-CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exactfunction
-  DO iElem=1,nElems
-    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      !Save exactFunc state for later use
-      CALL ExactFunc(SpongeExactFunc,0.,Elem_xGP(:,i,j,k,iElem),SpBaseFlow(:,i,j,k,iElem))
-    END DO; END DO; END DO
-  END DO
-CASE(SPONGEBASEFLOW_FILE) ! Base Flow from .h5 File
-  CALL ReadBaseFlow(BaseFlowfile)
-!readin of the hdf5 base flow solution
-CASE(SPONGEBASEFLOW_PRUETT) ! Pruett: RefState for computation from scratch, Base flow file for restart
-  IF(DoRestart)THEN
-    CALL ReadBaseFlow(BaseFlowfile)
-  ELSE
-    IF (SpongeExactFunc.LT.0) THEN
-      LBWRITE(UNIT_stdOut,'(A)') 'WARNING: No sponge exact func given! Use ini exact func instead.'
-      SpongeExactFunc = IniExactFunc
-    END IF
+  CASE(SPONGEBASEFLOW_CONSTANT)  ! Constant baseflow from refstate
+    DO iElem=1,nElems
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+        SpBaseFlow(:,i,j,k,iElem) = RefStateCons(:,spongeRefState)
+      END DO; END DO; END DO
+    END DO
+  CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exact function
     DO iElem=1,nElems
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         !Save exactFunc state for later use
         CALL ExactFunc(SpongeExactFunc,0.,Elem_xGP(:,i,j,k,iElem),SpBaseFlow(:,i,j,k,iElem))
       END DO; END DO; END DO
     END DO
-  END IF
+  CASE(SPONGEBASEFLOW_FILE)      ! Base Flow from .h5 File
+    CALL ReadBaseFlow(BaseFlowfile)
+  CASE(SPONGEBASEFLOW_PRUETT)    ! Pruett
+                                 ! > Fresh start: RefState
+                                 ! > Restart    : BaseFlow file
+    IF (DoRestart) THEN
+      CALL ReadBaseFlow(BaseFlowfile)
+    ELSE
+      IF (SpongeExactFunc.LT.0) THEN
+        LBWRITE(UNIT_stdOut,'(A)') 'WARNING: No sponge exact func given! Use ini exact func instead.'
+        SpongeExactFunc = IniExactFunc
+      END IF
+      DO iElem=1,nElems
+        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+          ! Save exactFunc state for later use
+          CALL ExactFunc(SpongeExactFunc,0.,Elem_xGP(:,i,j,k,iElem),SpBaseFlow(:,i,j,k,iElem))
+        END DO; END DO; END DO
+      END DO
+    END IF
 END SELECT
 
 LBWRITE(UNIT_stdOut,'(A)')' INIT SPONGE DONE!'
 LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitSponge
-
 
 
 !==================================================================================================================================
@@ -268,6 +283,9 @@ USE MOD_Output_Vars       ,ONLY:ProjectName
 USE MOD_ReadInTools
 USE MOD_Sponge_Vars
 USE MOD_VTK               ,ONLY:WriteDataToVTK
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars  ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -316,25 +334,21 @@ DO iRamp=1,nSpongeRamps
   ! start Sponge Ramp at xStart
   xStart(:,iRamp)= GETREALARRAY('xStart',3,'(/0.,0.,0./)')
 #if PP_dim==2
-    IF(xStart(3,iRamp).NE.0) THEN
-      CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set xStart(3) = 0!')
-    END IF
+  IF (xStart(3,iRamp).NE.0)    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set xStart(3) = 0!')
 #endif
   ! Readin of geometrical parameters for different sponge shapes
   SELECT CASE(SpongeShape(iRamp))
-  CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
-    SpVec(:,iRamp)= GETREALARRAY('SpongeDir',3,'(/1.,0.,0./)')
+    CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
+      SpVec(:,iRamp)= GETREALARRAY('SpongeDir',3,'(/1.,0.,0./)')
 #if PP_dim==2
-    IF(SpVec(3,iRamp).NE.0) THEN
-      CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set SpVec(3) = 0!')
-    END IF
+      IF (SpVec(3,iRamp).NE.0) CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set SpVec(3) = 0!')
 #endif
-SpVec(:,iRamp)=SpVec(:,iRamp)/SQRT(DOT_PRODUCT(SpVec(:,iRamp),SpVec(:,iRamp))) ! Normalize SpVec
-  CASE(SPONGESHAPE_CYLINDRICAL) ! circular sponge
-    SpRadius(iRamp)=GETREAL('SpongeRadius')
-!    SpRadius(iRamp)=0
+      SpVec(:,iRamp)  = SpVec(:,iRamp)/SQRT(DOT_PRODUCT(SpVec(:,iRamp),SpVec(:,iRamp))) ! Normalize SpVec
+    CASE(SPONGESHAPE_CYLINDRICAL) ! circular sponge
+      SpRadius(iRamp) = GETREAL('SpongeRadius')
+      ! SpRadius(iRamp) = 0
 #if PP_dim==3
-    SpAxis(:,iRamp)=GETREALARRAY('SpongeAxis',3,'(/0.,0.,1./)')
+      SpAxis(:,iRamp) = GETREALARRAY('SpongeAxis',3,'(/0.,0.,1./)')
 #endif
   END SELECT
 END DO!iRamp
@@ -343,22 +357,23 @@ applySponge=.FALSE.
 DO iElem=1,nElems
   x_star=0.
   DO iRamp=1,nSpongeRamps
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    SELECT CASE(SpongeShape(iRamp))
-      CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
-      x_star(i,j,k) =       SUM((Elem_xGP(1:PP_dim,i,j,k,iElem)-xStart(1:PP_dim,iRamp))*SpVec(1:PP_dim,iRamp))/SpDistance(iRamp)
-      CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
-      r_vec(:) = Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp)
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      SELECT CASE(SpongeShape(iRamp))
+        CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
+          x_star(i,j,k) =       SUM((Elem_xGP(1:PP_dim,i,j,k,iElem)-xStart(1:PP_dim,iRamp))*SpVec(1:PP_dim,iRamp))/SpDistance(iRamp)
+        CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
+          r_vec(:)      = Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp)
 #if(PP_dim==3)
-      r_vec = r_vec  -SUM((Elem_xGP(:,i,j,k,iElem)-xStart(:,iRamp))*SpAxis(:,iRamp))*SpAxis(:,iRamp)
+          r_vec         = r_vec-SUM((Elem_xGP(:,i,j,k,iElem)-xStart(:,iRamp))*SpAxis(:,iRamp))*SpAxis(:,iRamp)
 #endif
-      x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius(iRamp))/SpDistance(iRamp)
-    END SELECT
-  END DO; END DO; END DO
-  IF(ANY(x_star.GT.0.)) THEN
-    applySponge(iElem)=.TRUE.
-     CYCLE
-  END IF
+          x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius(iRamp))/SpDistance(iRamp)
+      END SELECT
+    END DO; END DO; END DO
+
+    IF (ANY(x_star.GT.0.)) THEN
+      applySponge(iElem) = .TRUE.
+      CYCLE
+    END IF
   END DO !iRamp
 END DO !iElem=1,nElems
 
@@ -380,23 +395,23 @@ DO iSpongeElem=1,nSpongeElems
   iElem=spongeMap(iSpongeElem)
   sigma=0.
   DO iRamp=1,nSpongeRamps
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    SELECT CASE(SpongeShape(iRamp))
-      CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
-      x_star(i,j,k) =       SUM((Elem_xGP(1:PP_dim,i,j,k,iElem)-xStart(1:PP_dim,iRamp))*SpVec(1:PP_dim,iRamp))/SpDistance(iRamp)
-      CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
-      r_vec(:) = Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp)
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      SELECT CASE(SpongeShape(iRamp))
+        CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
+          x_star(i,j,k) =       SUM((Elem_xGP(1:PP_dim,i,j,k,iElem)-xStart(1:PP_dim,iRamp))*SpVec(1:PP_dim,iRamp))/SpDistance(iRamp)
+        CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
+          r_vec(:)      = Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp)
 #if(PP_dim==3)
-      r_vec = r_vec  -SUM((Elem_xGP(:,i,j,k,iElem)-xStart(:,iRamp))*SpAxis(:,iRamp))*SpAxis(:,iRamp)
+          r_vec         = r_vec-SUM((Elem_xGP(:,i,j,k,iElem)-xStart(:,iRamp))*SpAxis(:,iRamp))*SpAxis(:,iRamp)
 #endif
-      x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius(iRamp))/SpDistance(iRamp)
-    END SELECT
-  END DO; END DO; END DO
-  ! Limit to [0,1]
-  x_star = MAX(0.,x_star)
-  x_star = MIN(1.,x_star)
-  ! Sponge Ramping Function ala Babucke
-  sigma  = MIN(1.,sigma+6.*x_star**5. - 15.*x_star**4. + 10.*x_star**3.)
+          x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius(iRamp))/SpDistance(iRamp)
+      END SELECT
+    END DO; END DO; END DO
+    ! Limit to [0,1]
+    x_star = MAX(0.,x_star)
+    x_star = MIN(1.,x_star)
+    ! Sponge Ramping Function ala Babucke
+    sigma  = MIN(1.,sigma+6.*x_star**5. - 15.*x_star**4. + 10.*x_star**3.)
   END DO !iRamp
   ! Apply damping factor
   SpongeMat(:,:,:,iSpongeElem) = damping*sigma(:,:,:)
@@ -475,6 +490,10 @@ USE MOD_Interpolation,      ONLY: GetVandermonde
 USE MOD_Interpolation_Vars, ONLY: NodeType
 USE MOD_Mesh_Vars,          ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_Sponge_Vars,        ONLY: SpBaseFlow
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars,   ONLY: PerformLoadBalance
+USE MOD_LoadBalance_Vars,   ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -487,47 +506,81 @@ INTEGER            :: iElem
 INTEGER            :: N_Base,nVar_Base,nElems_Base
 CHARACTER(LEN=255) :: NodeType_Base
 REAL,ALLOCATABLE   :: UTmp(:,:,:,:,:),Vdm_NBase_N(:,:)
+! Timers
 REAL               :: StartT,EndT
+#if USE_LOADBALANCE
+REAL,ALLOCATABLE   :: SpBaseFlowTmp(:,:,:,:,:)
+#endif /*USE_LOADBALANCE*/
 ! ==================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(A,A)')' |> Reading sponge base flow from file "',TRIM(FileName)
-GETTIME(StartT)
+#if USE_LOADBALANCE
+! In case of load balancing, all dimensions match. Only shift the solution along the SFC!
+IF (PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  StartT = MPI_WTIME()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' REDISTRIBUTING BASEFLOW DURING LOADBALANCE...'
 
-CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  ALLOCATE(SpBaseFlowTmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+  ASSOCIATE (&
+          counts_send  => (PP_nVar*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*MPInElemSend     ) ,&
+          disp_send    => (PP_nVar*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*MPIoffsetElemSend) ,&
+          counts_recv  => (PP_nVar*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*MPInElemRecv     ) ,&
+          disp_recv    => (PP_nVar*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*MPIoffsetElemRecv))
+    ! Communicate PartInt over MPI
+    CALL MPI_ALLTOALLV(SpBaseFlow,counts_send,disp_send,MPI_DOUBLE_PRECISION,SpBaseFlowTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
+  END ASSOCIATE
+  CALL MOVE_ALLOC(SpBaseFlowTmp,SpBaseFlow)
 
-! Check if restart file was written successfully
-CALL DatasetExists(File_ID,'TIME',WriteSuccessful,attrib=.TRUE.)
-IF (.NOT.WriteSuccessful) &
-  CALL Abort(__STAMP__,'BaseFlow file missing WriteSuccessful marker. Aborting...')
+  GETTIME(EndT)
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
+  SWRITE(UNIT_stdOut,'(132("-"))')
 
-CALL GetDataProps(nVar_Base,N_Base,nElems_Base,NodeType_Base)
-
-IF(nElems_Base.NE.nGlobalElems)THEN
-  CALL Abort(__STAMP__,&
-             'Baseflow file does not match solution. Elements,nVar',nElems_Base,REAL(nVar_Base))
-END IF
-
-! Read in state
-IF((N_Base.EQ.PP_N).AND.(TRIM(NodeType_Base).EQ.TRIM(NodeType)))THEN
-  ! No interpolation needed, read solution directly from file
-  CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),OffsetElem,5,RealArray=SpBaseFlow)
+#if USE_LOADBALANCE
+! Full restart
 ELSE
-  ! We need to interpolate the solution to the new computational grid
-  SWRITE(UNIT_stdOut,*)'Interpolating base flow from file with N_Base=',N_Base,' to N=',PP_N
-  ALLOCATE(UTmp(PP_nVar,0:N_Base,0:N_Base,0:N_Base,nElems))
-  ALLOCATE(Vdm_NBase_N(0:N_Base,0:PP_N))
-  CALL GetVandermonde(N_Base,NodeType_Base,PP_N,NodeType,Vdm_NBase_N,modal=.TRUE.)
-  CALL ReadArray('DG_Solution',5,(/PP_nVar,N_Base+1,N_Base+1,N_Base+1,nElems/),OffsetElem,5,RealArray=UTmp)
-  DO iElem=1,nElems
-    CALL ChangeBasisVolume(PP_nVar,N_Base,PP_N,Vdm_NBase_N,UTmp(:,:,:,:,iElem),SpBaseFlow(:,:,:,:,iElem))
-  END DO
-  DEALLOCATE(UTmp,Vdm_NBase_N)
-END IF
-CALL CloseDataFile()
+#endif /*USE_LOADBALANCE*/
+  SWRITE(UNIT_stdOut,'(A,A)')' |> Reading sponge base flow from file "',TRIM(FileName)
+  GETTIME(StartT)
 
-GETTIME(EndT)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' |> Reading sponge base flow from file DONE! [',EndT-StartT,'s]'
-SWRITE(UNIT_stdOut,'(132("-"))')
+  CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+
+  ! Check if restart file was written successfully
+  CALL DatasetExists(File_ID,'TIME',WriteSuccessful,attrib=.TRUE.)
+  IF (.NOT.WriteSuccessful) &
+    CALL Abort(__STAMP__,'BaseFlow file missing WriteSuccessful marker. Aborting...')
+
+  CALL GetDataProps(nVar_Base,N_Base,nElems_Base,NodeType_Base)
+
+  IF(nElems_Base.NE.nGlobalElems)THEN
+    CALL Abort(__STAMP__,&
+               'Baseflow file does not match solution. Elements,nVar',nElems_Base,REAL(nVar_Base))
+  END IF
+
+  ! Read in state
+  IF((N_Base.EQ.PP_N).AND.(TRIM(NodeType_Base).EQ.TRIM(NodeType)))THEN
+    ! No interpolation needed, read solution directly from file
+    CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),OffsetElem,5,RealArray=SpBaseFlow)
+  ELSE
+    ! We need to interpolate the solution to the new computational grid
+    SWRITE(UNIT_stdOut,*)'Interpolating base flow from file with N_Base=',N_Base,' to N=',PP_N
+    ALLOCATE(UTmp(PP_nVar,0:N_Base,0:N_Base,0:N_Base,nElems))
+    ALLOCATE(Vdm_NBase_N(0:N_Base,0:PP_N))
+    CALL GetVandermonde(N_Base,NodeType_Base,PP_N,NodeType,Vdm_NBase_N,modal=.TRUE.)
+    CALL ReadArray('DG_Solution',5,(/PP_nVar,N_Base+1,N_Base+1,N_Base+1,nElems/),OffsetElem,5,RealArray=UTmp)
+    DO iElem=1,nElems
+      CALL ChangeBasisVolume(PP_nVar,N_Base,PP_N,Vdm_NBase_N,UTmp(:,:,:,:,iElem),SpBaseFlow(:,:,:,:,iElem))
+    END DO
+    DEALLOCATE(UTmp,Vdm_NBase_N)
+  END IF
+  CALL CloseDataFile()
+
+  GETTIME(EndT)
+  SWRITE(UNIT_stdOut,'(A,F0.3,A)')' |> Reading sponge base flow from file DONE! [',EndT-StartT,'s]'
+  SWRITE(UNIT_stdOut,'(132("-"))')
+
+#if USE_LOADBALANCE
+END IF ! PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE ReadBaseFlow
 
@@ -611,9 +664,12 @@ END SUBROUTINE Sponge
 !==================================================================================================================================
 SUBROUTINE FinalizeSponge()
 ! MODULES
-USE MOD_Sponge_Vars  ,ONLY:SpongeMat,SpongeMap,SpBaseFlow
-USE MOD_Sponge_Vars  ,ONLY:SpongeMat_Out
-USE MOD_PruettDamping,ONLY:FinalizePruettDamping
+USE MOD_PruettDamping    ,ONLY:FinalizePruettDamping
+USE MOD_Sponge_Vars      ,ONLY:SpongeMat,SpongeMap,SpBaseFlow
+USE MOD_Sponge_Vars      ,ONLY:SpongeMat_Out
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
@@ -621,7 +677,14 @@ CALL FinalizePruettDamping()
 SDEALLOCATE(SpongeMap)
 SDEALLOCATE(SpongeMat)
 SDEALLOCATE(SpongeMat_Out)
-SDEALLOCATE(SpBaseFlow)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  SDEALLOCATE(SpBaseFlow)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
+
 END SUBROUTINE FinalizeSponge
 
 END MODULE MOD_Sponge

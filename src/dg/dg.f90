@@ -675,17 +675,19 @@ IF(doTCSource)   CALL TestcaseSource(Ut)
 
 ! 14. Perform overintegration and apply Jacobian
 ! Perform overintegration (projection filtering type overintegration)
-IF(OverintegrationType.GT.0) THEN
-  CALL Overintegration(Ut)
-END IF
-! Apply Jacobian (for OverintegrationType==CUTOFFCONS this is already done within the Overintegration, but for DG only)
-IF (OverintegrationType.EQ.CUTOFFCONS) THEN
+SELECT CASE (OverintegrationType)
+  CASE (OVERINTEGRATIONTYPE_CONSCUTOFF )
+    CALL Overintegration(Ut)
 #if FV_ENABLED
-  CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.,FVE=1)
+    ! Apply Jacobian (for OverintegrationType==CUTOFFCONS this is already done within the Overintegration, but for DG only)
+    CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.,FVE=1)
 #endif /*FV_ENABLED*/
-ELSE
-  CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
-END IF
+  CASE (OVERINTEGRATIONTYPE_CUTOFF)
+    CALL Overintegration(Ut)
+    CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
+  CASE DEFAULT
+    CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
+END SELECT
 
 #if USE_PARTICLES
 IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN

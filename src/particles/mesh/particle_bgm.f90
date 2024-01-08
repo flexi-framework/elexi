@@ -108,6 +108,8 @@ USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray,PrintOption
 USE MOD_TimeDisc_Vars          ,ONLY: dt,t
 #if USE_MPI
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars
 USE MOD_MPI_Vars               ,ONLY: offsetElemMPI
 USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalElem2CNTotalElem
 USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalElem2GlobalElem
@@ -130,8 +132,6 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalElem2CNTotalElem_Shared,GlobalElem2C
 USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalElem2GlobalElem_Shared,CNTotalElem2GlobalElem_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: MeshHasPeriodic
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_Utils         ,ONLY: InsertionSort
 USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
 #endif /*USE_MPI*/
@@ -1527,8 +1527,8 @@ SUBROUTINE FinalizeBGM()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_MPI_Shared_Vars
 USE MOD_Particle_Mesh_Vars
-USE MOD_Particle_MPI_Shared_Vars
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
 #endif /*USE_LOADBALANCE*/
@@ -1641,11 +1641,11 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_IO_HDF5                 ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars               ,ONLY: nGlobalElems,offsetElem
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,myLeaderGroupRank,nLeaderGroupProcs
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 USE MOD_Particle_Globals        ,ONLY: PP_nElems
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,myLeaderGroupRank,nLeaderGroupProcs
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemHaloID
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemHaloID
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemHaloInfo_Array,ElemHaloInfo_Shared,ElemHaloInfo_Shared_Win,ElemInfo_Shared
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1700,9 +1700,9 @@ SUBROUTINE FinalizeHaloInfo()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
 USE MOD_Particle_Mesh_Vars      ,ONLY: CalcHaloInfo,ElemHaloID
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemHaloInfo_Array,ElemHaloInfo_Shared,ElemHaloInfo_Shared_Win
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -1739,11 +1739,11 @@ SUBROUTINE CheckPeriodicSides()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
+USE MOD_MPI_Shared_Vars
 USE MOD_MPI_Vars               ,ONLY: offsetElemMPI
 USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,BoundsOfElem_Shared,nComputeNodeElems
-USE MOD_Particle_MPI_Shared_Vars
 USE MOD_Particle_MPI_Vars      ,ONLY: halo_eps
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 ! IMPLICIT VARIABLE HANDLING

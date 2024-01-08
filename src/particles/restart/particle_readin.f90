@@ -50,7 +50,7 @@ USE MOD_HDF5_Input             ,ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadA
 USE MOD_HDF5_Input             ,ONLY: File_ID,DatasetExists,nDims,HSize
 USE MOD_HDF5_Output            ,ONLY: FlushFiles
 ! Memory
-USE MOD_Particle_Memory        ,ONLY: Allocate_Safe
+USE MOD_Memory                 ,ONLY: Allocate_Safe
 ! Mesh
 USE MOD_Mesh_Vars              ,ONLY: OffsetElem,nGlobalElems
 ! Particles

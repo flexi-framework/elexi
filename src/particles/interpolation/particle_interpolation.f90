@@ -76,7 +76,7 @@ SUBROUTINE InitParticleInterpolation()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals,       ONLY: PP_nElems
-USE MOD_Particle_Memory,        ONLY: Allocate_Safe
+USE MOD_Memory,                 ONLY: Allocate_Safe
 USE MOD_ReadInTools
 USE MOD_Particle_Vars,          ONLY: PDM
 USE MOD_Particle_Interpolation_Vars

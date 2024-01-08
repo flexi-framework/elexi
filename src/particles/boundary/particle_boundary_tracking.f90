@@ -85,8 +85,8 @@ USE MOD_Particle_Boundary_Vars   ,ONLY: GlobalSide2SurfSide,GlobalSide2SurfSide_
 USE MOD_Particle_Boundary_Vars   ,ONLY: SurfBCName,SurfSampleBCs
 USE MOD_Particle_Vars            ,ONLY: doPartIndex,doWritePartDiam
 #if USE_MPI
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED
 USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSide2GlobalSide_Shared_Win,GlobalSide2SurfSide_Shared_Win
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -231,10 +231,10 @@ SUBROUTINE StoreBoundaryParticleProperties(BCSideID,PartID,PartFaceAngle,v_old,P
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+USE MOD_Memory,                  ONLY: Allocate_Safe
 USE MOD_Particle_Globals,        ONLY: PI
 USE MOD_Particle_Analyze_Vars,   ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars,  ONLY: PartStateBoundary,PartStateBoundaryVecLength,ImpactDataSize
-USE MOD_Particle_Memory,         ONLY: Allocate_Safe
 USE MOD_Particle_Vars,           ONLY: Species,PartState,PartSpecies,LastPartPos,PartIndex,doPartIndex,doWritePartDiam
 USE MOD_TimeDisc_Vars,           ONLY: t,CurrentStage,dt,RKc,nRKStages
 ! IMPLICIT VARIABLE HANDLING

@@ -73,7 +73,7 @@ USE MOD_Particle_Surface_Flux,      ONLY:DefineParametersParticleSurfaceFlux
 USE MOD_Particle_Vars
 #if USE_MPI
 USE MOD_LoadBalance,                ONLY:DefineParametersLoadBalance
-USE MOD_Particle_MPI_Shared,        ONLY:DefineParametersMPIShared
+USE MOD_MPI_Shared,                 ONLY:DefineParametersMPIShared
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -892,11 +892,11 @@ SUBROUTINE AllocateParticleArrays()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Memory                 ,ONLY: VerifyMemUsage
 USE MOD_ReadInTools
-USE MOD_Particle_Memory        ,ONLY: VerifyMemUsage
 USE MOD_Particle_Vars
 #if USE_BASSETFORCE
-USE MOD_Equation_Vars,          ONLY: s43
+USE MOD_Equation_Vars          ,ONLY: s43
 USE MOD_Restart_Vars           ,ONLY: RestartTime
 #endif
 #if USE_FAXEN_CORR

@@ -1196,12 +1196,12 @@ USE MOD_Globals_Vars              ,ONLY: DomainDecompositionWallTime,CommMeshRea
 USE MOD_Analyze_Vars              ,ONLY: PID
 USE MOD_LoadBalance_Vars          ,ONLY: TargetWeight,nLoadBalanceSteps,CurrentImbalance,MinWeight,MaxWeight,WeightSum
 USE MOD_LoadBalance_Vars          ,ONLY: ElemTimeField,ElemTimePart
+USE MOD_Memory                    ,ONLY: ProcessMemUsage
 USE MOD_Restart_Vars              ,ONLY: DoRestart
-USE MOD_Particle_Memory           ,ONLY: ProcessMemUsage
 #if USE_MPI
 USE MOD_Globals
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: myComputeNodeRank,myLeaderGroupRank
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_SHARED
+USE MOD_MPI_Shared_Vars           ,ONLY: myComputeNodeRank,myLeaderGroupRank
+USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_SHARED
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

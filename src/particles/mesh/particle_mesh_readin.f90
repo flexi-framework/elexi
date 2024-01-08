@@ -123,8 +123,8 @@ USE MOD_Mesh_Vars
 USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_MPI_Vars                  ,ONLY: offsetElemMPI
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
@@ -184,8 +184,8 @@ USE MOD_Globals
 USE MOD_Mesh_Vars
 USE MOD_Particle_Mesh_Vars
 #if USE_MPI
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
@@ -254,9 +254,9 @@ SUBROUTINE ReadMeshSideNeighbors(ElemID,SideID)
 USE MOD_Globals
 #if USE_MPI
 USE MOD_Mesh_Vars
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars
 USE MOD_Particle_Mesh_Vars
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -304,8 +304,8 @@ USE MOD_Interpolation_Vars        ,ONLY: NodeType,NodeTypeVISU
 USE MOD_Mesh_Vars                 ,ONLY: MeshFile,nElems,NGeo,nGlobalElems,offsetElem,useCurveds
 USE MOD_Particle_Mesh_Vars
 #if USE_MPI
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
@@ -484,8 +484,8 @@ USE MOD_Globals
 USE MOD_Mesh_Vars
 USE MOD_Particle_Mesh_Vars
 #if USE_MPI
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
@@ -544,8 +544,8 @@ USE MOD_Globals_Vars              ,ONLY: StartT
 USE MOD_Mesh_Vars
 USE MOD_Particle_Mesh_Vars
 #if USE_MPI
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
@@ -740,8 +740,8 @@ USE MOD_Globals_Vars              ,ONLY: CommMeshReadinWallTime,StartT
 USE MOD_Mesh_Vars
 USE MOD_Particle_Mesh_Vars
 #if USE_MPI
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
@@ -891,8 +891,8 @@ USE MOD_Globals
 USE MOD_Mesh_Vars
 USE MOD_Particle_Mesh_Vars
 #if USE_MPI
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance

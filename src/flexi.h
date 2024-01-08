@@ -83,6 +83,25 @@
 #define ADEALLOCATE(A) IF(ASSOCIATED(A)) DEALLOCATE(A)
 #define PDEALLOCATE(A) IF(PRESENT(A)) THEN; IF(ALLOCATED(A)) DEALLOCATE(A); ENDIF
 
+! Shared Memory
+#if USE_MPI
+#define ALLOCPOINT POINTER
+#define MDEALLOCATE(A) IF(ASSOCIATED(A)) NULLIFY(A)
+#else
+#define ALLOCPOINT ALLOCATABLE
+#define MDEALLOCATE(A) IF(ALLOCATED(A)) DEALLOCATE(A)
+#endif
+
+! Debug memory
+#if DEBUG_MEMORY
+#define Allocate_Shared(a,b,c)   Allocate_Shared_DEBUG(a,b,c,'b')
+#endif
+#if USE_MPI
+#define LWRITE IF(myComputeNodeRank.EQ.0) WRITE
+#else
+#define LWRITE WRITE
+#endif
+
 ! Define OpenMP specific shortcuts
 #if USE_OPENMP
 #  define OMP_FLEXITIME() OMP_GET_WTIME()

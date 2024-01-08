@@ -33,25 +33,6 @@
 #define MPI_INTEGER_INT_KIND MPI_INTEGER
 #endif
 
-! Shared Memory
-#if USE_MPI
-#define ALLOCPOINT POINTER
-#define MDEALLOCATE(A) IF(ASSOCIATED(A)) NULLIFY(A)
-#else
-#define ALLOCPOINT ALLOCATABLE
-#define MDEALLOCATE(A) IF(ALLOCATED(A)) DEALLOCATE(A)
-#endif
-
-! Debug memory
-#if DEBUG_MEMORY
-#define Allocate_Shared(a,b,c)   Allocate_Shared_DEBUG(a,b,c,'b')
-#endif
-#if USE_MPI
-#define LWRITE IF(myComputeNodeRank.EQ.0) WRITE
-#else
-#define LWRITE WRITE
-#endif
-
 ! Boundaries for Particles
 #define PLANAR_RECT    0
 #define PLANAR_NONRECT 1

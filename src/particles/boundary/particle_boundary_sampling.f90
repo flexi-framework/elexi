@@ -119,17 +119,17 @@ USE MOD_Particle_Vars           ,ONLY: nSpecies
 USE MOD_ReadInTools             ,ONLY: GETINT,GETLOGICAL,GETINTARRAY,GETSTR,COUNTOPTION
 USE MOD_StringTools             ,ONLY: LowCase
 #if USE_MPI
-USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared
-USE MOD_Particle_Mesh_Vars      ,ONLY: nNonUniqueGlobalSides
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,nLeaderGroupProcs
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
-USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
-USE MOD_Particle_MPI_Shared_Vars,ONLY: myLeaderGroupRank,nLeaderGroupProcs
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,nLeaderGroupProcs
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
+USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars         ,ONLY: myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide_Shared,GlobalSide2SurfSide_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSide2GlobalSide_Shared,SurfSide2GlobalSide_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSideArea_Shared,SurfSideArea_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared_Win
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared
+USE MOD_Particle_Mesh_Vars      ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_MPI_Boundary_Sampling,ONLY: InitSurfCommunication
 #else
 USE MOD_Particle_Boundary_Vars  ,ONLY: mySurfRank
@@ -871,10 +871,10 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: nSurfSample,offsetComputeNodeSurfSide,
 USE MOD_Particle_Boundary_Vars     ,ONLY: SampWallState_Shared
 USE MOD_Particle_Boundary_Vars
 #if USE_MPI
+USE MOD_MPI_Shared_Vars            ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
+USE MOD_MPI_Shared_Vars            ,ONLY: myComputeNodeRank,mySurfRank
 USE MOD_Particle_Boundary_Vars     ,ONLY: SampWallState_Shared_Win
-USE MOD_Particle_MPI_Shared        ,ONLY: BARRIER_AND_SYNC
-USE MOD_Particle_MPI_Shared_Vars   ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
-USE MOD_Particle_MPI_Shared_Vars   ,ONLY: myComputeNodeRank,mySurfRank
+USE MOD_MPI_Shared                 ,ONLY: BARRIER_AND_SYNC
 #else
 USE MOD_Particle_Boundary_vars     ,ONLY: mySurfRank
 #endif /*USE_MPI*/
@@ -1055,8 +1055,8 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared
 USE MOD_Particle_boundary_Vars  ,ONLY: nComputeNodeSurfSides,offsetComputeNodeSurfSide
 USE MOD_Particle_Boundary_Vars
 #if USE_MPI
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfTotalSides
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1291,8 +1291,8 @@ SUBROUTINE FinalizeParticleBoundarySampling()
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Particle_Boundary_Vars
 #if USE_MPI
+USE MOD_MPI_Shared_Vars                ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
 USE MOD_Particle_MPI_Boundary_Sampling ,ONLY: FinalizeSurfCommunication
-USE MOD_Particle_MPI_Shared_Vars       ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

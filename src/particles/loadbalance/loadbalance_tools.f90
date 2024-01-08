@@ -57,9 +57,9 @@ USE MOD_ReadInTools                ,ONLY: PrintOption
 USE MOD_LoadBalance_Vars           ,ONLY: MPInElemSend,MPIoffsetElemSend,MPInElemRecv,MPIoffsetElemRecv
 USE MOD_LoadBalance_Vars           ,ONLY: nElemsOld,offsetElemOld
 USE MOD_LoadBalance_Vars           ,ONLY: ElemInfoRank_Shared,ElemInfoRank_Shared_Win
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars            ,ONLY: myComputeNodeRank,MPI_COMM_SHARED
 USE MOD_Particle_Mesh_Vars         ,ONLY: ElemInfo_Shared,ElemInfo_Shared_Win
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars   ,ONLY: myComputeNodeRank,MPI_COMM_SHARED
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!

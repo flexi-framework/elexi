@@ -12,12 +12,11 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "particle.h"
 
 !===================================================================================================================================
 !> Contains the routines to exchange data using MPI-3 shared memory
 !===================================================================================================================================
-MODULE MOD_Particle_MPI_Shared
+MODULE MOD_MPI_Shared
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -108,7 +107,7 @@ SUBROUTINE InitMPIShared()
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -231,7 +230,7 @@ SUBROUTINE Allocate_Shared_Logical_1(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -282,7 +281,7 @@ SUBROUTINE Allocate_Shared_Logical_2(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -333,7 +332,7 @@ SUBROUTINE Allocate_Shared_Int_1(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -386,7 +385,7 @@ SUBROUTINE Allocate_Shared_Int_2(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -438,7 +437,7 @@ SUBROUTINE Allocate_Shared_Int_3(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -490,7 +489,7 @@ SUBROUTINE Allocate_Shared_Int_4(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -542,7 +541,7 @@ SUBROUTINE Allocate_Shared_Real_1(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -594,7 +593,7 @@ SUBROUTINE Allocate_Shared_Real_2(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -646,7 +645,7 @@ SUBROUTINE Allocate_Shared_Real_3(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -698,7 +697,7 @@ SUBROUTINE Allocate_Shared_Real_4(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -750,7 +749,7 @@ SUBROUTINE Allocate_Shared_Real_5(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -802,7 +801,7 @@ SUBROUTINE Allocate_Shared_Real_6(nVal,SM_WIN,DataPointer&
 USE,INTRINSIC :: ISO_C_BINDING
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -879,7 +878,7 @@ SUBROUTINE FinalizeMPIShared()
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI_Vars
-USE MOD_Particle_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -902,41 +901,41 @@ MPISharedInitIsDone=.FALSE.
 END SUBROUTINE FinalizeMPIShared
 
 
-!SUBROUTINE UpdateDGShared(U)
-!!===================================================================================================================================
-!! Updates the DG solution in the MPI-3 shared memory window in the current node
-!!===================================================================================================================================
-!! MODULES
-!USE MOD_Globals,            ONLY: iError
-!USE MOD_Preproc,            ONLY: N
-!USE MOD_Mesh_Vars,          ONLY: nElems,offsetElem
-!USE MOD_Particle_MPI_Shared_Vars
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT/OUTPUT VARIABLES
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!REAL,INTENT(IN)                 :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!INTEGER                         :: FirstElemShared,LastElemShared
-!!=================================================================================================================================
+! SUBROUTINE UpdateDGShared(U)
+! !===================================================================================================================================
+! ! Updates the DG solution in the MPI-3 shared memory window in the current node
+! !===================================================================================================================================
+! ! MODULES
+! USE MOD_Globals,            ONLY: iError
+! USE MOD_Preproc,            ONLY: N
+! USE MOD_Mesh_Vars,          ONLY: nElems,offsetElem
+! USE MOD_MPI_Shared_Vars
+! ! IMPLICIT VARIABLE HANDLING
+! IMPLICIT NONE
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT/OUTPUT VARIABLES
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! REAL,INTENT(IN)                 :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! INTEGER                         :: FirstElemShared,LastElemShared
+! !=================================================================================================================================
 !
-!!> Calculate the local offset relative to the node MPI root
-!FirstElemShared = offsetElem-offsetComputeNodeElem+1
-!LastElemShared  = offsetElem-offsetComputeNodeElem+nElems
+! !> Calculate the local offset relative to the node MPI root
+! FirstElemShared = offsetElem-offsetComputeNodeElem+1
+! LastElemShared  = offsetElem-offsetComputeNodeElem+nElems
 !
-!!> Update the DG solution in the RMA window
-!U_Shared(:,:,:,:,FirstElemShared:LastElemShared) = U(:,:,:,:,:)
+! !> Update the DG solution in the RMA window
+! U_Shared(:,:,:,:,FirstElemShared:LastElemShared) = U(:,:,:,:,:)
 !
-!! Synchronize all RMA communication
-!CALL BARRIER_AND_SYNC(U_Shared_Win,MPI_COMM_SHARED)
-!CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
-!! Intel documentation claims this is required on "certain architectures". Whatever this means...
-!! https://software.intel.com/en-us/articles/an-introduction-to-mpi-3-shared-memory-programming
-!CALL BARRIER_AND_SYNC(U_Shared_Win,MPI_COMM_SHARED)
+! ! Synchronize all RMA communication
+! CALL BARRIER_AND_SYNC(U_Shared_Win,MPI_COMM_SHARED)
+! CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
+! ! Intel documentation claims this is required on "certain architectures". Whatever this means...
+! ! https://software.intel.com/en-us/articles/an-introduction-to-mpi-3-shared-memory-programming
+! CALL BARRIER_AND_SYNC(U_Shared_Win,MPI_COMM_SHARED)
 !
-!END SUBROUTINE UpdateDGShared
+! END SUBROUTINE UpdateDGShared
 
 
 !===================================================================================================================================
@@ -945,8 +944,8 @@ END SUBROUTINE FinalizeMPIShared
 FUNCTION MPI_SIZE(nVal,VarSize)
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Memory              ,ONLY: ProcessMemUsage
-USE MOD_Particle_MPI_Shared_Vars     ,ONLY: myComputeNodeRank
+USE MOD_MPI_Shared_Vars              ,ONLY: myComputeNodeRank
+USE MOD_Memory                       ,ONLY: ProcessMemUsage
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -983,4 +982,4 @@ END IF
 END FUNCTION MPI_SIZE
 #endif /* USE_MPI */
 
-END MODULE MOD_Particle_MPI_Shared
+END MODULE MOD_MPI_Shared

@@ -117,7 +117,7 @@ CONTAINS
 SUBROUTINE InitGetGlobalElemID()
 ! MODULES
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars, ONLY:nComputeNodeProcessors,nProcessors_Global
+USE MOD_MPI_Shared_Vars, ONLY:nComputeNodeProcessors,nProcessors_Global
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
@@ -151,7 +151,7 @@ END SUBROUTINE InitGetGlobalElemID
 SUBROUTINE InitGetGlobalSideID()
 ! MODULES
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars, ONLY:nComputeNodeProcessors,nProcessors_Global
+USE MOD_MPI_Shared_Vars, ONLY:nComputeNodeProcessors,nProcessors_Global
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
@@ -259,7 +259,7 @@ END FUNCTION GetGlobalSideID_fromTotalSide
 SUBROUTINE InitGetCNElemID()
 ! MODULES
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars, ONLY:nComputeNodeProcessors,nProcessors_Global
+USE MOD_MPI_Shared_Vars, ONLY:nComputeNodeProcessors,nProcessors_Global
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
@@ -293,7 +293,7 @@ END SUBROUTINE InitGetCNElemID
 SUBROUTINE InitGetCNSideID()
 ! MODULES
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,nProcessors_Global
+USE MOD_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,nProcessors_Global
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE

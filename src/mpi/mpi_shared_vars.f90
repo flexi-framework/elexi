@@ -14,7 +14,7 @@
 !===================================================================================================================================
 !> Contains variables to exchange data using MPI-3 shared memory
 !===================================================================================================================================
-MODULE MOD_Particle_MPI_Shared_Vars
+MODULE MOD_MPI_Shared_Vars
 ! MODULES
 #if USE_MPI
 USE mpi
@@ -69,6 +69,7 @@ INTEGER,ALLOCATABLE:: displsSide(:),recvcountSide(:)
 INTEGER,ALLOCATABLE:: displsNode(:),recvcountNode(:)
 INTEGER,ALLOCATABLE:: displsTree(:),recvcountTree(:)
 
+#if USE_PARTICLES
 ! Surface sampling
 INTEGER,ALLOCATABLE:: MPIRankSharedLeader(:)                !> Array of size nLeaderGroupProcs holding the leader rank of each proc
 INTEGER,ALLOCATABLE:: MPIRankSurfLeader(:)                  !> Array of size nLeaderGroupProcs holding the surf rank of each proc
@@ -80,6 +81,7 @@ INTEGER            :: nSurfLeaders                          !> compute-node lead
 INTEGER,ALLOCATABLE,DIMENSION(:,:):: nSurfSidesLeader       !> number of surf sides per leader proc
                                                             !> 1 - sides from local leader to other leader
                                                             !> 2 - sides from other leader to local leader
+#endif /*USE_PARTICLES*/
 
 !> Solution
 REAL,POINTER       :: U_Shared(:,:,:,:,:)                   !> DG solution on current node
@@ -90,4 +92,4 @@ INTEGER            :: MPI_INFO_SHARED_LOOSE                 !> MPI_INFO object a
 
 !> Other variables in particle_mesh_vars.f90
 #endif /* USE_MPI */
-END MODULE
+END MODULE MOD_MPI_Shared_Vars

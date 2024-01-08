@@ -58,9 +58,9 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: MacroSurfaceVal,MacroSurfaceSpecVal,nI
 USE MOD_Particle_Vars              ,ONLY: nSpecies
 USE MOD_CalcWallParticles_Vars
 #if USE_MPI
+USE MOD_MPI_Shared_Vars            ,ONLY: MPI_COMM_LEADERS_SURF
 USE MOD_Particle_Boundary_Vars     ,ONLY: SurfOnNode
 USE MOD_Particle_MPI_Boundary_Sampling,ONLY: ExchangeSurfData
-USE MOD_Particle_MPI_Shared_Vars   ,ONLY: MPI_COMM_LEADERS_SURF
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

@@ -16,7 +16,7 @@
 !==================================================================================================================================
 !> Provides memory routines to particle code
 !============================================================================================================   ===================
-MODULE MOD_Particle_Memory
+MODULE MOD_Memory
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -164,9 +164,9 @@ USE MOD_Globals
 USE MOD_Globals_Vars              ,ONLY: StartTime
 USE MOD_StringTools               ,ONLY: split_string,STRICMP
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: myComputeNodeRank,myLeaderGroupRank
-! USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeProcessors
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_SHARED
+USE MOD_MPI_Shared_Vars           ,ONLY: myComputeNodeRank,myLeaderGroupRank
+! USE MOD_MPI_Shared_Vars           ,ONLY: nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_SHARED
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: nLoadBalanceSteps
@@ -308,7 +308,7 @@ FUNCTION VerifyMemUsage(ArraySize)
 ! MODULES
 USE MOD_Globals
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -350,7 +350,7 @@ SUBROUTINE Allocate_Safe_Logical_1(Array,nVal,STAT)
 ! MODULES
 USE MOD_Globals
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -400,7 +400,7 @@ SUBROUTINE Allocate_Safe_Int_1(Array,nVal,STAT)
 ! MODULES
 USE MOD_Globals
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -450,7 +450,7 @@ SUBROUTINE Allocate_Safe_Int_2(Array,nVal,STAT)
 ! MODULES
 USE MOD_Globals
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -500,7 +500,7 @@ SUBROUTINE Allocate_Safe_Real_1(Array,nVal,STAT)
 ! MODULES
 USE MOD_Globals
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -550,7 +550,7 @@ SUBROUTINE Allocate_Safe_Real_2(Array,nVal,STAT)
 ! MODULES
 USE MOD_Globals
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -600,7 +600,7 @@ SUBROUTINE Allocate_Safe_Real_3(Array,nVal,STAT)
 ! MODULES
 USE MOD_Globals
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -641,4 +641,4 @@ END ASSOCIATE
 
 END SUBROUTINE Allocate_Safe_Real_3
 
-END MODULE MOD_Particle_Memory
+END MODULE MOD_Memory

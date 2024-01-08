@@ -57,8 +57,8 @@ USE MOD_Particle_Mesh_Vars      ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: BoundsOfElem_Shared
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputenodeProcessors,nProcessors_Global,myLeaderGroupRank
+USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars         ,ONLY: nComputenodeProcessors,nProcessors_Global,myLeaderGroupRank
 USE MOD_Particle_MPI_Vars       ,ONLY: SafetyFactor,halo_eps,halo_eps_velo
 USE MOD_Particle_MPI_Vars       ,ONLY: nExchangeProcessors,ExchangeProcToGlobalProc,GlobalProcToExchangeProc,CheckExchangeProcs
 USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D

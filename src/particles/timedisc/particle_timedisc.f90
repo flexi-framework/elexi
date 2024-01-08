@@ -626,7 +626,7 @@ USE MOD_LoadBalance_Vars      ,ONLY: PerformLBSample
 USE MOD_Particle_MPI          ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
 #endif /* USE_MPI */
 !#if USE_MPI_SHARED
-!USE MOD_Particle_MPI_Shared,ONLY:UpdateDGShared
+! USE MOD_MPI_Shared            ,ONLY: UpdateDGShared
 !#endif /* MPI_SHARED */
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

@@ -69,13 +69,13 @@ USE MOD_Lifting,           ONLY:DefineParametersLifting,InitLifting
 #endif /*PARABOLIC*/
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
+USE MOD_MPI_Shared,        ONLY:InitMPIShared
 #endif /*USE_MPI*/
 #if USE_PARTICLES
 USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticleGlobals,InitParticles
 #if USE_MPI
 USE MOD_LoadBalance,       ONLY:InitLoadBalance
 USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
-USE MOD_Particle_MPI_Shared,ONLY:InitMPIShared
 #if USE_LOADBALANCE
 USE MOD_Restart_Vars,      ONLY:DoRestart,RestartFile
 #endif /*USE_LOADBALANCE*/
@@ -228,10 +228,10 @@ CALL InitMortar()
 CALL InitOutput()
 #if USE_PARTICLES
 CALL InitParticleGlobals
+#endif /*USE_PARTICLES*/
 #if USE_MPI
 CALL InitMPIShared()
 #endif /*USE_MPÌ*/
-#endif /*USE_PARTICLES*/
 CALL InitMesh(meshMode=2)
 CALL InitRestart(RestartFile_loc)
 CALL InitFilter()
@@ -312,6 +312,7 @@ USE MOD_Lifting,           ONLY:FinalizeLifting
 #endif /*PARABOLIC*/
 #if USE_MPI
 USE MOD_MPI,               ONLY:FinalizeMPI
+USE MOD_MPI_Shared        ,ONLY:FinalizeMPIShared
 #endif /*USE_MPI*/
 #if FV_ENABLED
 USE MOD_FV,                ONLY:FinalizeFV
@@ -323,7 +324,6 @@ USE MOD_Particle_Init,     ONLY:FinalizeParticles
 #if USE_MPI
 USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
 USE MOD_Particle_MPI,      ONLY:FinalizeParticleMPI
-USE MOD_Particle_MPI_Shared,ONLY:FinalizeMPIShared
 #endif /*USE_MPI*/
 #endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
@@ -366,11 +366,11 @@ CALL FinalizeParticleMPI()
 CALL FinalizeLoadBalance()
 #endif /*USE_LOADBALANCE*/
 CALL FinalizeParticles()
+#endif /*USE_PARTICLES*/
 #if USE_MPI
 ! Must be called last because MPI3 shared windows are deallocated on MPI_COMM_SHARED
 CALL FinalizeMPIShared()
 #endif /*MPI*/
-#endif /*USE_PARTICLES*/
 ! Measure simulation duration
 Time=FLEXITIME()
 CALL FinalizeParameters()

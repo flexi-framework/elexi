@@ -20,7 +20,7 @@ MODULE MOD_Particle_Globals
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Memory
+USE MOD_Memory
 #if USE_MPI
 USE MPI
 #endif /*MPI*/
@@ -559,8 +559,8 @@ PPURE LOGICAL FUNCTION ElementOnNode(GlobalElemID) RESULT(L)
 ! MODULES
 USE MOD_Preproc
 #if USE_MPI
+USE MOD_MPI_Shared_Vars          ,ONLY: ComputeNodeRootRank,nComputeNodeProcessors
 USE MOD_MPI_Vars                 ,ONLY: offsetElemMPI
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: ComputeNodeRootRank,nComputeNodeProcessors
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

@@ -49,8 +49,8 @@ USE MOD_Particle_Boundary_Vars   ,ONLY: MacroSurfaceVal
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Vars       ,ONLY: SideInfo_Shared
 #if USE_MPI
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_LEADERS_SURF,myComputeNodeRank
 USE MOD_Particle_Boundary_Vars   ,ONLY: SampWallState_Shared
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_LEADERS_SURF,myComputeNodeRank
 #else
 USE MOD_Particle_Boundary_Vars   ,ONLY: SampWallState
 #endif /*USE_MPI*/

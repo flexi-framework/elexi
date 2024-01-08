@@ -50,11 +50,11 @@ SUBROUTINE InitSurfCommunication()
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_SURF
-!USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeProcessors,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars,ONLY: myLeaderGroupRank,nLeaderGroupProcs
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPIRankSharedLeader,MPIRankSurfLeader
-USE MOD_Particle_MPI_Shared_Vars,ONLY: mySurfRank,nSurfLeaders!,nSurfCommProc
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_SURF
+! USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeProcessors,myComputeNodeRank
+USE MOD_MPI_Shared_Vars         ,ONLY: myLeaderGroupRank,nLeaderGroupProcs
+USE MOD_MPI_Shared_Vars         ,ONLY: MPIRankSharedLeader,MPIRankSurfLeader
+USE MOD_MPI_Shared_Vars         ,ONLY: mySurfRank,nSurfLeaders!,nSurfCommProc
 USE MOD_Particle_Boundary_Vars  ,ONLY: nComputeNodeSurfSides,nComputeNodeSurfTotalSides,offsetComputeNodeSurfSide
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfOnNode,SurfSampSize,nSurfSample
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping
@@ -300,6 +300,9 @@ SUBROUTINE ExchangeSurfData()
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+USE MOD_MPI_Shared              ,ONLY: BARRIER_AND_SYNC
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
+USE MOD_MPI_Shared_Vars         ,ONLY: nSurfLeaders,myComputeNodeRank,mySurfRank,nComputeNodeProcessors
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfOnNode
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSampSize,nSurfSample
 USE MOD_Particle_Boundary_Vars  ,ONLY: nComputeNodeSurfTotalSides
@@ -308,9 +311,6 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState,SampWallState_Shared,SampWallState_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars
 USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
-USE MOD_Particle_MPI_Shared     ,ONLY: BARRIER_AND_SYNC
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SURF
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nSurfLeaders,myComputeNodeRank,mySurfRank,nComputeNodeProcessors
 USE MOD_Particle_Vars           ,ONLY: nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -701,9 +701,9 @@ SUBROUTINE FinalizeSurfCommunication()
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfOnNode
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping
 USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
-USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,mySurfRank
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPIRankSharedLeader,MPIRankSurfLeader
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nSurfLeaders
+USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,mySurfRank
+USE MOD_MPI_Shared_Vars         ,ONLY: MPIRankSharedLeader,MPIRankSurfLeader
+USE MOD_MPI_Shared_Vars         ,ONLY: nSurfLeaders
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!

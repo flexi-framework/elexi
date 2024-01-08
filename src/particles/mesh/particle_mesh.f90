@@ -271,9 +271,9 @@ USE MOD_ReadInTools            ,ONLY: GETREAL,GETINT,GETLOGICAL,GetRealArray
 USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 #if USE_MPI
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars
 USE MOD_Particle_BGM           ,ONLY: WriteHaloInfo
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars
 #endif /* USE_MPI */
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
@@ -631,7 +631,7 @@ USE MOD_Particle_Surfaces_Vars
 USE MOD_Particle_Tracking_Vars      ,ONLY: TrackingMethod,Distance,ListDistance
 USE MOD_Particle_Vars               ,ONLY: nSpecies
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_vars    ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared_Vars             ,ONLY: MPI_COMM_SHARED
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars            ,ONLY: PerformLoadBalance

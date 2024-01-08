@@ -119,10 +119,10 @@ USE MOD_Particle_Mesh_Tools       ,ONLY: GetGlobalElemID
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo_Shared,ElemRadius2NGeo_Shared
 USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo_Shared_Win,ElemRadius2NGeo_Shared_Win
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: myComputeNodeRank,nComputeNodeProcessors
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars           ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars           ,ONLY: myComputeNodeRank,nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED
 #else
 USE MOD_Mesh_Vars                 ,ONLY: nELems
 #endif /*USE_MPI*/
@@ -216,10 +216,10 @@ USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemCurved_Shared,ElemCurved_Shared_Win
 USE MOD_Particle_Mesh_Vars      ,ONLY: XiEtaZetaBasis_Shared,XiEtaZetaBasis_Shared_Win
 USE MOD_Particle_Mesh_Vars      ,ONLY: slenXiEtaZetaBasis_Shared,slenXiEtaZetaBasis_Shared_Win
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars,ONLY: myComputeNodeRank,nComputeNodeProcessors
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
 #else
 USE MOD_Mesh_Vars               ,ONLY: nElems
 USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo
@@ -336,10 +336,10 @@ USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID
 #if USE_MPI
 USE MOD_Mesh_Vars                ,ONLY: offsetElem
 USE MOD_Mesh_Vars                ,ONLY: NGeo,NGeoRef
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeProcessors,myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED
 USE MOD_Particle_Mesh_Vars       ,ONLY: dXCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemsJ_Shared,ElemEpsOneCell_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemsJ_Shared_Win,ElemEpsOneCell_Shared_Win
@@ -499,10 +499,10 @@ USE MOD_ReadInTools              ,ONLY: PrintOption
 USE MOD_CalcTimeStep             ,ONLY: CalcTimeStep
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides_Shared,SideBCMetrics_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides_Shared_Win,SideBCMetrics_Shared_Win
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeProcessors,myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED
 USE MOD_Particle_MPI_Vars        ,ONLY: halo_eps,halo_eps_velo,SafetyFactor
 USE MOD_Particle_Timedisc_Vars   ,ONLY: ManualTimeStep
 USE MOD_TimeDisc_Vars            ,ONLY: nRKStages,RKc
@@ -929,10 +929,10 @@ USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemBaryNGeo_Shared,ElemBaryNGeo_Shared_Win
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars,ONLY: nComputeNodeProcessors,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeProcessors,myComputeNodeRank
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
 #else
 USE MOD_Mesh_Vars               ,ONLY: nElems
 USE MOD_Particle_Mesh_Vars      ,ONLY: nComputeNodeElems
@@ -1024,10 +1024,10 @@ USE MOD_Particle_Mesh_Vars        ,ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis,ElemR
 USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Tools       ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
 #if USE_MPI
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeProcessors,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars           ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars           ,ONLY: nComputeNodeProcessors,myComputeNodeRank
+USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED
 USE MOD_Particle_Mesh_Vars        ,ONLY: XCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars        ,ONLY: ElemRadiusNGEO_Shared,ElemRadiusNGeo_Shared_Win
 USE MOD_Particle_Mesh_Vars        ,ONLY: ElemRadius2NGeo_Shared,ElemRadius2NGeo_Shared_Win
@@ -1167,9 +1167,9 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID,SideID2BCSide,BCSideMetric
 USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides,nUniqueBCSides
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D
 #if USE_MPI
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeProcessors,myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED
 USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID_Shared,SideID2BCSide_Shared,BCSideMetrics_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID_Shared_Win,SideID2BCSide_Shared_Win,BCSideMetrics_Shared_Win
 #endif /*USE_MPI*/
@@ -1313,10 +1313,10 @@ USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierElevation
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3!,BaseVectorsScale
 #if USE_MPI
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
-!USE MOD_Particle_Mesh_Vars       ,ONLY: BaseVectorsScale_Shared,BaseVectorsScale_Shared_Win
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeProcessors,myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED
+! USE MOD_Particle_Mesh_Vars       ,ONLY: BaseVectorsScale_Shared,BaseVectorsScale_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: BaseVectors0_Shared,BaseVectors1_Shared,BaseVectors2_Shared,BaseVectors3_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: BaseVectors0_Shared_Win,BaseVectors1_Shared_Win,BaseVectors2_Shared_Win,BaseVectors3_Shared_Win
 #endif /* USE_MPI */
@@ -1423,7 +1423,7 @@ USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars  ,ONLY: TrackingMethod
 USE MOD_ReadInTools             ,ONLY: PrintOption
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED,myComputeNodeRank
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED,myComputeNodeRank
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1576,10 +1576,10 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: ElemCurved_Shared,ElemCurved_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: SideDistance_Shared,SideDistance_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: SideType_Shared,SideType_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: SideNormVec_Shared,SideNormVec_Shared_Win
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems,nComputeNodeTotalSides
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeTotalElems,nComputeNodeTotalSides
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeProcessors,myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED
 #else
 USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems
 #endif /* USE_MPI */
@@ -2046,7 +2046,7 @@ USE MOD_Particle_Mesh_Vars        ,ONLY: WeirdElems
 USE MOD_Particle_Mesh_Tools       ,ONLY: GetGlobalElemID
 USE MOD_ReadInTools               ,ONLY: GETLOGICAL
 #if USE_MPI
-USE MOD_Particle_MPI_Shared_Vars  ,ONLY: nComputeNodeTotalElems,nComputeNodeProcessors,myComputeNodeRank
+USE MOD_MPI_Shared_Vars           ,ONLY: nComputeNodeTotalElems,nComputeNodeProcessors,myComputeNodeRank
 #else
 USE MOD_Mesh_Vars                 ,ONLY: nElems
 #endif /*USE_MPI*/
@@ -2358,21 +2358,21 @@ USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID
 #if USE_MPI
 USE MOD_Mesh_Vars                ,ONLY: NGeo
 USE MOD_Mesh_Vars                ,ONLY: nElems,nGlobalElems,offsetElem
-!USE MOD_Mesh_Vars                ,ONLY: InterpolateFromTree
-!USE MOD_Mesh_Vars                ,ONLY: UseCurveds
+! USE MOD_Mesh_Vars                ,ONLY: InterpolateFromTree
+! USE MOD_Mesh_Vars                ,ONLY: UseCurveds
 USE MOD_Metrics                  ,ONLY: BuildCoords
-!USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems
-!USE MOD_Particle_Mesh_Vars       ,ONLY: ElemInfo_Shared,NodeCoords_Shared,TreeCoords_Shared
-!USE MOD_Particle_Mesh_Vars       ,ONLY: Vdm_NGeo_CLNGeo
+! USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems
+! USE MOD_Particle_Mesh_Vars       ,ONLY: ElemInfo_Shared,NodeCoords_Shared,TreeCoords_Shared
+! USE MOD_Particle_Mesh_Vars       ,ONLY: Vdm_NGeo_CLNGeo
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo_Array,dXCL_NGeo_Array
 USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Array
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo_Shared_Win,dXCL_NGeo_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Shared_Win
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID
-USE MOD_Particle_MPI_Shared
-!USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,nProcessors_Global,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED,displsElem,recvcountelem
+USE MOD_MPI_Shared
+! USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeProcessors,nProcessors_Global,myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED,displsElem,recvcountelem
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
@@ -2573,10 +2573,10 @@ USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3DElevated,BezierElev
 USE MOD_Mesh_Vars                ,ONLY: nGlobalElems
 USE MOD_Particle_Mesh_Vars       ,ONLY: BezierControlPoints3D_Shared,BezierControlPoints3D_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: BezierControlPoints3DElevated_Shared,BezierControlPoints3DElevated_Shared_Win
-USE MOD_Particle_MPI_Shared
-!USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: myComputeNodeRank,nComputeNodeProcessors
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared
+! USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank,nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED
 #else
 USE MOD_Mesh_Vars                ,ONLY: nElems
 #endif /*USE_MPI*/
@@ -2746,9 +2746,9 @@ USE MOD_ReadInTools              ,ONLY: PrintOption
 USE MOD_Mesh_Vars                ,ONLY: offsetElem
 USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems,offsetComputeNodeElem
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemVolume_Shared_Win
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -2856,10 +2856,10 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: ElemSideNodeID_Shared,ElemMidPoint_Share
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars       ,ONLY: ConcaveElemSide_Shared_Win,ElemNodeID_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemSideNodeID_Shared_Win,ElemMidPoint_Shared_Win
-USE MOD_Particle_MPI_Shared
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeTotalElems
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors,myComputeNodeRank
-USE MOD_Particle_MPI_Shared_Vars ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeProcessors,myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED
 #else
 USE MOD_Mesh_Vars                ,ONLY: nElems
 #endif

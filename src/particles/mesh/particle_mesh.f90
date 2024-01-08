@@ -585,6 +585,9 @@ SUBROUTINE FinalizeParticleMeshBasis()
 ! MODULES
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Surfaces_Vars
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -594,6 +597,10 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) RETURN
+#endif /*USE_LOADBALANCE*/
 
 ! Particle mesh metrics
 SDEALLOCATE(DCL_N)

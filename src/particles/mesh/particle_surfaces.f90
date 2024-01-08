@@ -204,11 +204,6 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-! InitParticleMeshBasis
-SDEALLOCATE(Vdm_Bezier)
-SDEALLOCATE(sVdm_Bezier)
-SDEALLOCATE(D_Bezier)
-
 ! InitParticleMesh
 SDEALLOCATE(BezierSampleXi)
 ! #if CODE_ANALYZE
@@ -219,6 +214,11 @@ SDEALLOCATE(BezierSampleXi)
 ! BezierControlPoints are global and do not change during load balance
 IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
+  ! InitParticleMeshBasis
+  SDEALLOCATE(Vdm_Bezier)
+  SDEALLOCATE(sVdm_Bezier)
+  SDEALLOCATE(D_Bezier)
+
   ! CalcBezierControlPoints (MPI3 shared freed in FinalizeParticleMesh)
   SDEALLOCATE(XiBuf)
   SDEALLOCATE(MinMax)

@@ -100,11 +100,11 @@ USE MOD_Mesh_Vars
 USE MOD_HDF5_Input
 USE MOD_ChangeBasisByDim   ,ONLY:ChangeBasisVolume
 USE MOD_Interpolation      ,ONLY:GetVandermonde
-USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone,NodeType,NodeTypeVISU
+USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone,NodeType,NodeTypeVISU,xGP
 USE MOD_Mesh_ReadIn,        ONLY:readMesh
 USE MOD_Prepare_Mesh,       ONLY:setLocalSideIDs,fillMeshInfo
 USE MOD_ReadInTools,        ONLY:GETLOGICAL,GETSTR,GETREAL,GETINT
-USE MOD_Metrics,            ONLY:BuildCoords,CalcMetrics
+USE MOD_Metrics,            ONLY:BuildCoords,CalcMetrics,CalcSurfMetrics
 USE MOD_DebugMesh,          ONLY:writeDebugMesh
 USE MOD_Mappings,           ONLY:buildMappings
 #if USE_MPI
@@ -117,6 +117,10 @@ USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 #if (PP_dim == 2)
 USE MOD_2D
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Metrics,ONLY: MoveCoords,MoveMetrics
+USE MOD_LoadBalance_Vars   ,ONLY: DoLoadBalance,PerformLoadBalance,UseH5IOLoadBalance
+#endif /*USE_LOADBALANCE*/
 #if USE_PARTICLES
 USE MOD_Particle_Mesh      ,ONLY:InitParticleMeshBasis
 USE MOD_Particle_Mesh_Vars ,ONLY:NGeoOverride,meshScale
@@ -209,12 +213,12 @@ IF(interpolateFromTree)THEN
   CALL CollectiveStop(__STAMP__,&
       "interpolateFromTree not supported in 2D.")
 #endif
-  coords=>TreeCoords
-  NGeo=NGeoTree
-  nElemsLoc=nTrees
+  coords    => TreeCoords
+  NGeo      =  NGeoTree
+  nElemsLoc =  nTrees
 ELSE
-  coords=>NodeCoords
-  nElemsLoc=nElems
+  coords    => NodeCoords
+  nElemsLoc =  nElems
 ENDIF
 
 #if !USE_PARTICLES
@@ -273,13 +277,22 @@ IF(GETLOGICAL('meshdeform'))THEN
   END DO
 END IF
 
-! Build the coordinates of the solution gauss points in the volume
-ALLOCATE(Elem_xGP(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-IF(interpolateFromTree)THEN
-  CALL BuildCoords(NodeCoords,NodeType,PP_N,Elem_xGP,TreeCoords)
+#if USE_LOADBALANCE
+IF (PerformLoadBalance .AND. .NOT.UseH5IOLoadBalance) THEN
+  CALL MoveCoords()
 ELSE
-  CALL BuildCoords(NodeCoords,NodeType,PP_N,Elem_xGP)
-ENDIF
+! Build the coordinates of the solution gauss points in the volume
+#endif /*USE_LOADBALANCE*/
+  SDEALLOCATE(Elem_xGP)
+  ALLOCATE(Elem_xGP      (3,0:PP_N,0:PP_N,0:PP_N,nElems))
+  IF(interpolateFromTree)THEN
+    CALL BuildCoords(NodeCoords,NodeType,PP_N,Elem_xGP,TreeCoords)
+  ELSE
+    CALL BuildCoords(NodeCoords,NodeType,PP_N,Elem_xGP)
+  END IF
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 ! Return if no connectivity and metrics are required (e.g. for visualization mode)
 IF (meshMode.GT.0) THEN
@@ -375,27 +388,95 @@ END IF
 LBWRITE(UNIT_stdOut,'(A)') " NOW CALLING deleteMeshPointer..."
 CALL deleteMeshPointer()
 
+! ----- CONNECTIVITY IS NOW COMPLETE AT THIS POINT -----
+
 IF (meshMode.GT.1) THEN
+#if USE_LOADBALANCE
+  IF (PerformLoadBalance.AND.(.NOT.UseH5IOLoadBalance)) THEN
+    ! Shift metric arrays during load balance
+    CALL MoveMetrics()
+  ELSE
+    ! deallocate existing arrays
+    ! mesh basis
+    ! SDEALLOCATE(Xi_NGeo)
+    ! SDEALLOCATE(XiCL_NGeo)
+    ! SDEALLOCATE(DCL_N)
+    ! SDEALLOCATE(DCL_NGeo)
+    ! SDEALLOCATE(Vdm_CLN_GaussN)
+    ! SDEALLOCATE(Vdm_CLNGeo_GaussN)
+    ! SDEALLOCATE(Vdm_CLNGeo_CLN)
+    ! SDEALLOCATE(Vdm_NGeo_CLNGeo)
+    ! SDEALLOCATE(wBaryCL_NGeo)
 
-  ! ----- CONNECTIVITY IS NOW COMPLETE AT THIS POINT -----
+    ! mesh metrics
+    SDEALLOCATE(      dXCL_N)
+    SDEALLOCATE(      JaCL_N)
+    SDEALLOCATE(Metrics_fTilde)
+    SDEALLOCATE(Metrics_gTilde)
+    SDEALLOCATE(Metrics_hTilde)
+    SDEALLOCATE(sJ)
+    SDEALLOCATE(scaledJac)
+    SDEALLOCATE(DetJac_Ref)
 
-  ! volume data
-  ALLOCATE(      dXCL_N(3,3,0:PP_N,0:PP_N,0:PP_NZ,nElems)) ! temp
-  ALLOCATE(Metrics_fTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
-  ALLOCATE(Metrics_gTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
-  ALLOCATE(Metrics_hTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
-  ALLOCATE(            sJ(  0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
-  ALLOCATE(     scaledJac(  0:PP_N,0:PP_N,0:PP_NZ,nElems))
-  NGeoRef=3*NGeo ! build jacobian at higher degree
-  ALLOCATE(    DetJac_Ref(1,0:NGeoRef,0:NGeoRef,0:ZDIM(NGeoRef),nElems))
+    ! Vandermonde
+    SDEALLOCATE(Vdm_CLN_N)
+    SDEALLOCATE(XCL_N)
+
+!     SDEALLOCATE(XCL_NGeo)
+! #if USE_PARTICLES
+!     SDEALLOCATE(dXCL_NGeo)
+! #endif /*USE_PARTICLES*/
+
+    ! Calculate metric arrays
+#endif /*USE_LOADBALANCE*/
+    ! volume data
+    ALLOCATE(       XCL_N(  3,0:PP_N,   0:PP_N,   0:PP_NZ        ,nElems))
+    ALLOCATE(      dXCL_N(3,3,0:PP_N,   0:PP_N,   0:PP_NZ        ,nElems))
+    ALLOCATE(      JaCL_N(3,3,0:PP_N,   0:PP_N,   0:PP_NZ        ,nElems))
+    ALLOCATE(Metrics_fTilde(3,0:PP_N,   0:PP_N,   0:PP_NZ        ,nElems,0:FV_SIZE))
+    ALLOCATE(Metrics_gTilde(3,0:PP_N,   0:PP_N,   0:PP_NZ        ,nElems,0:FV_SIZE))
+    ALLOCATE(Metrics_hTilde(3,0:PP_N,   0:PP_N,   0:PP_NZ        ,nElems,0:FV_SIZE))
+    ALLOCATE(sJ            (  0:PP_N,   0:PP_N,   0:PP_NZ        ,nElems,0:FV_SIZE))
+    ALLOCATE(     scaledJac(  0:PP_N,   0:PP_N,   0:PP_NZ        ,nElems))
+    ALLOCATE(    DetJac_N(  1,0:PP_N,   0:PP_N,   0:PP_NZ        ,nElems))
+    NGeoRef = 3*NGeo ! build jacobian at higher degree
+    JaCL_N  = 0.
+    ALLOCATE(    DetJac_Ref(1,0:NGeoRef,0:NGeoRef,0:ZDIM(NGeoRef),nElems))
+
+    ! Vandermonde
+    ALLOCATE(Vdm_CLN_N(       0:PP_N,0:PP_N))
+
+#if USE_PARTICLES
+    CALL InitParticleMeshBasis()
+#endif
+
+    ! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
+    ! assign 1/detJ (sJ)
+    ! assign normal and tangential vectors and surfElems on faces
+#if (PP_dim == 3)
+    ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
+    crossProductMetrics = GETLOGICAL('crossProductMetrics')
+#endif
+    LBWRITE(UNIT_stdOut,'(A)') 'NOW CALLING calcMetrics...'
+    ! CALL InitMeshBasis(NGeo,PP_N,xGP)
+
+    CALL CalcMetrics()
+#if USE_LOADBALANCE
+  END IF
+#endif /*USE_LOADBALANCE*/
 
   ! surface data
-  ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
-  ALLOCATE(       NormVec(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
-  ALLOCATE(      TangVec1(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
-  ALLOCATE(      TangVec2(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
-  ALLOCATE(      SurfElem(  0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
-  ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ,          1:nSides)) ! temp
+  ALLOCATE(Face_xGP      (3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(NormVec       (3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(TangVec1      (3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(TangVec2      (3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(SurfElem      (  0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ          ,1:nSides)) ! temp
+  Face_xGP = 0.
+  NormVec  = 0.
+  TangVec1 = 0.
+  TangVec2 = 0.
+  SurfElem = 0.
 
 #if FV_ENABLED
   ! NOTE: initialize with 1 and not with 0
@@ -408,38 +489,38 @@ IF (meshMode.GT.1) THEN
   ! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
   ! assign 1/detJ (sJ)
   ! assign normal and tangential vectors and surfElems on faces
-
-#if (PP_dim == 3)
-  ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
-  crossProductMetrics=GETLOGICAL('crossProductMetrics')
-#endif
-  LBWRITE(UNIT_stdOut,'(A)') " NOW CALLING calcMetrics..."
-
-#if USE_PARTICLES
-  CALL InitParticleMeshBasis()
-#endif
-
-  CALL CalcMetrics()     ! DG metrics
+  DO iElem = 1,nElems
+    CALL CalcSurfMetrics(JaCL_N(:,:,:,:,:,iElem),iElem)
+  END DO
 
 #if FV_ENABLED
   CALL InitFV_Metrics()  ! FV metrics
 #endif
-  ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
-  CALL WriteDebugMesh(GETINT('debugmesh'))
-END IF
 
-SDEALLOCATE(dXCL_N)
+! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
+  CALL WriteDebugMesh(GETINT('debugmesh'))
+END IF ! meshMode.GT.1
+
+! SDEALLOCATE(dXCL_N)
 SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
 IF ((.NOT.postiMode).AND.(ALLOCATED(scaledJac))) DEALLOCATE(scaledJac)
 
-CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
+! Write debug information
+! CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
+!
+! ALLOCATE(ElemGlobalID(1:nElems))
+! DO iElem = 1,nElems
+!   ElemGlobalID(iElem) = OffsetElem + iElem
+! END DO ! iElem=1,nElems
+! CALL AddToElemData(ElementOut,'ElemID',LongIntArray=ElemGlobalID)
 
 MeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitMesh
 
 !============================================================================================================================
@@ -448,13 +529,13 @@ END SUBROUTINE InitMesh
 SUBROUTINE FinalizeMesh()
 ! MODULES
 USE MOD_Mesh_Vars
-USE MOD_Mappings      ,ONLY:FinalizeMappings
+USE MOD_Mappings             ,ONLY: FinalizeMappings
 #if FV_ENABLED
-USE MOD_FV_Vars       ,ONLY:FV_Elems_master
-USE MOD_FV_Metrics    ,ONLY:FinalizeFV_Metrics
+USE MOD_FV_Vars              ,ONLY: FV_Elems_master
+USE MOD_FV_Metrics           ,ONLY: FinalizeFV_Metrics
 #endif
 #if USE_PARTICLES
-USE MOD_Particle_Mesh ,ONLY: FinalizeParticleMeshBasis
+USE MOD_Particle_Mesh        ,ONLY: FinalizeParticleMeshBasis
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
@@ -463,6 +544,8 @@ USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
 IMPLICIT NONE
 !============================================================================================================================
 ! Deallocate global variables, needs to go somewhere else later
+SDEALLOCATE(ElemInfo)
+! mapping from elems to sides and vice-versa
 SDEALLOCATE(ElemToSide)
 SDEALLOCATE(SideToElem)
 SDEALLOCATE(BC)
@@ -476,13 +559,12 @@ SDEALLOCATE(MortarInfo)
 SDEALLOCATE(NodeCoords)
 
 ! Volume
-SDEALLOCATE(Elem_xGP)
-SDEALLOCATE(Metrics_fTilde)
-SDEALLOCATE(Metrics_gTilde)
-SDEALLOCATE(Metrics_hTilde)
-SDEALLOCATE(sJ)
+! SDEALLOCATE(Elem_xGP)
+! SDEALLOCATE(Metrics_fTilde)
+! SDEALLOCATE(Metrics_gTilde)
+! SDEALLOCATE(Metrics_hTilde)
+! SDEALLOCATE(sJ)
 SDEALLOCATE(scaledJac)
-SDEALLOCATE(DetJac_Ref)
 #if FV_ENABLED
 SDEALLOCATE(sJ_master)
 SDEALLOCATE(sJ_slave)
@@ -518,9 +600,48 @@ MeshInitIsDone = .FALSE.
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) RETURN
 #endif /*USE_LOADBALANCE*/
+
+! Arrays are being shifted along load balancing, so they need to be kept allocated
+#if USE_PARTICLES && USE_LOADBALANCE
+IF (PerformLoadBalance) RETURN
+#endif /*USE_PARTICLES && USE_LOADBALANCE*/
+
+! geometry information and VDMS
+! SDEALLOCATE(DCL_N)
+! SDEALLOCATE(DCL_NGeo)
+! SDEALLOCATE(Vdm_CLN_GaussN)
+! SDEALLOCATE(Vdm_CLNGeo_GaussN)
+! SDEALLOCATE(Vdm_CLNGeo_CLN)
+! SDEALLOCATE(Vdm_NGeo_CLNGeo)
+! SDEALLOCATE(Xi_NGeo)
+! SDEALLOCATE(XiCL_NGeo)
+! SDEALLOCATE(wBaryCL_NGeo)
+! particle input/output
+SDEALLOCATE(Vdm_N_EQ)
+SDEALLOCATE(Vdm_EQ_N)
+! superb
+SDEALLOCATE(Vdm_GL_N)
+SDEALLOCATE(Vdm_N_GL)
 ! BCS
 SDEALLOCATE(BoundaryName)
 SDEALLOCATE(BoundaryType)
+! elem-xgp and metrics
+! SDEALLOCATE(XCL_NGeo)
+! SDEALLOCATE(dXCL_NGeo)
+SDEALLOCATE(Metrics_fTilde)
+SDEALLOCATE(Metrics_gTilde)
+SDEALLOCATE(Metrics_hTilde)
+SDEALLOCATE(Elem_xGP)
+SDEALLOCATE(sJ)
+SDEALLOCATE(DetJac_N)
+SDEALLOCATE(DetJac_Ref)
+SDEALLOCATE(JaCL_N)
+SDEALLOCATE(Vdm_CLN_N)
+SDEALLOCATE(XCL_N)
+! #if USE_LOADBALANCE
+SDEALLOCATE(dXCL_N)
+! SDEALLOCATE(Ja_Face)
+! #endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE FinalizeMesh
 

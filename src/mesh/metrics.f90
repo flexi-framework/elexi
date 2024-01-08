@@ -78,7 +78,7 @@ PUBLIC::SurfMetricsFromJa
 CONTAINS
 
 !==================================================================================================================================
-!> This routine takes the equidistant node coordinats of the mesh (on NGeo+1 points) and uses them to build the coordinates
+!> This routine takes the equidistant node coordinates of the mesh (on NGeo+1 points) and uses them to build the coordinates
 !> of solution/interpolation points of type NodeType on polynomial degree Nloc (Nloc+1 points per direction).
 !> The coordinates (for a non-conforming mesh) can also be built from an octree if the mesh is based on a conforming baseline mesh.
 !==================================================================================================================================
@@ -174,35 +174,26 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
-USE MOD_Interpolation_Vars
+USE MOD_Interpolation_Vars ,ONLY: xGP,NodeType,NodeTypeCL,NodeTypeVisu
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
-USE MOD_Mesh_Vars          ,ONLY: NGeo,NGeoRef,nElems,offsetElem
-USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,dXCL_N
-USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,Ja_Face
-USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
-USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
-USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
+USE MOD_Mesh_Vars          ,ONLY: NGeo,NGeoRef
+USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars          ,ONLY: NodeCoords,Elem_xGP
+USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
+USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,DetJac_N!,Ja_Face
+USE MOD_Mesh_Vars          ,ONLY: TreeCoords,ElemToTree,xiMinMax,interpolateFromTree
+USE MOD_Mesh_Vars          ,ONLY: Vdm_CLN_N,XCL_N,dXCL_N,JaCL_N
 USE MOD_Mesh_Vars          ,ONLY: scaledJac
 USE MOD_Output             ,ONLY: PrintPercentage
 USE MOD_ReadInTools        ,ONLY: GETLOGICAL,PrintOption
 #if PP_dim == 3
 USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
 #endif
-#if FV_ENABLED
-USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
-USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1
-USE MOD_FillMortar1        ,ONLY: U_Mortar1
-#endif /*FV_ENABLED*/
 #if (PP_dim == 3)
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D_XYZ
 #else
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D_XYZ
 #endif
-#if USE_MPI
-USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE,firstMPISide_YOUR,lastMPISide_YOUR,nSides
-USE MOD_MPI_Vars           ,ONLY: nNbProcs
-USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-#endif /*USE_MPI*/
 #if USE_PARTICLES
 USE MOD_Particle_Mesh_Vars ,ONLY: XCL_NGeo,dXCL_NGeo
 #endif /*PARTICLES*/
@@ -218,11 +209,9 @@ INTEGER :: q
 #endif
 INTEGER :: ll
 ! Jacobian on CL N and NGeoRef
-REAL    :: DetJac_N( 1,0:PP_N,   0:PP_N,   0:PP_NZ,nElems)
 REAL    :: tmp(      1,0:NGeoRef,0:NGeoRef,0:ZDIM(NGeoRef))
 !REAL    :: tmp2(     1,0:NGeo,0:NGeo,0:NGeo)
 ! interpolation points and derivatives on CL N
-REAL    :: XCL_N(      3,  0:PP_N,0:PP_N,0:PP_NZ)               ! mapping X(xi) P\in N
 REAL    :: XCL_N_quad( 3,  0:PP_N,0:PP_N,0:PP_NZ)               ! mapping X(xi) P\in N
 REAL    :: dX_NGeoRef( 3,3,0:NGeoRef,0:NGeoRef,0:ZDIM(NGeoRef)) ! jacobi matrix on SOL NGeoRef
 #if !(USE_PARTICLES)
@@ -233,7 +222,6 @@ REAL    :: dXCL_NGeo(  3,3,0:NGeo,0:NGeo,0:ZDIM(NGeo))          ! jacobi matrix 
 #if PP_dim == 3
 REAL    :: R_CL_N(     3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! buffer for metric terms, uses XCL_N,dXCL_N
 #endif
-REAL    :: JaCL_N(     3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! metric terms P\in N
 REAL    :: JaCL_N_quad(3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! metric terms P\in N
 
 ! Polynomial derivativion matrices
@@ -245,7 +233,7 @@ REAL    :: Vdm_EQNGeo_CLNGeo( 0:NGeo   ,0:NGeo)
 REAL    :: Vdm_CLNGeo_NGeoRef(0:NGeoRef,0:NGeo)
 REAL    :: Vdm_NGeoRef_N(     0:PP_N   ,0:NGeoRef)
 REAL    :: Vdm_CLNGeo_CLN(    0:PP_N   ,0:NGeo)
-REAL    :: Vdm_CLN_N(         0:PP_N   ,0:PP_N)
+! REAL    :: Vdm_CLN_N(         0:PP_N   ,0:PP_N)
 
 ! 3D Vandermonde matrices and lengths,nodes,weights
 REAL,DIMENSION(0:NGeoRef,0:NGeoRef) :: Vdm_xi_Ref,Vdm_eta_Ref
@@ -257,11 +245,6 @@ REAL,DIMENSION(0:PP_N   ,0:PP_N)    :: Vdm_zeta_N
 REAL    :: xiRef( 0:NGeoRef),wBaryRef( 0:NGeoRef)
 REAL    :: xiCL_N(0:PP_N)   ,wBaryCL_N(0:PP_N)
 REAL    :: xi0(3),dxi(3),length(3)
-
-#if USE_MPI
-INTEGER           :: MPIRequest_Geo(nNbProcs,2)
-REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
-#endif
 
 LOGICAL            :: meshCheckRef
 REAL,ALLOCATABLE   :: scaledJacRef(:,:,:)
@@ -338,7 +321,7 @@ DO iElem=1,nElems
     CALL ChangeBasisVolume(3,NGeo,NGeo,Vdm_EQNGeo_CLNGeo,NodeCoords(:,:,:,:,iElem)            ,XCL_NGeo)
   END IF
   !1.b) Switching XCL_NGeo from NGeo to PP_N to obtain XCL_N using Vdm_CLNGeo_CLN; still on CL points
-  CALL   ChangeBasisVolume(3,NGeo,PP_N,Vdm_CLNGeo_CLN,   XCL_NGeo                             ,XCL_N)
+  CALL   ChangeBasisVolume(3,NGeo,PP_N,Vdm_CLNGeo_CLN,   XCL_NGeo                             ,XCL_N(:,:,:,:,iElem))
 
   !1.c) Jacobi Matrix of dX/dXi_dd(XCL_NGeo_nn): dXCL_NGeo(dd,nn,i,j,k))
   ! d/dXi_dd(XCL_NGeo_nn) = DCL_NGeo
@@ -454,10 +437,10 @@ DO iElem=1,nElems
       ! Matrix-vector multiplication
       ASSOCIATE(dXCL => dXCL_N(:,:,i,j,k,iElem))
       DO ll=0,PP_N
-        dXCL(1,1:PP_dim)=dXCL(1,1:PP_dim) + DCL_N(i,ll)*XCL_N(1:PP_dim,ll,j,k)
-        dXCL(2,1:PP_dim)=dXCL(2,1:PP_dim) + DCL_N(j,ll)*XCL_N(1:PP_dim,i,ll,k)
+        dXCL(1,1:PP_dim)=dXCL(1,1:PP_dim) + DCL_N(i,ll)*XCL_N(1:PP_dim,ll,j,k,iElem)
+        dXCL(2,1:PP_dim)=dXCL(2,1:PP_dim) + DCL_N(j,ll)*XCL_N(1:PP_dim,i,ll,k,iElem)
 #if (PP_dim == 3)
-        dXCL(3,:)=dXCL(3,:) + DCL_N(k,ll)*XCL_N(:,i,j,ll)
+        dXCL(3,:)       =dXCL(3,:)        + DCL_N(k,ll)*XCL_N(:       ,i,j,ll,iElem)
 #endif
       END DO !l=0,N
       END ASSOCIATE
@@ -465,15 +448,15 @@ DO iElem=1,nElems
   END IF !N>=NGeo
 
   !2.b) Compute metrics: Jacobian * contravariant basis vector = J*a^i
-  JaCL_N=0.
+  JaCL_N(:,:,:,:,:,iElem) = 0.
 #if (PP_dim == 2)
   ! No need to differentiate between curl and cross product metrics in 2D, we can directly use the calculated derivatives
   ! a^1 = JaCL_N(1,1:PP_dim,:,:,:); a^2 = JaCL_N(2,1:PP_dim,:,:,:)
   DO k=0,0; DO j=0,PP_N; DO i=0,PP_N
-    JaCL_N(1,1,i,j,k)=  dXCL_N(2,2,i,j,k,iElem)
-    JaCL_N(1,2,i,j,k)=- dXCL_N(2,1,i,j,k,iElem)
-    JaCL_N(2,1,i,j,k)=- dXCL_N(1,2,i,j,k,iElem)
-    JaCL_N(2,2,i,j,k)=  dXCL_N(1,1,i,j,k,iElem)
+    JaCL_N(1,1,i,j,k,iElem)=  dXCL_N(2,2,i,j,k,iElem)
+    JaCL_N(1,2,i,j,k,iElem)=- dXCL_N(2,1,i,j,k,iElem)
+    JaCL_N(2,1,i,j,k,iElem)=- dXCL_N(1,2,i,j,k,iElem)
+    JaCL_N(2,2,i,j,k,iElem)=  dXCL_N(1,1,i,j,k,iElem)
   END DO; END DO; END DO !i,j,k=0,N
 #else
   IF(crossProductMetrics)THEN
@@ -484,15 +467,15 @@ DO iElem=1,nElems
       ! Ja(:)^nn = ( d/dxi_(nn+1) XCL_N(:) ) x (d/xi_(nn+2) XCL_N(:))
       !
       ! JaCL_N(dd,nn) = dXCL_N(dd+1,nn+1)*dXCL_N(dd+2,nn+2) -dXCL_N(dd+1,nn+2)*dXCL_N(dd+2,nn+1)
-      JaCL_N(1,1,i,j,k)=dXCL(2,2)*dXCL(3,3) - dXCL(2,3)*dXCL(3,2)
-      JaCL_N(2,1,i,j,k)=dXCL(3,2)*dXCL(1,3) - dXCL(3,3)*dXCL(1,2)
-      JaCL_N(3,1,i,j,k)=dXCL(1,2)*dXCL(2,3) - dXCL(1,3)*dXCL(2,2)
-      JaCL_N(1,2,i,j,k)=dXCL(2,3)*dXCL(3,1) - dXCL(2,1)*dXCL(3,3)
-      JaCL_N(2,2,i,j,k)=dXCL(3,3)*dXCL(1,1) - dXCL(3,1)*dXCL(1,3)
-      JaCL_N(3,2,i,j,k)=dXCL(1,3)*dXCL(2,1) - dXCL(1,1)*dXCL(2,3)
-      JaCL_N(1,3,i,j,k)=dXCL(2,1)*dXCL(3,2) - dXCL(2,2)*dXCL(3,1)
-      JaCL_N(2,3,i,j,k)=dXCL(3,1)*dXCL(1,2) - dXCL(3,2)*dXCL(1,1)
-      JaCL_N(3,3,i,j,k)=dXCL(1,1)*dXCL(2,2) - dXCL(1,2)*dXCL(2,1)
+      JaCL_N(1,1,i,j,k,iElem)=dXCL(2,2)*dXCL(3,3) - dXCL(2,3)*dXCL(3,2)
+      JaCL_N(2,1,i,j,k,iElem)=dXCL(3,2)*dXCL(1,3) - dXCL(3,3)*dXCL(1,2)
+      JaCL_N(3,1,i,j,k,iElem)=dXCL(1,2)*dXCL(2,3) - dXCL(1,3)*dXCL(2,2)
+      JaCL_N(1,2,i,j,k,iElem)=dXCL(2,3)*dXCL(3,1) - dXCL(2,1)*dXCL(3,3)
+      JaCL_N(2,2,i,j,k,iElem)=dXCL(3,3)*dXCL(1,1) - dXCL(3,1)*dXCL(1,3)
+      JaCL_N(3,2,i,j,k,iElem)=dXCL(1,3)*dXCL(2,1) - dXCL(1,1)*dXCL(2,3)
+      JaCL_N(1,3,i,j,k,iElem)=dXCL(2,1)*dXCL(3,2) - dXCL(2,2)*dXCL(3,1)
+      JaCL_N(2,3,i,j,k,iElem)=dXCL(3,1)*dXCL(1,2) - dXCL(3,2)*dXCL(1,1)
+      JaCL_N(3,3,i,j,k,iElem)=dXCL(1,1)*dXCL(2,2) - dXCL(1,2)*dXCL(2,1)
       END ASSOCIATE
     END DO; END DO; END DO !i,j,k=0,N
   ELSE ! curl metrics
@@ -501,16 +484,17 @@ DO iElem=1,nElems
     !R_CL_N(dd,nn)=1/2*( XCL_N(nn+2)* d/dxi_dd XCL_N(nn+1) - XCL_N(nn+1)* d/dxi_dd XCL_N(nn+2))
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
       ASSOCIATE(dXCL => dXCL_N(:,:,i,j,k,iElem))
-      R_CL_N(:,1,i,j,k)=0.5*(XCL_N(3,i,j,k)*dXCL(:,2) - XCL_N(2,i,j,k)*dXCL(:,3) )
-      R_CL_N(:,2,i,j,k)=0.5*(XCL_N(1,i,j,k)*dXCL(:,3) - XCL_N(3,i,j,k)*dXCL(:,1) )
-      R_CL_N(:,3,i,j,k)=0.5*(XCL_N(2,i,j,k)*dXCL(:,1) - XCL_N(1,i,j,k)*dXCL(:,2) )
+      R_CL_N(:,1,i,j,k)=0.5*(XCL_N(3,i,j,k,iElem)*dXCL(:,2) - XCL_N(2,i,j,k,iElem)*dXCL(:,3) )
+      R_CL_N(:,2,i,j,k)=0.5*(XCL_N(1,i,j,k,iElem)*dXCL(:,3) - XCL_N(3,i,j,k,iElem)*dXCL(:,1) )
+      R_CL_N(:,3,i,j,k)=0.5*(XCL_N(2,i,j,k,iElem)*dXCL(:,1) - XCL_N(1,i,j,k,iElem)*dXCL(:,2) )
       END ASSOCIATE
     END DO; END DO; END DO !i,j,k=0,N
     ! Metrics are the curl of R:  Ja(:)^nn = -(curl R_CL(:,nn))
     ! JaCL_N(dd,nn)= -[d/dxi_(dd+1) RCL(dd+2,nn) - d/dxi_(dd+2) RCL(dd+1,nn) ]
     !              =   d/dxi_(dd+2) RCL(dd+1,nn) - d/dxi_(dd+1) RCL(dd+2,nn)
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-      ASSOCIATE(JaCL => JaCL_N(:,:,i,j,k))
+      ASSOCIATE(JaCL => JaCL_N(:,:,i,j,k,iElem))
+      JaCL = 0.
       DO q=0,PP_N
         JaCL(1,:)=JaCL(1,:) - DCL_N(j,q)*R_CL_N(3,:,i,q,k)
         JaCL(2,:)=JaCL(2,:) - DCL_N(k,q)*R_CL_N(1,:,i,j,q)
@@ -524,9 +508,9 @@ DO iElem=1,nElems
       END ASSOCIATE
 ! same with only one loop, gives different roundoff ...
 !      DO q=0,PP_N
-!        JaCL_N(1,:,i,j,k)=JaCL_N(1,:,i,j,k) - DCL_N(j,q)*R_CL_N(3,:,i,q,k) + DCL_N(k,q)*R_CL_N(2,:,i,j,q)
-!        JaCL_N(2,:,i,j,k)=JaCL_N(2,:,i,j,k) - DCL_N(k,q)*R_CL_N(1,:,i,j,q) + DCL_N(i,q)*R_CL_N(3,:,q,j,k)
-!        JaCL_N(3,:,i,j,k)=JaCL_N(3,:,i,j,k) - DCL_N(i,q)*R_CL_N(2,:,q,j,k) + DCL_N(j,q)*R_CL_N(1,:,i,q,k)
+!        JaCL_N(1,:,i,j,k,iElem)=JaCL_N(1,:,i,j,k,iElem) - DCL_N(j,q)*R_CL_N(3,:,i,q,k) + DCL_N(k,q)*R_CL_N(2,:,i,j,q)
+!        JaCL_N(2,:,i,j,k,iElem)=JaCL_N(2,:,i,j,k,iElem) - DCL_N(k,q)*R_CL_N(1,:,i,j,q) + DCL_N(i,q)*R_CL_N(3,:,q,j,k)
+!        JaCL_N(3,:,i,j,k,iElem)=JaCL_N(3,:,i,j,k,iElem) - DCL_N(i,q)*R_CL_N(2,:,q,j,k) + DCL_N(j,q)*R_CL_N(1,:,i,q,k)
 !      END DO!q=0,PP_N
     END DO; END DO; END DO !i,j,k=0,N
   END IF !crossProductMetrics
@@ -554,12 +538,12 @@ DO iElem=1,nElems
 
   IF(interpolateFromTree)THEN
 #if (PP_dim == 3)
-    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
-    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(2,:,:,:,:),Metrics_gTilde(:,:,:,:,iElem,0))
-    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
+    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(1,:,:,:,:,iElem),Metrics_fTilde(:,:,:,:,iElem,0))
+    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(2,:,:,:,:,iElem),Metrics_gTilde(:,:,:,:,iElem,0))
+    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(3,:,:,:,:,iElem),Metrics_hTilde(:,:,:,:,iElem,0))
 #else
-    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,JaCL_N(1,:,:,:,0),Metrics_fTilde(:,:,:,0,iElem,0))
-    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,JaCL_N(2,:,:,:,0),Metrics_gTilde(:,:,:,0,iElem,0))
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N           ,JaCL_N(1,:,:,:,0,iElem),Metrics_fTilde(:,:,:,0,iElem,0))
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N           ,JaCL_N(2,:,:,:,0,iElem),Metrics_gTilde(:,:,:,0,iElem,0))
 #endif
     ! for the metrics and the jacobian, we have to take into account the level !!!!!
     Metrics_fTilde(:,:,:,:,iElem,0)=(length(1)/2.)**2*Metrics_fTilde(:,:,:,:,iElem,0)
@@ -579,14 +563,14 @@ DO iElem=1,nElems
 #endif
     END DO
 #if (PP_dim == 3)
-    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,XCL_N            ,XCL_N_quad            )
-    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(1,:,:,:,:),JaCL_N_quad(1,:,:,:,:))
-    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(2,:,:,:,:),JaCL_N_quad(2,:,:,:,:))
-    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(3,:,:,:,:),JaCL_N_quad(3,:,:,:,:))
+    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,XCL_N(   :,:,:,:,iElem),XCL_N_quad            )
+    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(1,:,:,:,:,iElem),JaCL_N_quad(1,:,:,:,:))
+    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(2,:,:,:,:,iElem),JaCL_N_quad(2,:,:,:,:))
+    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(3,:,:,:,:,iElem),JaCL_N_quad(3,:,:,:,:))
 #else
-    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,XCL_N(   :,:,:,0),XCL_N_quad(   :,:,:,0))
-    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,JaCL_N(1,:,:,:,0),JaCL_N_quad(1,:,:,:,0))
-    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,JaCL_N(2,:,:,:,0),JaCL_N_quad(2,:,:,:,0))
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N           ,XCL_N(   :,:,:,0,iElem),XCL_N_quad(   :,:,:,0))
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N           ,JaCL_N(1,:,:,:,0,iElem),JaCL_N_quad(1,:,:,:,0))
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N           ,JaCL_N(2,:,:,:,0,iElem),JaCL_N_quad(2,:,:,:,0))
 #endif
     !TODO: scale Ja for anisotropic
     JaCL_N_quad(:,1,:,:,:)=(length(2)*length(3)/(2.**(PP_dim-1)))*JaCL_N_quad(:,1,:,:,:)
@@ -594,17 +578,17 @@ DO iElem=1,nElems
 #if (PP_dim == 3)
     JaCL_N_quad(:,3,:,:,:)=(length(1)*length(2)/4.)*JaCL_N_quad(:,3,:,:,:)
 #endif
-    CALL CalcSurfMetrics(PP_N,FV_SIZE,JaCL_N_quad,XCL_N_quad,Vdm_CLN_N,iElem,&
-                         NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
+    ! CALL CalcSurfMetrics(PP_N,FV_SIZE,JaCL_N_quad,XCL_N_quad,Vdm_CLN_N,iElem,&
+    !                      NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   ELSE
     ! interpolate Metrics from Cheb-Lobatto N onto GaussPoints N
-    CALL ChangeBasisVolume(PP_dim,PP_N,PP_N,Vdm_CLN_N,JaCL_N(1,1:PP_dim,:,:,:),Metrics_fTilde(1:PP_dim,:,:,:,iElem,0))
-    CALL ChangeBasisVolume(PP_dim,PP_N,PP_N,Vdm_CLN_N,JaCL_N(2,1:PP_dim,:,:,:),Metrics_gTilde(1:PP_dim,:,:,:,iElem,0))
+    CALL ChangeBasisVolume(PP_dim,PP_N,PP_N,Vdm_CLN_N,JaCL_N(1,1:PP_dim,:,:,:,iElem),Metrics_fTilde(1:PP_dim,:,:,:,iElem,0))
+    CALL ChangeBasisVolume(PP_dim,PP_N,PP_N,Vdm_CLN_N,JaCL_N(2,1:PP_dim,:,:,:,iElem),Metrics_gTilde(1:PP_dim,:,:,:,iElem,0))
 #if (PP_dim == 3)
-    CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
+    CALL ChangeBasisVolume(3     ,PP_N,PP_N,Vdm_CLN_N,JaCL_N(3,:       ,:,:,:,iElem),Metrics_hTilde(:       ,:,:,:,iElem,0))
 #endif
-    CALL CalcSurfMetrics(PP_N,FV_SIZE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,&
-                         NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
+    ! CALL CalcSurfMetrics(PP_N,FV_SIZE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,&
+    !                      NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   END IF
 
 #if USE_PARTICLES
@@ -617,23 +601,6 @@ DO iElem=1,nElems
 END DO !iElem=1,nElems
 
 #if USE_MPI
-! Send surface geomtry informations from mpi master to mpi slave
-ALLOCATE(Geo(10,0:PP_N,0:PP_NZ,0:FV_SIZE,firstMPISide_MINE:nSides))
-Geo=0.
-Geo(1,:,:,:,:)   =SurfElem(  :,0:PP_NZ,:,firstMPISide_MINE:nSides)
-Geo(2:4,:,:,:,:) =NormVec (:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
-Geo(5:7,:,:,:,:) =TangVec1(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
-Geo(8:10,:,:,:,:)=TangVec2(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
-MPIRequest_Geo=MPI_REQUEST_NULL
-CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
-CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
-SurfElem  (:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(1   ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
-NormVec (:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
-TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
-TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(8:10,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
-DEALLOCATE(Geo)
-
 ! Communicate smallest ref. Jacobian and display
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE , SmallestscaledJacRef , 1 , MPI_DOUBLE_PRECISION , MPI_MIN , 0 , MPI_COMM_FLEXI , iError)
@@ -647,61 +614,50 @@ IF (MPIRoot) THEN
   CALL PrintOption('Abort threshold'            ,'PARAM',RealOpt=scaledJacRefTol)
 END IF
 
-#if FV_ENABLED
-#if USE_MPI
-MPIRequest_Geo=MPI_REQUEST_NULL
-CALL StartReceiveMPIData(sJ_slave(:,:,:,:,0),(PP_N+1)*(PP_NZ+1),1,nSides,MPIRequest_Geo(:,SEND),SendID=2)
-CALL ProlongToFace1(PP_N,detJac_N,sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),L_Minus,L_Plus,doMPISides=.TRUE.,pureDG=.TRUE.)
-CALL U_Mortar1(sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),doMPISides=.TRUE.,pureDG=.TRUE.)
-CALL StartSendMPIData(   sJ_slave(:,:,:,:,0),(PP_N+1)*(PP_NZ+1),1,nSides,MPIRequest_Geo(:,RECV),SendID=2)
-#endif
-CALL ProlongToFace1(PP_N,detJac_N,sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),L_Minus,L_Plus,doMPISides=.FALSE.,pureDG=.TRUE.)
-CALL U_Mortar1(sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),doMPISides=.FALSE.,pureDG=.TRUE.)
-#if USE_MPI
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
-#endif
-sJ_slave( :,:,:,:,0) = 1./sJ_slave( :,:,:,:,0)
-sJ_master(:,:,:,:,0) = 1./sJ_master(:,:,:,:,0)
-#endif /* FV_ENABLED */
-
 END SUBROUTINE CalcMetrics
-
 
 
 !==================================================================================================================================
 !> Prepares computation of the faces' normal, tangential vectors, surface area and Gauss points from volume metrics.
 !> Input is JaCL_N, the 3D element metrics on Cebychev-Lobatto points.
 !> For each side the volume metrics are interpolated to the surface and rotated into the side reference frame.
-!==================================================================================================================================
-SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
+SUBROUTINE CalcSurfMetrics(JaCL_N,iElem)
+!===================================================================================================================================
+! Compute normal and tangential vectors from element metrics. Input is JaCL_N, the 3D element metrics on Cebychev-Lobatto points
+!===================================================================================================================================
 ! MODULES
-USE MOD_Mathtools        ,ONLY: CROSS
-USE MOD_Mesh_Vars        ,ONLY: ElemToSide,nSides,meshHasMortars,MortarType
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mathtools          ,ONLY: CROSS
+USE MOD_Mesh_Vars          ,ONLY: ElemToSide,meshHasMortars,MortarType
 #if PP_dim == 2
-USE MOD_Mesh_Vars        ,ONLY: MortarInfo
+USE MOD_Mesh_Vars          ,ONLY: MortarInfo
 #endif
-USE MOD_Mesh_Vars        ,ONLY: NormalDirs,TangDirs,NormalSigns
-USE MOD_Mappings         ,ONLY: SideToVol2
-USE MOD_ChangeBasis      ,ONLY: ChangeBasis2D
-USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
-USE MOD_Mortar_Metrics   ,ONLY: Mortar_CalcSurfMetrics
-!----------------------------------------------------------------------------------------------------------------------------------
+USE MOD_Mesh_Vars          ,ONLY: NormalDirs,TangDirs,NormalSigns
+USE MOD_Mesh_Vars          ,ONLY: XCL_N,Vdm_CLN_N
+USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
+USE MOD_Mappings           ,ONLY: SideToVol2
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D
+USE MOD_ChangeBasisByDim   ,ONLY:  ChangeBasisSurf
+USE MOD_Mortar_Metrics     ,ONLY: Mortar_CalcSurfMetrics
+#if USE_MPI
+USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstMPISide_MINE,firstMPISide_YOUR,lastMPISide_YOUR
+USE MOD_MPI_Vars           ,ONLY: nNbProcs
+USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
+#endif /*USE_MPI*/
+#if FV_ENABLED
+USE MOD_FillMortar1        ,ONLY: U_Mortar1
+USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
+USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave,detJac_N
+USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1
+#endif /*FV_ENABLED*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc                                             !< (IN) polynomial degree
-INTEGER,INTENT(IN) :: FVE                                              !< (IN) Finite Volume enabled
-INTEGER,INTENT(IN) :: iElem                                            !< (IN) element index
-REAL,INTENT(IN)    :: JaCL_N(  3,3,0:Nloc,0:Nloc,0:ZDIM(Nloc))         !< (IN) volume metrics of element
-REAL,INTENT(IN)    :: XCL_N(     3,0:Nloc,0:Nloc,0:ZDIM(Nloc))         !< (IN) element geo. interpolation points (CL)
-REAL,INTENT(IN)    :: Vdm_CLN_N(   0:Nloc,0:Nloc)                      !< (IN) Vandermonde matrix from Cheby-Lob on N to final nodeset on N
-REAL,INTENT(OUT)   ::    NormVec(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face normal vectors
-REAL,INTENT(OUT)   ::   TangVec1(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face tangential vectors
-REAL,INTENT(OUT)   ::   TangVec2(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face tangential vectors
-REAL,INTENT(OUT)   ::   SurfElem(  0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face surface area
-REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face interpolation points
-REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:ZDIM(Nloc),1:nSides) !< (OUT) surface metrics
-!----------------------------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)    :: JaCL_N(1:3,1:3,0:PP_N,0:PP_N,0:PP_N) !< (IN) volume metrics of element
+INTEGER,INTENT(IN) :: iElem                                !< (IN) element index
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
 #if PP_dim == 2
@@ -709,43 +665,47 @@ INTEGER            :: nMortars,tmp_MI(1:2),SideID_Mortar
 #endif
 INTEGER            :: NormalDir,TangDir
 REAL               :: NormalSign
-REAL               :: Ja_Face_l(3,3,0:Nloc,0:ZDIM(Nloc))
-REAL               :: Mortar_xGP( 3,0:Nloc,0:ZDIM(Nloc),4)
-REAL               :: tmp(        3,0:Nloc,0:ZDIM(Nloc))
-REAL               :: tmp2(       3,0:Nloc,0:ZDIM(Nloc))
+REAL               :: Ja_Face_l(3,3,0:PP_N,0:ZDIM(PP_N))
+REAL               :: Mortar_xGP( 3,0:PP_N,0:ZDIM(PP_N),4)
+REAL               :: tmp(        3,0:PP_N,0:ZDIM(PP_N))
+REAL               :: tmp2(       3,0:PP_N,0:ZDIM(PP_N))
 ! Mortars
 REAL,ALLOCATABLE   :: Mortar_Ja(:,:,:,:,:)
+#if USE_MPI
+INTEGER            :: MPIRequest_Geo(nNbProcs,2)
+REAL,ALLOCATABLE   :: Geo(:,:,:,:,:)
+#endif /*USE_MPI*/
 !==================================================================================================================================
 
-IF (meshHasMortars) ALLOCATE(Mortar_Ja(3,3,0:Nloc,0:ZDIM(Nloc),4))
+IF (meshHasMortars) ALLOCATE(Mortar_Ja(3,3,0:PP_N,0:ZDIM(PP_N),4))
 
 #if PP_dim == 3
 DO iLocSide=1,6
 #else
 DO iLocSide=2,5
 #endif
-  flip = ElemToSide(E2S_FLIP,iLocSide,iElem)
+  flip   = ElemToSide(E2S_FLIP   ,iLocSide,iElem)
   IF(flip.NE.0) CYCLE ! only master sides with flip=0
-  SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
+  SideID = ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
 
   SELECT CASE(iLocSide)
   CASE(XI_MINUS)
-    tmp=XCL_N(1:3,0   ,:   ,:   )
+    tmp=XCL_N(1:3,0   ,:   ,:   ,iElem)
   CASE(XI_PLUS)
-    tmp=XCL_N(1:3,Nloc,:   ,:   )
+    tmp=XCL_N(1:3,PP_N,:   ,:   ,iElem)
   CASE(ETA_MINUS)
-    tmp=XCL_N(1:3,:   ,0   ,:   )
+    tmp=XCL_N(1:3,:   ,0   ,:   ,iElem)
   CASE(ETA_PLUS)
-    tmp=XCL_N(1:3,:   ,Nloc,:   )
+    tmp=XCL_N(1:3,:   ,PP_N,:   ,iElem)
   CASE(ZETA_MINUS)
-    tmp=XCL_N(1:3,:   ,:   ,0   )
+    tmp=XCL_N(1:3,:   ,:   ,0   ,iElem)
   CASE(ZETA_PLUS)
-    tmp=XCL_N(1:3,:   ,:   ,Nloc)
+    tmp=XCL_N(1:3,:   ,:   ,PP_N,iElem)
   END SELECT
-  CALL ChangeBasisSurf(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
+  CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_N,tmp,tmp2)
   ! turn into right hand system of side
-  DO q=0,ZDIM(Nloc); DO p=0,Nloc
-    pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
+  DO q=0,PP_N; DO p=0,PP_N
+    pq=SideToVol2(PP_N,p,q,0,iLocSide,PP_dim)
     ! Compute Face_xGP for sides
     Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
   END DO; END DO ! p,q
@@ -756,28 +716,27 @@ DO iLocSide=2,5
     CASE(XI_MINUS)
       tmp=JaCL_N(dd,1:3,0   ,:   ,:   )
     CASE(XI_PLUS)
-      tmp=JaCL_N(dd,1:3,Nloc,:   ,:   )
+      tmp=JaCL_N(dd,1:3,PP_N,:   ,:   )
     CASE(ETA_MINUS)
       tmp=JaCL_N(dd,1:3,:   ,0   ,:   )
     CASE(ETA_PLUS)
-      tmp=JaCL_N(dd,1:3,:   ,Nloc,:   )
+      tmp=JaCL_N(dd,1:3,:   ,PP_N,:   )
     CASE(ZETA_MINUS)
       tmp=JaCL_N(dd,1:3,:   ,:   ,0   )
     CASE(ZETA_PLUS)
-      tmp=JaCL_N(dd,1:3,:   ,:   ,Nloc)
+      tmp=JaCL_N(dd,1:3,:   ,:   ,PP_N)
     END SELECT
-    CALL ChangeBasisSurf(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
+    CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_N,tmp,tmp2)
     ! turn into right hand system of side
-    DO q=0,ZDIM(Nloc); DO p=0,Nloc
-      pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
+    DO q=0,PP_N; DO p=0,PP_N
+      pq=SideToVol2(PP_N,p,q,0,iLocSide,PP_dim)
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! dd
-  IF(PRESENT(Ja_Face)) Ja_Face(:,:,:,:,SideID)=Ja_Face_l
-
+  Ja_Face(:,:,:,:,SideID)=Ja_Face_l
 
   NormalDir=NormalDirs(iLocSide); TangDir=TangDirs(iLocSide); NormalSign=NormalSigns(iLocSide)
-  CALL SurfMetricsFromJa(Nloc,NormalDir,TangDir,NormalSign,Ja_Face_l,&
+  CALL SurfMetricsFromJa(PP_N,NormalDir,TangDir,NormalSign,Ja_Face_l,&
                          NormVec(:,:,:,0,SideID),TangVec1(:,:,:,0,SideID),&
                          TangVec2(:,:,:,0,SideID),SurfElem(:,:,0,SideID))
 
@@ -796,23 +755,63 @@ DO iLocSide=2,5
 
   !compute metrics for mortar faces, interpolate Ja_Face to small sides
   IF(MortarType(1,SideID).GT.0)THEN
-    CALL Mortar_CalcSurfMetrics(SideID,Nloc,Ja_Face_l,Face_xGP(:,:,:,0,SideID),&
+    CALL Mortar_CalcSurfMetrics(SideID,PP_N,Ja_Face_l,Face_xGP(:,:,:,0,SideID),&
                                             Mortar_Ja,Mortar_xGP,nbSideIDs)
     DO iMortar=1,4
       SideID2=nbSideIDs(iMortar)
       IF(SideID2.LT.1) CYCLE ! for MPI sides some sides are built from the inside and for type 2/3 there are only 2 neighbours
-      IF(PRESENT(Ja_Face)) Ja_Face(:,:,:,:,SideID2)=Mortar_Ja(:,:,:,:,iMortar)
-      Face_xGP(:,:,:,0,SideID2) = Mortar_xGP(:,:,:,iMortar)
-      CALL SurfMetricsFromJa(Nloc,NormalDir,TangDir,NormalSign,Mortar_Ja(:,:,:,:,iMortar),&
+      Ja_Face( :,:,:,:,SideID2) = Mortar_Ja( :,:,:,:,iMortar)
+      Face_xGP(:,:,:,0,SideID2) = Mortar_xGP(:,:,:  ,iMortar)
+      CALL SurfMetricsFromJa(PP_N,NormalDir,TangDir,NormalSign,Mortar_Ja(:,:,:,:,iMortar),&
                              NormVec(:,:,:,0,SideID2),TangVec1(:,:,:,0,SideID2),&
                              TangVec2(:,:,:,0,SideID2),SurfElem(:,:,0,SideID2))
     END DO
   END IF
 END DO
 
+#if USE_MPI
+! Only communicate once, i.e. on the last element
+IF (iElem.EQ.nElems) THEN
+  ! Send surface geomtry informations from MPI master to MPI slave
+  ALLOCATE(Geo(10,0:PP_N,0:PP_NZ,0:FV_SIZE,firstMPISide_MINE:nSides))
+  Geo = 0.
+  Geo(1   ,:,:,:,:) = SurfElem(  :,0:PP_NZ,:,firstMPISide_MINE:nSides)
+  Geo(2:4 ,:,:,:,:) = NormVec (:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+  Geo(5:7 ,:,:,:,:) = TangVec1(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+  Geo(8:10,:,:,:,:) = TangVec2(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+  MPIRequest_Geo = MPI_REQUEST_NULL
+  CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
+  CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1)*(FV_SIZE+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
+  CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
+  SurfElem  (:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR) = Geo(1   ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+  NormVec (:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR) = Geo(2:4 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+  TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR) = Geo(5:7 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+  TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR) = Geo(8:10,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+  DEALLOCATE(Geo)
+
+#if FV_ENABLED
+#if USE_MPI
+  MPIRequest_Geo = MPI_REQUEST_NULL
+  CALL StartReceiveMPIData(sJ_slave(:,:,:,:,0),(PP_N+1)*(PP_NZ+1),1,nSides,MPIRequest_Geo(:,SEND),SendID=2)
+  CALL ProlongToFace1(PP_N,DetJac_N,sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),L_Minus,L_Plus,doMPISides=.TRUE.,pureDG=.TRUE.)
+  CALL U_Mortar1(sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),doMPISides=.TRUE.,pureDG=.TRUE.)
+  CALL StartSendMPIData(   sJ_slave(:,:,:,:,0),(PP_N+1)*(PP_NZ+1),1,nSides,MPIRequest_Geo(:,RECV),SendID=2)
+#endif
+  CALL ProlongToFace1(PP_N,DetJac_N,sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),L_Minus,L_Plus,doMPISides=.FALSE.,pureDG=.TRUE.)
+  CALL U_Mortar1(sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),doMPISides=.FALSE.,pureDG=.TRUE.)
+#if USE_MPI
+  CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
+#endif
+  sJ_slave( :,:,:,:,0) = 1./sJ_slave( :,:,:,:,0)
+  sJ_master(:,:,:,:,0) = 1./sJ_master(:,:,:,:,0)
+#endif /* FV_ENABLED */
+END IF
+#endif /*USE_MPI*/
+
 IF (meshHasMortars) DEALLOCATE(Mortar_Ja)
 
 END SUBROUTINE CalcSurfMetrics
+
 
 !==================================================================================================================================
 !> Computes surface normal and tangential vectors and surface area from surface metrics Ja_Face.

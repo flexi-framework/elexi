@@ -77,6 +77,8 @@ IMPLICIT NONE
 CALL prms%SetSection("LoadBalance")
 CALL prms%CreateLogicalOption( 'DoLoadBalance'                ,  "Set flag for doing dynamic LoadBalance."                        &
                                                               ,  '.FALSE.')
+CALL prms%CreateLogicalOption( 'UseH5IOLoadBalance'           , 'Use HDF5 IO for dynamic load balancing instead of MPI_ALLGATHERV'&
+                                                              ,  '.FALSE.')
 CALL prms%CreateIntOption(     'LoadBalanceSample'            ,  "Define number of iterations (before analyze_dt)"              //&
                                                                  " that are used for calculation of elemtime information"         &
                                                               ,  '1')
@@ -135,8 +137,8 @@ SUBROUTINE InitLoadBalance()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_LoadBalance_Vars       ,ONLY: InitLoadBalanceIsDone,DoLoadBalance,LoadBalanceSample
-USE MOD_LoadBalance_Vars       ,ONLY: PerformLBSample,PerformPartWeightLB
+USE MOD_LoadBalance_Vars       ,ONLY: InitLoadBalanceIsDone,DoLoadBalance,UseH5IOLoadBalance
+USE MOD_LoadBalance_Vars       ,ONLY: PerformLBSample,PerformPartWeightLB,LoadBalanceSample
 USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceCounter
 USE MOD_LoadBalance_Vars       ,ONLY: nLoadBalance,nLoadBalanceSteps,DeviationThreshold
 USE MOD_ReadInTools            ,ONLY: GETLOGICAL,GETREAL,GETINT
@@ -172,12 +174,14 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT LOAD BALANCE...'
 IF(nProcessors.EQ.1)THEN
   ! deactivate load balance for single core computations
   DoLoadBalance        = .FALSE.
+  UseH5IOLoadBalance   = .FALSE.
   SWRITE(UNIT_stdOut,'(A)') ' | No LoadBalance (nProcessors=1)'
   DeviationThreshold   = HUGE(1.0)
   PerformPartWeightLB  = .FALSE.
 ELSE
   WRITE(tmpStr,'(I5.5)') nWriteData
   DoLoadBalance        = GETLOGICAL('DoLoadBalance')
+  UseH5IOLoadBalance   = GETLOGICAL('UseH5IOLoadBalance')
   LoadBalanceSample    = GETINT    ('LoadBalanceSample')
   LoadBalanceMaxSteps  = GETINT    ('LoadBalanceMaxSteps')
   LoadBalanceInterval  = GETINT    ('LoadBalanceInterval',tmpStr)

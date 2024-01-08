@@ -29,10 +29,26 @@ PUBLIC
 SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! basis
-!----------------------------------------------------------------------------------------------------------------------------------
-INTEGER           :: NGeo                      !< polynomial degree of geometric transformation
-INTEGER           :: NGeoRef                   !< polynomial degree of reference jacobian
-!----------------------------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------------------------
+INTEGER          :: NGeo                        !< polynomial degree of geometric transformation
+INTEGER          :: NGeoRef                     !< polynomial degree of geometric transformation
+INTEGER          :: NGeoElevated                !< polynomial degree of elevated geometric transformation
+! REAL,ALLOCATABLE :: Xi_NGeo(:)                  !< 1D equidistant point positions for curved elements (during readin)
+! REAL             :: DeltaXi_NGeo
+REAL,ALLOCATABLE :: Vdm_EQ_N(:,:)               !< Vandermonde mapping from equidistant (visu) to NodeType node set
+REAL,ALLOCATABLE :: Vdm_N_EQ(:,:)               !< Vandermonde mapping from NodeType to equidistant (visu) node set
+REAL,ALLOCATABLE :: Vdm_GL_N(:,:)               !< Vandermonde mapping from Gauss-Lobatto (analyze) to NodeType node set
+REAL,ALLOCATABLE :: Vdm_N_GL(:,:)               !< Vandermonde mapping from NodeType to Gauss-Lobatto (analyze) node set
+! check if these arrays are still used
+! REAL,ALLOCATABLE :: Vdm_CLN_GaussN(:,:)
+! REAL,ALLOCATABLE :: Vdm_CLNGeo_CLN(:,:)
+! REAL,ALLOCATABLE :: Vdm_CLNGeo_GaussN(:,:)
+! REAL,ALLOCATABLE :: Vdm_NGeo_CLNGeo(:,:)
+! REAL,ALLOCATABLE :: DCL_NGeo(:,:)
+! REAL,ALLOCATABLE :: DCL_N(:,:)
+REAL,ALLOCATABLE :: Vdm_CLN_N(:,:)
+REAL,ALLOCATABLE :: XCL_N(:,:,:,:,:)             !< mapping X(xi) P\in N
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE,TARGET :: NodeCoords(:,:,:,:,:) !< XYZ positions (equidistant,NGeo) of element interpolation points from meshfile
@@ -67,6 +83,8 @@ REAL,ALLOCATABLE :: sJ(:,:,:,:,:)                !< inverse of Jacobian determin
 REAL,ALLOCATABLE :: scaledJac(:,:,:,:)           !< scaled Jacobian determinent for each Gauss Point at degree N
 REAL,ALLOCATABLE :: sJ_master(:,:,:,:,:)         !< Jacobian on faces master
 REAL,ALLOCATABLE :: sJ_slave(:,:,:,:,:)          !< Jacobian on faces slave
+REAL,ALLOCATABLE :: JaCL_N(:,:,:,:,:,:)          !< metric terms P\in N
+REAL,ALLOCATABLE :: DetJac_N(:,:,:,:,:)          !<
 !----------------------------------------------------------------------------------------------------------------------------------
 ! surface vectors
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -91,6 +109,7 @@ INTEGER,ALLOCATABLE :: SideToElem(:,:)         !< Array containing per-side conn
                                                !< locSideID   = SideToElem(S2E_LOC_SIDE_ID,SideID)
                                                !< nblocSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
                                                !< flip        = SideToElem(S2E_Flip,SideID)
+INTEGER,ALLOCATABLE :: ElemGlobalID(:)         !< global element id of each element
 
 INTEGER,ALLOCATABLE :: BC(:)                   !< BCIndex   = BC(SideID), 1:nBCSides
 

@@ -147,14 +147,15 @@ INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx
 REAL              :: meshScale
 INTEGER           :: NGeoOverride
 #endif /*!USE_PARTICLES*/
+! Timer
+REAL              :: StartT,EndT,WallTime
 !==================================================================================================================================
-IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
-  CALL CollectiveStop(__STAMP__,&
-    'InitMesh not ready to be called or already called.')
-END IF
+IF (.NOT.InterpolationInitIsDone .OR. MeshInitIsDone) &
+  CALL CollectiveStop(__STAMP__,'InitMesh not ready to be called or already called.')
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT MESH IN MODE ',meshMode,'...'
+GETTIME(StartT)
 
 ! prepare pointer structure (get nElems, etc.)
 IF (PRESENT(MeshFile_IN)) THEN
@@ -518,7 +519,10 @@ IF ((.NOT.postiMode).AND.(ALLOCATED(scaledJac))) DEALLOCATE(scaledJac)
 ! CALL AddToElemData(ElementOut,'ElemID',LongIntArray=ElemGlobalID)
 
 MeshInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
+
+GETTIME(EndT)
+WallTime = EndT-StartT
+CALL DisplayMessageAndTime(WallTime,'INIT MESH DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitMesh

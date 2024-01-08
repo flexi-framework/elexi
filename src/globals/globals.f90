@@ -573,7 +573,6 @@ WRITE(UNIT_stdOut,'(132("="))')
 END SUBROUTINE DisplaySimulationTime
 
 
-#if USE_PARTICLES
 !===================================================================================================================================
 ! Output message to UNIT_stdOut and an elapsed time is seconds as well as min/hour/day format
 !===================================================================================================================================
@@ -653,6 +652,7 @@ END IF ! LocalRoot.AND.((.NOT.PerformLoadBalance).OR.DisplayDespiteLBLoc)
 END SUBROUTINE DisplayMessageAndTime
 
 
+#if USE_PARTICLES
 !===================================================================================================================================
 !> Write min, max, average and total number of simulations particles to stdout stream
 !===================================================================================================================================

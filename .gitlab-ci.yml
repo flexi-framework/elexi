@@ -106,6 +106,7 @@ reggie_download:
   stage: build
   script:
     - git clone https://github.com/piclas-framework/reggie2.0.git reggie
+    - if [ -f "reggie/.git/refs/heads/master" ]; then cat reggie/.git/refs/heads/master ; fi
 
 build:
   extends: .default_build_param

@@ -655,8 +655,8 @@ USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)    :: JaCL_N(1:3,1:3,0:PP_N,0:PP_N,0:PP_N) !< (IN) volume metrics of element
-INTEGER,INTENT(IN) :: iElem                                !< (IN) element index
+REAL,INTENT(IN)    :: JaCL_N(1:3,1:3,0:PP_N,0:PP_N,0:PP_NZ) !< (IN) volume metrics of element
+INTEGER,INTENT(IN) :: iElem                                 !< (IN) element index
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
@@ -665,10 +665,10 @@ INTEGER            :: nMortars,tmp_MI(1:2),SideID_Mortar
 #endif
 INTEGER            :: NormalDir,TangDir
 REAL               :: NormalSign
-REAL               :: Ja_Face_l(3,3,0:PP_N,0:ZDIM(PP_N))
-REAL               :: Mortar_xGP( 3,0:PP_N,0:ZDIM(PP_N),4)
-REAL               :: tmp(        3,0:PP_N,0:ZDIM(PP_N))
-REAL               :: tmp2(       3,0:PP_N,0:ZDIM(PP_N))
+REAL               :: Ja_Face_l(3,3,0:PP_N,0:PP_NZ)
+REAL               :: Mortar_xGP( 3,0:PP_N,0:PP_NZ,4)
+REAL               :: tmp(        3,0:PP_N,0:PP_NZ)
+REAL               :: tmp2(       3,0:PP_N,0:PP_NZ)
 ! Mortars
 REAL,ALLOCATABLE   :: Mortar_Ja(:,:,:,:,:)
 #if USE_MPI
@@ -677,7 +677,7 @@ REAL,ALLOCATABLE   :: Geo(:,:,:,:,:)
 #endif /*USE_MPI*/
 !==================================================================================================================================
 
-IF (meshHasMortars) ALLOCATE(Mortar_Ja(3,3,0:PP_N,0:ZDIM(PP_N),4))
+IF (meshHasMortars) ALLOCATE(Mortar_Ja(3,3,0:PP_N,0:PP_NZ,4))
 
 #if PP_dim == 3
 DO iLocSide=1,6
@@ -704,7 +704,7 @@ DO iLocSide=2,5
   END SELECT
   CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_N,tmp,tmp2)
   ! turn into right hand system of side
-  DO q=0,PP_N; DO p=0,PP_N
+  DO q=0,PP_NZ; DO p=0,PP_N
     pq=SideToVol2(PP_N,p,q,0,iLocSide,PP_dim)
     ! Compute Face_xGP for sides
     Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
@@ -728,7 +728,7 @@ DO iLocSide=2,5
     END SELECT
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_N,tmp,tmp2)
     ! turn into right hand system of side
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       pq=SideToVol2(PP_N,p,q,0,iLocSide,PP_dim)
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q

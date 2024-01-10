@@ -588,7 +588,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: Message          !< Output message
-REAL,INTENT(IN)             :: ElapsedTimeIn !< Time difference
+REAL,INTENT(IN)             :: ElapsedTimeIn    !< Time difference
 LOGICAL,INTENT(IN),OPTIONAL :: DisplayDespiteLB !< Display output even though LB is performed (default is FALSE)
 LOGICAL,INTENT(IN),OPTIONAL :: DisplayLine      !< Display 132*"-" (default is TRUE)
 INTEGER,INTENT(IN),OPTIONAL :: rank             !< if 0, some kind of root is assumed, every other processor return this routine

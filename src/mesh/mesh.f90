@@ -285,7 +285,7 @@ ELSE
 ! Build the coordinates of the solution gauss points in the volume
 #endif /*USE_LOADBALANCE*/
   SDEALLOCATE(Elem_xGP)
-  ALLOCATE(Elem_xGP      (3,0:PP_N,0:PP_N,0:PP_N,nElems))
+  ALLOCATE(Elem_xGP      (3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
   IF(interpolateFromTree)THEN
     CALL BuildCoords(NodeCoords,NodeType,PP_N,Elem_xGP,TreeCoords)
   ELSE

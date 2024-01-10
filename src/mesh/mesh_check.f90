@@ -377,7 +377,7 @@ IF (MPIRoot) THEN
 END IF
 
 GETTIME(EndT)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' CHECK SIDE CONNECTIVITY DONE! [',EndT-StartT,'s]'
+CALL DisplayMessageAndTime(EndT-StartT, 'CHECK SIDE CONNECTIVITY DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.FALSE.)
 SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE CheckMesh

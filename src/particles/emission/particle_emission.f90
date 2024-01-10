@@ -181,8 +181,7 @@ DO i = 1,PDM%ParticleVecLength
 END DO
 
 GETTIME(EndT)
-LBWRITE(UNIT_stdOut,'(A,F0.3,A)') ' INITIAL PARTICLE INSERTING DONE! [',EndT-StartT,'s]'
-LBWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, 'INITIAL PARTICLE INSERTING DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 END SUBROUTINE InitializeParticleEmission
 

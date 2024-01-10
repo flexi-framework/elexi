@@ -311,7 +311,7 @@ END DO
 SWRITE(Unit_stdOut,'(I12,A)') nNotFound,' nodes not found.'
 
 EndT = FLEXITIME()
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' EVALUATING PARAMETRIC COORDINATES DONE  [',EndT-StartT,'s]'
+CALL DisplayMessageAndTime(EndT-StartT, 'EVALUATING PARAMETRIC COORDINATES DONE', DisplayDespiteLB=.TRUE., DisplayLine=.FALSE.)
 
 END SUBROUTINE GetParametricCoordinates
 

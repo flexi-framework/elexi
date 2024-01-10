@@ -481,8 +481,8 @@ END SUBROUTINE CalcSpongeRamp
 !==================================================================================================================================
 SUBROUTINE ReadBaseFlow(FileName)
 ! MODULES
-USE MOD_PreProc
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
 USE MOD_HDF5_Input,         ONLY: File_ID
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetDataProps,DatasetExists
@@ -531,8 +531,7 @@ IF (PerformLoadBalance) THEN
   CALL MOVE_ALLOC(SpBaseFlowTmp,SpBaseFlow)
 
   GETTIME(EndT)
-  SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
-  SWRITE(UNIT_stdOut,'(132("-"))')
+  CALL DisplayMessageAndTime(EndT-StartT, 'DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 ! Full restart
 ELSE
 #endif /*USE_LOADBALANCE*/
@@ -572,8 +571,7 @@ ELSE
   CALL CloseDataFile()
 
   GETTIME(EndT)
-  SWRITE(UNIT_stdOut,'(A,F0.3,A)')' |> Reading sponge base flow from file DONE! [',EndT-StartT,'s]'
-  SWRITE(UNIT_stdOut,'(132("-"))')
+  CALL DisplayMessageAndTime(EndT-StartT, '|> Reading sponge base flow from file DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 #if USE_LOADBALANCE
 END IF ! PerformLoadBalance

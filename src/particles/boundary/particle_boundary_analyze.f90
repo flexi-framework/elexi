@@ -365,7 +365,7 @@ PartStateBoundary          = 0.
 IF (MPIRoot) THEN
 !  CALL MarkWriteSuccessful(FileString)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES') 'DONE! [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 END IF
 
 END SUBROUTINE WriteBoundaryParticleToHDF5

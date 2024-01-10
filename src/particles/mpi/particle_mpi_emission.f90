@@ -406,8 +406,7 @@ DO iSpec = 1,nSpecies
 END DO ! iSpec
 
 GETTIME(EndT)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)') ' INIT PARTICLE PARALLEL EMISSION DONE! [',EndT-StartT,'s]'
-SWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, 'INIT PARTICLE PARALLEL EMISSION DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 END SUBROUTINE InitEmissionComm
 

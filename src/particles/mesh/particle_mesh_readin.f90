@@ -776,7 +776,7 @@ IF (PerformLoadBalance) THEN
   CALL BARRIER_AND_SYNC(ElemInfo_Shared_Win,MPI_COMM_SHARED)
   CALL BARRIER_AND_SYNC(SideInfo_Shared_Win,MPI_COMM_SHARED)
 
-  SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DONE  [',CommMeshReadinWallTime,'s]'
+  CALL DisplayMessageAndTime(CommMeshReadinWallTime,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
   RETURN
 END IF
 #endif /*USE_LOADBALANCE*/
@@ -876,7 +876,7 @@ END IF
 
 EndT                   = FLEXITIME()
 CommMeshReadinWallTime = EndT-StartT
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DONE  [',CommMeshReadinWallTime,'s]'
+CALL DisplayMessageAndTime(CommMeshReadinWallTime,'DONE',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 SWRITE(UNIT_stdOut,'(132("."))')
 
 END SUBROUTINE FinishCommunicateMeshReadin

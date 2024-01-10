@@ -648,8 +648,13 @@ days = ElapsedTime
 ! Output message
 IF(LocalRoot.AND.((.NOT.PerformLoadBalance).OR.DisplayDespiteLBLoc))THEN
   WRITE(hilf,'(F16.2)')  ElapsedTimeIn
-  WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')  ' '//TRIM(Message)//' [ '//TRIM(ADJUSTL(hilf))//' sec ]'
-  WRITE(UNIT_stdOut,'(A3,I0,A1,I0.2,A1,I0.2,A1,I0.2,A2)') ' [ ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' ]'
+  ! Only output the second if it is actually useful
+  IF (ElapsedTimeIn.GT.60) THEN
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')  ' '//TRIM(Message)//' [ '//TRIM(ADJUSTL(hilf))//' sec ]'
+    WRITE(UNIT_stdOut,'(A3,I0,A1,I0.2,A1,I0.2,A1,I0.2,A2)') ' [ ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' ]'
+  ELSE
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' '//TRIM(Message)//' [ '//TRIM(ADJUSTL(hilf))//' sec ]'
+  END IF
   IF(DisplayLineLoc) WRITE(UNIT_StdOut,'(132("-"))')
 END IF ! LocalRoot.AND.((.NOT.PerformLoadBalance).OR.DisplayDespiteLBLoc)
 

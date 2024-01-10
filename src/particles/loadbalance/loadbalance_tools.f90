@@ -222,7 +222,7 @@ IF (ElemTimeExists.AND.MPIRoot) THEN
   SWRITE(UNIT_stdOut,'(132("."))')
   DEALLOCATE(WeightSum_proc)
 ELSE
-  SWRITE(UNIT_stdOut,'(A)') ' No ElemTime found in restart file'
+  SWRITE(UNIT_stdOut,'(A)') ' | No ElemTime found in restart file'
   NewImbalance = -1.
   MaxWeight    = -1.
   MinWeight    = -1.
@@ -233,8 +233,7 @@ END IF
 
 EndT                        = FLEXITIME()
 DomainDecompositionWallTime = EndT-StartT
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' DOMAIN DECOMPOSITION DONE! [',DomainDecompositionWallTime,'s]'
-SWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(DomainDecompositionWallTime,'DOMAIN DECOMPOSITION DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.TRUE.)
 
 END SUBROUTINE DomainDecomposition
 
@@ -304,7 +303,7 @@ ELSE
     CALL CloseDataFile()
 
     GETTIME(EndT)
-    WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+    CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
   ELSE
     IF(MPIRoot)THEN
       WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO') ' | Reading ElemTime from restart file (MPI-mode)   : ',TRIM(RestartFile),' ...'
@@ -320,7 +319,7 @@ ELSE
 
     IF(MPIRoot)THEN
       GETTIME(EndT)
-      WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+      CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
     END IF
   END IF ! single
 END IF

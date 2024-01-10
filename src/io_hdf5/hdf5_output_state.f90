@@ -214,7 +214,7 @@ CALL WriteAdditionalFieldData(FileName,FieldOut)
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessful(FileName)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 END IF
 
 #if USE_MPI

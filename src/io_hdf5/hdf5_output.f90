@@ -470,7 +470,7 @@ IF(.NOT.output2D) DEALLOCATE(UOut)
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessful(FileName)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 END IF
 
 END SUBROUTINE WriteBaseflow
@@ -605,7 +605,7 @@ IF(MPIRoot) CALL MarkWriteSuccessful(FileName)
 
 IF(MPIRoot)THEN
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 END IF
 END SUBROUTINE WriteTimeAverage
 
@@ -838,7 +838,7 @@ DO
 END DO
 
 GETTIME(EndT)
-WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DELETING OLD HDF5 FILES DONE! [',EndT-StartT,'s]'
+CALL DisplayMessageAndTime(EndT-StartT,'DELETING OLD HDF5 FILES DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 
 END SUBROUTINE FlushFiles
 
@@ -879,7 +879,7 @@ IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
 IF(iError.NE.0) WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '**** FAILED to remove ['//TRIM(InputFile)//'] with iError.NE.0 ****'
 
 GETTIME(EndT)
-WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE! [',EndT-StartT,'s]'
+CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 
 END SUBROUTINE RemoveHDF5
 

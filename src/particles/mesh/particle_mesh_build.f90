@@ -1404,8 +1404,7 @@ CALL BARRIER_AND_SYNC(BaseVectors3_Shared_Win,MPI_COMM_SHARED)
 #endif /* USE_MPI */
 
 GETTIME(EndT)
-LBWRITE(UNIT_stdOut,'(A,F0.3,A)')' GET LINEAR SIDE BASEVECTORS DONE! [',EndT-StartT,'s]'
-!LBWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT,'GET LINEAR SIDE BASEVECTORS DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 END SUBROUTINE BuildLinearSideBaseVectors
 
 

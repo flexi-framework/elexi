@@ -134,8 +134,7 @@ CALL AddToElemData(ElementOut,'FV_alpha',RealArray=FV_alpha)
 #endif /*FV_ENABLED*/
 
 GETTIME(EndT)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
-SWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, 'DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 END SUBROUTINE FieldRestart
 #endif /*USE_LOADBALANCE*/

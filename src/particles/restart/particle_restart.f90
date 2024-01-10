@@ -522,8 +522,7 @@ IF (ImpactRestart) CALL CalcSurfaceValues(restart_opt=.TRUE.)
 CALL GetOffsetAndGlobalNumberOfParts('ParticleRestart',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
 
 GETTIME(EndT)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' RESTARTING PARTICLES DONE! [',EndT-StartT,'s]'
-SWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, 'RESTARTING PARTICLES DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 !#if USE_MPI
 !CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)

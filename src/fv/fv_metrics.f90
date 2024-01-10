@@ -118,10 +118,10 @@ INTEGER                                :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
 #endif
 ! Timer
-REAL                                   :: StartT,EndT,WallTime
+REAL                                   :: StartT,EndT
 !==================================================================================================================================
 
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' Build FV Metrics ...'
+LBWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' Build FV Metrics ...'
 GETTIME(StartT)
 
 #if FV_RECONSTRUCT
@@ -561,8 +561,7 @@ END DO
 #endif /* FV_RECONSTRUCT */
 
 GETTIME(EndT)
-WallTime = EndT-StartT
-CALL DisplayMessageAndTime(WallTime,'DONE',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
+CALL DisplayMessageAndTime(EndT-StartT,'DONE',DisplayDespiteLB=.FALSE.,DisplayLine=.FALSE.)
 
 END SUBROUTINE InitFV_Metrics
 

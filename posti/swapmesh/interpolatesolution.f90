@@ -188,7 +188,7 @@ IF (ExtrudePeriodic) THEN
 END IF
 
 EndT = FLEXITIME()
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INTERPOLATE STATE TO NEW MESH DONE  [',EndT-StartT,'s]'
+CALL DisplayMessageAndTime(EndT-StartT, 'INTERPOLATE STATE TO NEW MESH DONE', DisplayDespiteLB=.TRUE., DisplayLine=.FALSE.)
 
 END SUBROUTINE InterpolateSolution
 

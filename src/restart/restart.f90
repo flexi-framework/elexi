@@ -198,8 +198,7 @@ END IF
 CALL CloseDataFile()
 
 GETTIME(EndT)
-LBWRITE(UNIT_stdOut,'(A,F0.3,A)') ' CHECK RESTART FILE DONE! [',EndT-StartT,'s]'
-LBWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, 'CHECK RESTART FILE DONE!', DisplayDespiteLB=.FALSE., DisplayLine=.TRUE.)
 
 END SUBROUTINE InitRestartFile
 
@@ -331,8 +330,7 @@ FlushInitialState = GETLOGICAL('FlushInitialState')
 RestartWallTime   = FLEXITIME()
 RestartInitIsDone = .TRUE.
 GETTIME(EndT)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INIT RESTART DONE! [',EndT-StartT,'s]'
-SWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, 'INIT RESTART DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 END SUBROUTINE InitRestart
 
@@ -625,8 +623,7 @@ IF (DoRestart) THEN
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
 #endif
   GETTIME(EndT)
-  SWRITE(UNIT_stdOut,'(A,F0.3,A)')' PERFORMING RESTART DONE! [',EndT-StartT,'s]'
-  SWRITE(UNIT_stdOut,'(132("-"))')
+  CALL DisplayMessageAndTime(EndT-StartT, 'PERFORMING RESTART DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 ELSE
 #if !(USE_PARTICLES)
   ! Delete all files since we are doing a fresh start --> moved to particle_restart.f90 since we need it there ! Delete all files since we are doing a fresh start --> moved to particle_restart.f90 since we need it there

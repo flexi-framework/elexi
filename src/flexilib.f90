@@ -269,7 +269,7 @@ CALL prms%WriteUnused()
 ! Measure init duration
 InitializationWallTime = FLEXITIME()-StartTime
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' INITIALIZATION DONE! [',InitializationWallTime,' sec ]'
+CALL DisplayMessageAndTime(InitializationWallTime,'INITIALIZATION DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 SWRITE(UNIT_stdOut,'(132("="))')
 
 ! Generate Unittest Data

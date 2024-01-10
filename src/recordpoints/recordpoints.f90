@@ -348,7 +348,8 @@ IF (PerformLoadBalance) THEN
   nSamples       = 0
 
   ! GETTIME(EndT)
-  ! SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
+  ! CALL DisplayMessageAndTime(EndT-StartT, 'DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.FALSE.)
+
 
 ! NOT. PerformLoadBalance
 ELSE
@@ -402,7 +403,7 @@ ELSE
   CALL CloseDataFile()
 
   GETTIME(EndT)
-  SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT, 'DONE', DisplayDespiteLB=.TRUE., DisplayLine=.FALSE.)
 #if USE_LOADBALANCE
 END IF ! PerformLoadBalance
 #endif /*USE_LOADBALANCE*/
@@ -698,7 +699,7 @@ IF (myRPrank.EQ.0) THEN
 #endif /* USE_MPI */
   CALL MarkWriteSuccessful(Filestring)
   GETTIME(EndT)
-  WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' WRITE RECORDPOINT DATA TO HDF5 FILE DONE! [',EndT-StartT,'s]'
+  CALL DisplayMessageAndTime(EndT-StartT, 'WRITE RECORDPOINT DATA TO HDF5 FILE DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.FALSE., rank=0)
 #if USE_MPI
 END IF
 #endif /* USE_MPI */

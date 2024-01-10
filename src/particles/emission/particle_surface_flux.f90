@@ -312,8 +312,7 @@ END IF
 SDEALLOCATE(tmp_BezierControlPoints2D)
 
 GETTIME(EndT)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)')' INIT PARTICLE SURFACE FLUX DONE! [',EndT-StartT,'s]'
-SWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, 'INIT PARTICLE SURFACE FLUX DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 END SUBROUTINE InitializeParticleSurfaceflux
 

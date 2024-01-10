@@ -217,8 +217,7 @@ IF (PerformLoadBalance) THEN
   ! ------------------------------------------------
   ! Impact data has no processor association, can remain on the previous processor
   GETTIME(EndT)
-  SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE! [',EndT-StartT,'s]'
-  SWRITE(UNIT_stdOut,'(132("-"))')
+  CALL DisplayMessageAndTime(EndT-StartT, 'DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 ! NOT. PerformLoadBalance
 ELSE
@@ -405,8 +404,7 @@ ELSE
 
   CALL CloseDataFile()
   GETTIME(EndT)
-  SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' READING PARTICLES FROM RESTARTFILE DONE! [',EndT-StartT,'s]'
-  SWRITE(UNIT_stdOut,'(132("-"))')
+  CALL DisplayMessageAndTime(EndT-StartT, ' READING PARTICLES FROM RESTARTFILE DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
   ! Delete all files that will be rewritten --> moved from restart.f90 since we need it here
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)

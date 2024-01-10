@@ -102,7 +102,7 @@ TYPE tInit                                                                   ! P
 #if USE_PARTTEMP
   CHARACTER(30)                          :: tempDistribution                 ! specifying keyword for temperature distribution
 #endif /*USE_PARTTEMP*/
-  INTEGER(8)                             :: initialParticleNumber            ! Number of Particles at time 0.0
+  REAL                                   :: initialParticleNumber            ! Number of Particles at time 0.0
   REAL                                   :: RadiusIC                         ! Radius for IC circle
   REAL                                   :: Radius2IC                        ! Radius2 for IC cylinder (ring)
   REAL                                   :: InflowRiseTime                   ! time to ramp the number of inflow particles

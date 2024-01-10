@@ -294,7 +294,7 @@ CALL prms%CreateLogicalOption(      'Part-Species[$]-UseForEmission', 'Flag to u
                                                                 , '.TRUE.'  , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-UseForInit', 'Flag to use Init/Emission for init'                             &
                                                                 , '.TRUE.'  , numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(          'Part-Species[$]-initialParticleNumber', 'Initial particle number'                             &
+CALL prms%CreateRealOption(         'Part-Species[$]-initialParticleNumber', 'Initial particle number'                             &
                                                                 , '0'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-InflowRiseTime', 'Time to ramp the number of inflow particles linearly from'//&
                                                                   ' zero to unity'                                                 &
@@ -385,7 +385,7 @@ CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-UseForEmission', 'F
                                                                 , '.TRUE.'  , numberedmulti=.TRUE.)
 CALL prms%CreateLogicalOption(      'Part-Species[$]-Init[$]-UseForInit', 'Flag to use Init/Emission for init'                     &
                                                                 , '.TRUE.'  , numberedmulti=.TRUE.)
-CALL prms%CreateIntOption(          'Part-Species[$]-Init[$]-initialParticleNumber', 'Initial particle number'                     &
+CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-initialParticleNumber', 'Initial particle number'                     &
                                                                 , '0'       , numberedmulti=.TRUE.)
 CALL prms%CreateRealOption(         'Part-Species[$]-Init[$]-InflowRiseTime', 'Time to ramp the number of inflow particles linearly from' //&
                                                                   ' zero to unity'                                                 &
@@ -1260,7 +1260,7 @@ DO iSpec = 1, nSpecies
     LBWRITE(UNIT_stdOut,'(A,I0,A,I0)') ' | Reading emission particle properties for Species',iSpec,'-Init',iInit
     Species(iSpec)%Init(iInit)%UseForInit            = GETLOGICAL(  'Part-Species'//TRIM(tmpStr2)//'-UseForInit'            )
     Species(iSpec)%Init(iInit)%UseForEmission        = GETLOGICAL(  'Part-Species'//TRIM(tmpStr2)//'-UseForEmission'        )
-    Species(iSpec)%Init(iInit)%initialParticleNumber = GETINT(      'Part-Species'//TRIM(tmpStr2)//'-initialParticleNumber' )
+    Species(iSpec)%Init(iInit)%initialParticleNumber = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-initialParticleNumber' )
     Species(iSpec)%Init(iInit)%ParticleEmissionType  = GETINT(      'Part-Species'//TRIM(tmpStr2)//'-ParticleEmissionType'  )
     Species(iSpec)%Init(iInit)%ParticleEmission      = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-ParticleEmission'      )
     Species(iSpec)%Init(iInit)%ParticleEmissionTime  = GETREAL(     'Part-Species'//TRIM(tmpStr2)//'-ParticleEmissionTime'  )

@@ -247,6 +247,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_LOGICAL_1'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -262,24 +263,27 @@ WRITE(UNIT=hilf,FMT='(I0)') SM_CALL_FILE_LINE
 LWRITE(UNIT_stdOut,'(A,I7,A65,I20)') "myrank=",myrank," Allocated "//TRIM(SM_WIN_NAME)//" with WIN_SIZE = ",WIN_SIZE
 #endif /*DEBUG_MEMORY*/
 
-IF (ASSOCIATED(DataPointer)) CALL abort(&
-__STAMP__&
-,'ERROR: Datapointer (Logical1) already associated'&
+IF (ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') already associated'&
 #if DEBUG_MEMORY
 //' for '//TRIM(SM_WIN_NAME)//' in file '//TRIM(SM_CALL_FILE)//' in line '//TRIM(hilf)&
 #endif /*DEBUG_MEMORY*/
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
+
 
 END SUBROUTINE ALLOCATE_SHARED_LOGICAL_1
 
@@ -312,6 +316,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_LOGICAL_2'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -336,15 +341,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_LOGICAL_2
 
@@ -377,6 +386,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_INT_1'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -401,15 +411,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_INT_1
 
@@ -444,6 +458,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_INT_2'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -468,15 +483,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_INT_2
 
@@ -510,6 +529,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_INT_3'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -534,15 +554,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_INT_3
 
@@ -576,6 +600,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_INT_4'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -600,15 +625,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_INT_4
 
@@ -642,6 +671,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_REAL_1'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -666,15 +696,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_REAL_1
 
@@ -708,6 +742,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_REAL_2'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -732,15 +767,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_REAL_2
 
@@ -774,6 +813,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_REAL_3'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -798,15 +838,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_REAL_3
 
@@ -840,6 +884,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_REAL_4'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -864,15 +909,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_REAL_4
 
@@ -906,6 +955,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_REAL_5'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -930,15 +980,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_REAL_5
 
@@ -972,6 +1026,7 @@ INTEGER,INTENT(IN)                        :: SM_CALL_FILE_LINE        !> Line in
 TYPE(C_PTR)                               :: SM_PTR                   !> Base pointer, translated to DataPointer later
 INTEGER                                   :: DISP_UNIT                !> Displacement unit
 INTEGER(KIND=MPI_ADDRESS_KIND)            :: WIN_SIZE                 !> Size of the allocated memory window on current proc
+CHARACTER(32),PARAMETER                   :: FuncName='ALLOCATE_SHARED_REAL_6'
 #if DEBUG_MEMORY
 CHARACTER(32)                             :: hilf                     !> Convert line number from int to string
 #endif /*DEBUG_MEMORY*/
@@ -996,15 +1051,19 @@ __STAMP__&
 )
 
 ! Allocate MPI-3 remote memory access (RMA) type memory window
-CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN,IERROR)
+CALL MPI_WIN_ALLOCATE_SHARED(WIN_SIZE, DISP_UNIT, MPI_INFO_SHARED_LOOSE, MPI_COMM_SHARED, SM_PTR, SM_WIN, IERROR)
+IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_ALLOCATE_SHARED returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 
 ! Node MPI root already knows the location in virtual memory, all other find it here
 IF (myComputeNodeRank.NE.0) THEN
-  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR,IERROR)
+  CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
+  IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
+IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
-CALL C_F_POINTER(SM_PTR, DataPointer,nVal)
+CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
+IF (.NOT.ASSOCIATED(DataPointer)) CALL abort(__STAMP__,'ERROR: Datapointer ('//TRIM(FuncName)//') could not be associated')
 
 END SUBROUTINE ALLOCATE_SHARED_REAL_6
 

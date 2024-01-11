@@ -203,12 +203,54 @@ ELSE()
 ENDIF()
 
 # =========================================================================
+# MPI Shared Memory
+# =========================================================================
+# Shared memory split type. Only available with OpenMPI
+SET(FLEXI_SPLIT_TYPE "$ENV{FLEXI_SPLIT_TYPE}")
+IF("${FLEXI_SPLIT_TYPE}" STREQUAL "")
+  SET(FLEXI_SPLIT_TYPE "MPI_COMM_TYPE_SHARED")
+ELSE()
+  MESSAGE(STATUS "Using user-defined environment variable [FLEXI_SPLIT_TYPE = ${FLEXI_SPLIT_TYPE}] for shared memory communicator splitting. Setting [FLEXI_SHARED_MEMORY = ${FLEXI_SPLIT_TYPE}]")
+ENDIF()
+SET(FLEXI_SHARED_MEMORY "${FLEXI_SPLIT_TYPE}" CACHE STRING "Split type for creating new communicators based on colors and keys (requires MPI 3 or higher). Options with the prefix OMPI_ are specific to Open MPI.")
+SET_PROPERTY(CACHE FLEXI_SHARED_MEMORY PROPERTY STRINGS MPI_COMM_TYPE_SHARED
+                                                        OMPI_COMM_TYPE_CORE
+                                                        FLEXI_COMM_TYPE_NODE)
+
+REMOVE_DEFINITIONS(-DSHARED_MEMORY_METHOD)
+REMOVE_DEFINITIONS(-DCORE_SPLIT)
+ADD_DEFINITIONS(-DSHARED_MEMORY_METHOD=${FLEXI_SHARED_MEMORY})
+IF(FLEXI_SHARED_MEMORY STREQUAL "MPI_COMM_TYPE_SHARED")
+  UNSET(FLEXI_SHARED_MEMORY_CORES CACHE)
+  ADD_DEFINITIONS(-DCORE_SPLIT=0)
+  MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
+ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "FLEXI_COMM_TYPE_NODE")
+  SET(FLEXI_SHARED_MEMORY_CORES "2" CACHE STRING "Number of cores per node when setting FLEXI_SHARED_MEMORY=FLEXI_COMM_TYPE_NODE. All cores must be on the same physical node!")
+  ADD_DEFINITIONS(-DCORE_SPLIT=${FLEXI_SHARED_MEMORY_CORES})
+  MESSAGE(STATUS "Shared memory split type for subcommunicators set to sub-node-level with user-specific value [FLEXI_SHARED_MEMORY_CORES = ${FLEXI_SHARED_MEMORY_CORES}] cores per node")
+ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
+  UNSET(FLEXI_SHARED_MEMORY_CORES CACHE)
+  ADD_DEFINITIONS(-DCORE_SPLIT=1)
+  MESSAGE(STATUS "Shared memory split type for subcommunicators set to core-level")
+ENDIF()
+
+CMAKE_DEPENDENT_OPTION(FLEXI_SHARED_MEMORY_DEBUG "Output shared memory window sizes" OFF
+                                                 "LIBS_USE_MPI"                      OFF)
+MARK_AS_ADVANCED(FORCE FLEXI_SHARED_MEMORY_DEBUG)
+
+# Shared memory debug flags
+REMOVE_DEFINITIONS(-DDEBUG_MEMORY)
+IF (FLEXI_SHARED_MEMORY_DEBUG)
+  ADD_DEFINITIONS(-DDEBUG_MEMORY=1)
+ELSE()
+  ADD_DEFINITIONS(-DDEBUG_MEMORY=0)
+ENDIF()
+
+# =========================================================================
 # Particle tracking
 # =========================================================================
 OPTION(PARTICLES "Enable particle tracking" OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_CODE_ANALYZE "Output code analyze messages"         OFF
-                                              "PARTICLES"                            OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_DEBUG_MEMORY "Output shared memory window sizes"    OFF
                                               "PARTICLES"                            OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_LOADBALANCE  "Use LoadBalance timemeasurement"      OFF
                                               "PARTICLES;LIBS_USE_MPI"               OFF)
@@ -239,7 +281,6 @@ CMAKE_DEPENDENT_OPTION(PARTICLES_ANALYZE_RHS  "Write rhs to file for particles" 
 # Hide debug options by default
 MARK_AS_ADVANCED(FORCE PARTICLES_ANALYZE_RHS)
 MARK_AS_ADVANCED(FORCE PARTICLES_CODE_ANALYZE)
-MARK_AS_ADVANCED(FORCE PARTICLES_DEBUG_MEMORY)
 
 IF(PARTICLES)
   IF(FLEXI_2D)
@@ -252,33 +293,6 @@ IF(PARTICLES)
     MESSAGE(SEND_ERROR "PARTICLES_RW does not work with FLEXI_PARABOLIC=OFF")
   ENDIF()
   ADD_DEFINITIONS(-DUSE_PARTICLES=1)
-
-  # Shared memory split type. Only available with OpenMPI
-  SET(FLEXI_SPLIT_TYPE "$ENV{FLEXI_SPLIT_TYPE}")
-  IF("${FLEXI_SPLIT_TYPE}" STREQUAL "")
-    SET(FLEXI_SPLIT_TYPE "MPI_COMM_TYPE_SHARED")
-  ELSE()
-    MESSAGE(STATUS "Using user-defined environment variable [FLEXI_SPLIT_TYPE = ${FLEXI_SPLIT_TYPE}] for shared memory communicator splitting. Setting [FLEXI_SHARED_MEMORY = ${FLEXI_SPLIT_TYPE}]")
-  ENDIF()
-  SET(FLEXI_SHARED_MEMORY "${FLEXI_SPLIT_TYPE}" CACHE STRING "Split type for creating new communicators based on colors and keys (requires MPI 3 or higher). Options with the prefix OMPI_ are specific to Open MPI.")
-  SET_PROPERTY(CACHE FLEXI_SHARED_MEMORY PROPERTY STRINGS MPI_COMM_TYPE_SHARED
-                                                          OMPI_COMM_TYPE_CORE
-                                                          FLEXI_COMM_TYPE_NODE)
-
-  ADD_DEFINITIONS(-DSHARED_MEMORY_METHOD=${FLEXI_SHARED_MEMORY})
-  IF(FLEXI_SHARED_MEMORY STREQUAL "MPI_COMM_TYPE_SHARED")
-    UNSET(FLEXI_SHARED_MEMORY_CORES CACHE)
-    ADD_DEFINITIONS(-DCORE_SPLIT=0)
-    MESSAGE(STATUS "Shared memory split type for subcommunicators set to node-level")
-  ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "FLEXI_COMM_TYPE_NODE")
-    SET(FLEXI_SHARED_MEMORY_CORES "2" CACHE STRING "Number of cores per node when setting FLEXI_SHARED_MEMORY=FLEXI_COMM_TYPE_NODE. All cores must be on the same physical node!")
-    ADD_DEFINITIONS(-DCORE_SPLIT=${FLEXI_SHARED_MEMORY_CORES})
-    MESSAGE(STATUS "Shared memory split type for subcommunicators set to sub-node-level with user-specific value [FLEXI_SHARED_MEMORY_CORES = ${FLEXI_SHARED_MEMORY_CORES}] cores per node")
-  ELSEIF(FLEXI_SHARED_MEMORY STREQUAL "OMPI_COMM_TYPE_CORE")
-    UNSET(FLEXI_SHARED_MEMORY_CORES CACHE)
-    ADD_DEFINITIONS(-DCORE_SPLIT=1)
-    MESSAGE(STATUS "Shared memory split type for subcommunicators set to core-level")
-  ENDIF()
 
   # Code Analyze
   IF(PARTICLES_CODE_ANALYZE)
@@ -307,13 +321,6 @@ IF(PARTICLES)
     ADD_DEFINITIONS(-DUSE_INTKIND8=1)
   ELSE()
     ADD_DEFINITIONS(-DUSE_INTKIND8=0)
-  ENDIF()
-
-  # Shared memory debug flags
-  IF (PARTICLES_DEBUG_MEMORY)
-    ADD_DEFINITIONS(-DDEBUG_MEMORY=1)
-  ELSE()
-    ADD_DEFINITIONS(-DDEBUG_MEMORY=0)
   ENDIF()
 
   IF (PARTICLES_FAXEN_CORR)
@@ -395,7 +402,6 @@ ELSE()
   ADD_DEFINITIONS(-DUSE_EXTEND_RHS=0)
   ADD_DEFINITIONS(-DUSE_FAXEN_CORR=0)
   ADD_DEFINITIONS(-DUSE_SPHERICITY=0)
-  ADD_DEFINITIONS(-DCORE_SPLIT=1)
 ENDIF()
 
 # =========================================================================

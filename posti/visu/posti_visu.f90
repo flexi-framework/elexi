@@ -301,6 +301,6 @@ CALL FinalizeVisu()
 ! For flexilib MPI init/finalize is controlled by main program
 CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
 END PROGRAM

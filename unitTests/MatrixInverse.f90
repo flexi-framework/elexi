@@ -219,7 +219,7 @@ END IF
 #if USE_MPI
 ! we also have to finalize MPI itself here
 CALL MPI_FINALIZE(iError)
-IF(iError.NE.0) CALL abort(__STAMP__,'MPI finalize error')
+IF(iError.NE.MPI_SUCCESS) CALL abort(__STAMP__,'MPI finalize error')
 #endif
 
 END PROGRAM ReadInToolsUnitTest

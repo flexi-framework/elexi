@@ -875,8 +875,8 @@ OPEN ( NEWUNIT= ioUnit,         &
        ACTION = 'WRITE',        &
        ACCESS = 'SEQUENTIAL',   &
        IOSTAT = stat          )
-IF(stat .EQ. 0) CLOSE ( ioUnit,STATUS = 'DELETE' )
-IF(iError.NE.0) WRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '**** FAILED to remove ['//TRIM(InputFile)//'] with iError.NE.0 ****'
+IF(stat  .EQ.0) CLOSE ( ioUnit,STATUS = 'DELETE' )
+IF(iError.NE.0) CALL PrintWarning('FAILED to remove ['//TRIM(InputFile)//'] with iError.NE.MPI_SUCCESS')
 
 GETTIME(EndT)
 CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)

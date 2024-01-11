@@ -651,8 +651,7 @@ CALL FinalizeCalcTurb()
 ! we also have to finalize MPI itself here
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
-
 
 END PROGRAM Posti_CalcTurb

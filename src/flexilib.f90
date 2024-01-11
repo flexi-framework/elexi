@@ -180,7 +180,7 @@ IF (doPrintHelp.GT.0) THEN
   CALL MPI_COMM_FREE(MPI_COMM_FLEXI,iError)
   ! we also have to finalize MPI itself here
   CALL MPI_FINALIZE(iError)
-  IF(iError .NE. 0) STOP 'MPI finalize error'
+  IF(iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
   STOP
 END IF

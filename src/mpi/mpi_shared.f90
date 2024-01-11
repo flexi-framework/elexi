@@ -1092,9 +1092,9 @@ CALL MPI_WIN_SYNC(SharedWindow,iError)
 CALL MPI_BARRIER (Communicator,iError)
 CALL MPI_WIN_SYNC(SharedWindow,iError)
 
-! IF(iError.NE.0)THEN
+! IF(iError.NE.MPI_SUCCESS)THEN
 !   CALL Abort(__STAMP__,'ERROR in MPI_WIN_SYNC() for '//TRIM(SM_WIN_NAME)//': iError returned non-zero value =',IntInfoOpt=iError)
-! END IF ! iError.NE.0
+! END IF ! iError.NE.MPI_SUCCESS
 
 END SUBROUTINE BARRIER_AND_SYNC
 

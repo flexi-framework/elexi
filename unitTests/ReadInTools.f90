@@ -185,7 +185,7 @@ CALL MPI_BARRIER  (MPI_COMM_FLEXI,IERROR)
 CALL MPI_COMM_FREE(MPI_COMM_FLEXI,IERROR)
 ! we also have to finalize MPI itself here
 CALL MPI_FINALIZE(iError)
-IF(iError.NE.0) CALL abort(__STAMP__,'MPI finalize error')
+IF(iError.NE.MPI_SUCCESS) CALL abort(__STAMP__,'MPI finalize error')
 #endif
 
 END PROGRAM ReadInToolsUnitTest

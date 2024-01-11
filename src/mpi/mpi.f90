@@ -128,7 +128,7 @@ ELSE
   CALL MPI_INIT(iError)
   CALL MPI_INITIALIZED(initDone,iError)
   IF(.NOT.initDone) CALL MPI_INIT(iError)
-  IF(iError .NE. 0) &
+  IF(iError.NE.MPI_SUCCESS) &
     CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
   ! Duplicate communicator instead of just copying it. Creates a clean copy with all the cached information intact
   CALL MPI_COMM_DUP(MPI_COMM_WORLD,MPI_COMM_FLEXI,iError)
@@ -136,7 +136,7 @@ END IF
 
 CALL MPI_COMM_RANK(MPI_COMM_FLEXI, myRank     , iError)
 CALL MPI_COMM_SIZE(MPI_COMM_FLEXI, nProcessors, iError)
-IF(iError .NE. 0) &
+IF(iError.NE.MPI_SUCCESS) &
   CALL Abort(__STAMP__,'Could not get rank and number of processors',iError)
 MPIRoot=(myRank .EQ. 0)
 #else  /*USE_MPI*/

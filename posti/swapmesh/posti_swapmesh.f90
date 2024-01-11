@@ -70,7 +70,7 @@ CALL prms%CreateLogicalOption(  "useCurvedsOld"      , "Controls usage of high-o
                                                        "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
 CALL prms%CreateLogicalOption(  "useCurvedsNew"      , "Controls usage of high-order information in new mesh. Turn off to discard "//&
                                                        "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
-CALL prms%CreateStringOption(   "NodeTypeNew  "      , "Change nodetype, tested for switching betwee GAUSS and GAUSS-LOBATTO "//& 
+CALL prms%CreateStringOption(   "NodeTypeNew  "      , "Change nodetype, tested for switching betwee GAUSS and GAUSS-LOBATTO "//&
                                                        "on the same mesh.")
 CALL prms%CreateIntOption(      "NInter"             , "Polynomial degree used for interpolation on new mesh (should be equal or  "//&
                                                        "higher than NNew) - the state will be interpolated to this degree and then "//&
@@ -88,7 +88,7 @@ CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide
 CALL prms%CreateLogicalOption(  "ExtrudeTo3D"        , "Perform an extrusion of a one-layer mesh to the 3D version",'.FALSE.')
 CALL prms%CreateIntOption(      "ExtrudeK"           , "Layer which is used in extrusion")
 CALL prms%CreateStringOption(   "StrVarNamesIni"     , "Variables to be swapped", multiple=.TRUE.)
-CALL prms%CreateLogicalOption(  "ExtrudePeriodic"    , "Perform a periodic extrusion of a 3D mesh to a mesh with extended z length",'.FALSE.') 
+CALL prms%CreateLogicalOption(  "ExtrudePeriodic"    , "Perform a periodic extrusion of a 3D mesh to a mesh with extended z length",'.FALSE.')
 
 ! Parse parameters
 ! check for command line argument --help or --markdown
@@ -160,7 +160,7 @@ CALL FinalizeFV_Basis()
 #if USE_MPI
 CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF (iError.NE.MPI_SUCCESS) STOP 'MPI finalize error'
 #endif
 
 SWRITE(UNIT_stdOut,'(132("="))')

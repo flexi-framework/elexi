@@ -76,8 +76,18 @@ INTERFACE GenerateFileSkeleton
   MODULE PROCEDURE GenerateFileSkeleton
 END INTERFACE
 
-PUBLIC :: FlushFiles,RemoveHDF5,WriteHeader,WriteTimeAverage,WriteBaseflow,GenerateFileSkeleton
-PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,WriteAdditionalFieldData,MarkWriteSuccessful
+PUBLIC :: GatheredWriteArray
+PUBLIC :: WriteAdditionalElemData
+PUBLIC :: WriteAdditionalFieldData
+PUBLIC :: WriteBaseflow
+PUBLIC :: WriteTimeAverage
+PUBLIC :: GenerateFileSkeleton
+PUBLIC :: MarkWriteSuccessful
+PUBLIC :: FlushFiles
+PUBLIC :: RemoveHDF5
+PUBLIC :: WriteHeader
+PUBLIC :: WriteArray
+PUBLIC :: WriteAttribute
 !==================================================================================================================================
 
 CONTAINS
@@ -113,10 +123,17 @@ CHARACTER(LEN=255),ALLOCATABLE :: UStr(:)
 INTEGER,           ALLOCATABLE :: UInt(:)
 INTEGER                        :: i,nValGather(rank),nDOFLocal
 INTEGER,DIMENSION(nLocalProcs) :: nDOFPerNode,offsetNode
+LOGICAL,DIMENSION(rank)        :: mask              ! Sanity check array, masking the rank
 !==================================================================================================================================
 ! HDF5 with MPI can only write max. (32 bit signed integer / size of single element) elements (2GB per MPI rank)
 IF (PRODUCT(REAL(nVal)).GT.nLimit) CALL Abort(__STAMP__, & ! Casting to avoid overflow
  'Dataset "'//TRIM(DataSetName)//'" exceeds HDF5 chunksize limit of 2GB per rank! Increase number of ranks or compile without MPI!')
+
+! Sanity check input. Slicing with 0 only allowed for rank, i.e., nVal(!rank) != 0
+mask       = .TRUE.
+mask(rank) = .FALSE.
+IF (PRODUCT(nVal,mask).EQ.0 .OR. PRODUCT(nValGlobal,mask).EQ.0) CALL Abort(__STAMP__, & ! Slicing only allow in rank dimension
+ 'Dataset "'//TRIM(DataSetName)//'" has zero entries on dimension!=rank! This is not supported by HDF5!')
 
 IF(gatheredWrite)THEN
   IF(ANY(offset(1:rank-1).NE.0)) &
@@ -943,29 +960,34 @@ INTEGER(HID_T)                 :: PList_ID,DSet_ID,MemSpace,FileSpace,Type_ID,ds
 INTEGER(HSIZE_T)               :: Dimsf(Rank),OffsetHDF(Rank),nValMax(Rank)
 LOGICAL                        :: chunky,exists
 TYPE(C_PTR)                    :: buf
+LOGICAL,DIMENSION(rank)        :: mask            ! Sanity check array, masking the rank
 !==================================================================================================================================
 LOGWRITE(*,'(A,I1.1,A,A,A)')' WRITE ',Rank,'D ARRAY "',TRIM(DataSetName),'" TO HDF5 FILE...'
 
+! Sanity check input. Slicing with 0 only allowed for rank, i.e., nVal(!rank) != 0
+mask       = .TRUE.
+mask(rank) = .FALSE.
+IF (PRODUCT(nVal,mask).EQ.0 .OR. PRODUCT(nValGlobal,mask).EQ.0) CALL Abort(__STAMP__, & ! Slicing only allow in rank dimension
+ 'Dataset "'//TRIM(DataSetName)//'" has zero entries on dimension!=rank! This is not supported by HDF5!')
+
 ! specify chunk size if desired
-nValMax=nValGlobal
-chunky=.FALSE.
+nValMax = nValGlobal
+chunky  = .FALSE.
 CALL H5PCREATE_F(H5P_DATASET_CREATE_F,dsetparams,iError)
 IF(PRESENT(chunkSize))THEN
-  chunky=.TRUE.
-  Dimsf=chunkSize
+  chunky = .TRUE.
+  Dimsf  = chunkSize
   CALL H5PSET_CHUNK_F(dsetparams,rank,dimsf,iError)
 END IF
 ! make array extendable in case you want to append something
 IF(PRESENT(resizeDim))THEN
-  IF(.NOT.PRESENT(chunkSize))&
-    CALL Abort(__STAMP__,&
-               'Chunk size has to be specified when using resizable arrays.')
+  IF(.NOT.PRESENT(chunkSize)) CALL Abort(__STAMP__,'Chunk size has to be specified when using resizable arrays.')
   nValMax = MERGE(H5S_UNLIMITED_F,nValMax,resizeDim)
 END IF
 
 ! Create the dataset with default properties.
-IF(PRESENT(RealArray)) Type_ID=H5T_NATIVE_DOUBLE
-IF(PRESENT(IntArray))  Type_ID=H5T_NATIVE_INTEGER
+IF(PRESENT(RealArray)) Type_ID = H5T_NATIVE_DOUBLE
+IF(PRESENT(IntArray))  Type_ID = H5T_NATIVE_INTEGER
 IF(PRESENT(StrArray))THEN
   ! Create HDF5 datatype for the character array.
   CALL H5TCOPY_F(H5T_NATIVE_CHARACTER, Type_ID, iError)
@@ -975,7 +997,7 @@ END IF
 Dimsf = nValGlobal ! we need the global array size
 ! Check data set. Data sets can be checked by determining the existence of the corresponding link
 CALL H5LEXISTS_F(File_ID, TRIM(DataSetName), exists, iError)
-IF (.NOT. exists) THEN
+IF (.NOT.exists) THEN
   ! Create the data space for the  dataset.
   CALL H5SCREATE_SIMPLE_F(Rank, Dimsf, FileSpace, iError, nValMax)
   CALL H5DCREATE_F(File_ID, TRIM(DataSetName), Type_ID, FileSpace, DSet_ID,iError,dsetparams)
@@ -983,9 +1005,7 @@ IF (.NOT. exists) THEN
 ELSE
   CALL H5DOPEN_F(File_ID, TRIM(DatasetName),DSet_ID, iError)
 END IF
-IF(chunky)THEN
-  CALL H5DSET_EXTENT_F(DSet_ID,Dimsf,iError) ! if resizable then dataset may need to be extended
-END IF
+IF (chunky) CALL H5DSET_EXTENT_F(DSet_ID,Dimsf,iError) ! if resizable then dataset may need to be extended
 
 ! Dataset empty, return before allocating memory space
 IF (PRODUCT(nVal).EQ.0) RETURN

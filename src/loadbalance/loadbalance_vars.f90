@@ -43,16 +43,13 @@ INTEGER                             :: WeightDistributionMethod   !> Method used
 REAL,ALLOCATABLE                    :: tCurrent(:)                                !> Time measurement over one step
                                                                                   !> measured elem-independent and later weighted
                                                                                   !> for indices look into piclas.h
-#if USE_LOADBALANCE
 REAL,ALLOCATABLE                    :: tCurrent_LB_DG(:)                          !> Time measurement over one step
-#endif /*USE_LOADBALANCE*/
 
 ! counter
 INTEGER                             :: nLoadBalance                               !> Number of load balances calculations (calls of ComputeElemLoad)
 INTEGER                             :: nLoadBalanceSteps                          !> Number of performed load balances steps
 INTEGER                             :: LoadBalanceInterval                        !> Interval as multiple of analyze_dt at which loadbalancing is performed
 INTEGER                             :: LoadBalanceCounter                         !< Count the number of analyze steps until LoadBalanceInterval
-#if USE_LOADBALANCE
 INTEGER                             :: LoadBalanceMaxSteps                        !> Number of maximum allowed performed load balances steps
 REAL,ALLOCATABLE                    :: LoadDistri(:)                              !> Weighted load distribution of all procs
 REAL                                :: MaxWeight                                  !> Maximum Weight of proc on domain
@@ -90,34 +87,36 @@ INTEGER,ALLOCATABLE                 :: MPInPartRecv(:)
 INTEGER,ALLOCATABLE                 :: MPIoffsetPartRecv(:)
 INTEGER,POINTER                     :: ElemInfoRank_Shared(:) => NULL()
 INTEGER                             :: ElemInfoRank_Shared_Win
-#endif /*USE_LOADBALANCE*/
 
 !-----------------------------------------------------------------------------------------------------------------------------------
-! particle load balancing
+! general load balancing
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL                                :: ParticleMPIWeight
 REAL                                :: DeviationThreshold                         ! threshold for load-balancing
 LOGICAL                             :: writePartitionInfo                         ! write partitioninfo file
 REAL                                :: WeightSum                                  ! global sum of all weights
 REAL                                :: targetWeight                               ! optimal weight for each proc
+#if USE_PARTICLES
+REAL                                :: ParticleMPIWeight
+#endif /*USE_PARTICLES*/
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Element Local measurement
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE                    :: ElemTime(:)
 REAL,ALLOCATABLE                    :: ProcTime(:)
-#if USE_LOADBALANCE
 REAL,ALLOCATABLE                    :: ElemTime_tmp(:)                          ! Additional container for restarting and keeping the old ElemTime values in
                                                                                 ! the state.h5 file
-REAL                                :: ElemTimePartTot                          ! Total time spent for particle routines (all procs)
 REAL                                :: ElemTimeFieldTot                         ! Total time spent for field routines (all procs)
-REAL                                :: ElemTimePart                             ! Time spent for particle routines
 REAL                                :: ElemTimeField                            ! Time spent for field routines
 REAL,ALLOCATABLE                    :: ElemGlobalTime(:)
+#if USE_PARTICLES
+REAL                                :: ElemTimePartTot                          ! Total time spent for particle routines (all procs)
+REAL                                :: ElemTimePart                             ! Time spent for particle routines
 INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nTracksPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nSurfacefluxPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerBCElem(:)
-#endif /*USE_LOADBALANCE*/
+#endif /*USE_PARTICLES*/
+
 
 END MODULE MOD_LoadBalance_Vars

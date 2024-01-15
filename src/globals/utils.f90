@@ -16,11 +16,23 @@
 !===================================================================================================================================
 ! Contains utils required by xy- modules
 !===================================================================================================================================
-MODULE MOD_Particle_Utils
+MODULE MOD_Utils
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
+
+INTERFACE ALMOSTZERO
+  MODULE PROCEDURE ALMOSTZERO
+END INTERFACE ALMOSTZERO
+
+INTERFACE ALMOSTEQUAL
+  MODULE PROCEDURE ALMOSTEQUAL
+END INTERFACE ALMOSTEQUAL
+
+INTERFACE LESSEQUALTOLERANCE
+  MODULE PROCEDURE LESSEQUALTOLERANCE
+END INTERFACE
 
 ! INTERFACE BubbleSortID
 !   MODULE PROCEDURE BubbleSortID
@@ -31,11 +43,109 @@ INTERFACE InsertionSort
   MODULE PROCEDURE InsertionSortReal
 END INTERFACE InsertionSort
 
+PUBLIC :: ALMOSTZERO
+PUBLIC :: ALMOSTEQUAL
+PUBLIC :: LESSEQUALTOLERANCE
 ! PUBLIC :: BubbleSortID
 PUBLIC :: InsertionSort
 !==================================================================================================================================
 
 CONTAINS
+
+PURE FUNCTION ALMOSTZERO(num)
+!===================================================================================================================================
+! Performe an almost zero check. But ...
+! Bruce Dawson quote:
+! "There is no silver bullet. You have to choose wisely."
+!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless.
+!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs
+!      to your calculation. Maybe."
+!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
+!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs.
+!      An absolute epsilon could be used if you knew exactly what number you were comparing against."
+!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
+!      Good luck and God speed."
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN) :: Num ! Number
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+LOGICAL         :: AlmostZero
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+AlmostZero=.FALSE.
+IF(ABS(Num).LE.EpsMach) AlmostZero=.TRUE.
+
+END FUNCTION ALMOSTZERO
+
+
+PURE FUNCTION ALMOSTEQUAL(num1,num2)
+!===================================================================================================================================
+! Bruce Dawson quote:
+! "There is no silver bullet. You have to choose wisely."
+!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless.
+!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs
+!      to your calculation. Maybe."
+!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
+!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs.
+!      An absolute epsilon could be used if you knew exactly what number you were comparing against."
+!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
+!      Good luck and God speed."
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN) :: Num1,Num2      ! Number
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+LOGICAL         :: ALMOSTEQUAL
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+IF(ABS(Num1-Num2).LE.MAX(ABS(Num1),ABS(Num2))*TwoEpsMach*1.01)THEN
+ ALMOSTEQUAL=.TRUE.
+ELSE
+ ALMOSTEQUAL=.FALSE.
+END IF
+END FUNCTION ALMOSTEQUAL
+
+
+!===================================================================================================================================
+!> Check if a <= b or a is almost equal to b via ALMOSTEQUALRELATIVE
+!> Catch tolerance issues when b is only an epsilon smaller than a but the inquiry should be that they are equal
+!===================================================================================================================================
+PPURE LOGICAL FUNCTION LESSEQUALTOLERANCE(a,b,tol)
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN) :: a,b !< Two real numbers for comparison
+REAL,INTENT(IN) :: tol !< fix for tolerance issues
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+IF((a.LE.b).OR.(ALMOSTEQUALRELATIVE(a,b,tol)))THEN
+  LESSEQUALTOLERANCE = .TRUE.
+ELSE
+  LESSEQUALTOLERANCE = .FALSE.
+END IF
+END FUNCTION LESSEQUALTOLERANCE
+
+
 
 ! SUBROUTINE BubbleSortID(a,id,len)
 ! !===================================================================================================================================
@@ -197,4 +307,4 @@ END IF
 
 END SUBROUTINE InsertionSortReal
 
-END MODULE MOD_Particle_Utils
+END MODULE MOD_Utils

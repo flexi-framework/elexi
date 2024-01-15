@@ -279,7 +279,7 @@ SUBROUTINE SendNbOfParticles()
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Preproc
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared
+USE MOD_Mesh_Vars              ,ONLY: ElemInfo_Shared
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPIExchange,PartTargetProc
 USE MOD_Particle_MPI_Vars      ,ONLY: nExchangeProcessors,ExchangeProcToGlobalProc,GlobalProcToExchangeProc
 USE MOD_Particle_Vars          ,ONLY: PEM,PDM,nSpecies

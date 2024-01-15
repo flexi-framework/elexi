@@ -51,6 +51,10 @@ INTEGER           ::MPI_COMM_NODE   =MPI_COMM_NULL                            !<
 INTEGER           ::MPI_COMM_LEADERS=MPI_COMM_NULL                            !< all node masters
 INTEGER           ::MPI_COMM_WORKERS=MPI_COMM_NULL                            !< all non-master nodes
 #endif
+! Parameters and error bounds
+REAL,PARAMETER    ::PI         = ACOS(-1.0D0)
+REAL,PARAMETER    ::epsMach    = epsilon(0.)
+REAL,PARAMETER    ::TwoEpsMach = 2.d0 * epsilon(0.)
 #if USE_PARTICLES
 #ifdef INTKIND8
 INTEGER(KIND=SELECTED_INT_KIND(18))  :: nGlobalNbrOfParticles(6)              !< 1-3: min,max,total number of simulation particles over all processors

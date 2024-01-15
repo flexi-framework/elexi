@@ -50,18 +50,18 @@ SUBROUTINE GetBoundaryInteraction(PartTrajectory,lengthPartTrajectory,alpha,xi,e
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals                    ,ONLY: Abort,FLEXITIME
+! USE MOD_Mesh_Vars                  ,ONLY: BC
+USE MOD_Mesh_Vars                  ,ONLY: SideInfo_Shared
 USE MOD_Particle_Globals           ,ONLY: PI
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,doParticleImpactTrack
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
-USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Tools        ,ONLY: GetCNSideID
 USE MOD_Particle_Surfaces          ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars     ,ONLY: SideNormVec,SideType
 USE MOD_Particle_Tracking_Vars     ,ONLY: TrackingMethod
 USE MOD_Particle_Vars              ,ONLY: PartState,PartReflCount
 USE MOD_Part_Operations            ,ONLY: RemoveParticle
-!USE MOD_Mesh_Vars                  ,ONLY: BC
 #if CODE_ANALYZE
 USE MOD_Globals                    ,ONLY: myRank,UNIT_stdOut
 USE MOD_Mesh_Vars                  ,ONLY: NGeo
@@ -217,19 +217,20 @@ SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-#if USE_PARTROT
-USE MOD_Mathtools                  ,ONLY: CROSS
-#endif
+USE MOD_Mesh_Vars                  ,ONLY: SideInfo_Shared
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack,doParticleImpactTrack
 USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
-USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
 USE MOD_Particle_Globals
 USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars              ,ONLY: Pt_temp,PDM
+USE MOD_Utils                      ,ONLY: ALMOSTZERO
+#if USE_PARTROT
+USE MOD_Mathtools                  ,ONLY: CROSS
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -364,7 +365,8 @@ USE MOD_Globals
 #if USE_PARTROT
 USE MOD_Mathtools                  ,ONLY: CROSS
 #endif
-USE MOD_Particle_Globals
+USE MOD_Mesh_Vars                  ,ONLY: SideInfo_Shared
+USE MOD_Particle_Globals           ,ONLY: VECNORM,OrthoNormVec
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,PartBoundANN
 USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues
@@ -373,7 +375,6 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
 USE MOD_Particle_Fracture          ,ONLY: DiffuseReflectionFracture
-USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
 USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars              ,ONLY: PDM
 ! IMPLICIT VARIABLE HANDLING
@@ -743,12 +744,12 @@ SUBROUTINE PeriodicBC(PartTrajectory,lengthPartTrajectory,alpha,PartID,SideID,El
 USE MOD_Globals
 ! USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem,TensorProductInterpolation
 USE MOD_Mesh_Vars              ,ONLY: BoundaryType
+USE MOD_Mesh_Vars              ,ONLY: SideInfo_Shared
 ! USE MOD_Mesh_Vars              ,ONLY: NGeo
 USE MOD_Particle_Vars          ,ONLY: PartState,LastPartPos
 ! USE MOD_Particle_Vars          ,ONLY: PartPosRef
 ! USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
-USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared
 ! USE MOD_Particle_Mesh_Vars     ,ONLY: XiCL_NGeo,wBaryCL_NGeo,XCL_NGeo_Shared,ElemEpsOneCell
 ! USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,DoPeriodicCheck,DoPeriodicFix
 #if CODE_ANALYZE

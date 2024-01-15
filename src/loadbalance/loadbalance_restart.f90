@@ -12,7 +12,6 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "particle.h"
 
 !===================================================================================================================================
 !> Module contains the routines for load balancing
@@ -25,18 +24,15 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-#if USE_LOADBALANCE
 INTERFACE FieldRestart
   MODULE PROCEDURE FieldRestart
 END INTERFACE
 
 PUBLIC :: FieldRestart
-#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 CONTAINS
 
-#if USE_LOADBALANCE
 SUBROUTINE FieldRestart()
 !===================================================================================================================================
 ! routine perfoming the field restart
@@ -137,6 +133,5 @@ GETTIME(EndT)
 CALL DisplayMessageAndTime(EndT-StartT, 'DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 END SUBROUTINE FieldRestart
-#endif /*USE_LOADBALANCE*/
 
 END MODULE MOD_LoadBalance_Restart

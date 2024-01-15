@@ -11,7 +11,9 @@
 ! You should have received a copy of the GNU General Public License along with PICLas. If not, see <http://www.gnu.org/licenses/>.
 !==================================================================================================================================
 #include "flexi.h"
+#if USE_PARTICLES
 #include "particle.h"
+#endif /*USE_PARTICLES*/
 
 MODULE MOD_LoadBalance_Metrics
 !===================================================================================================================================
@@ -24,7 +26,6 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-#if USE_LOADBALANCE
 INTERFACE MoveCoords
   MODULE PROCEDURE MoveCoords
 END INTERFACE
@@ -104,16 +105,15 @@ USE MOD_PreProc
 USE MOD_LoadBalance_Vars   ,ONLY: PerformLoadBalance,UseH5IOLoadBalance
 USE MOD_LoadBalance_Vars   ,ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
 ! USE MOD_LoadBalance_Vars   ,ONLY: MPInSideSend,MPInSideRecv,MPIoffsetSideSend,MPIoffsetSideRecv
-USE MOD_Mesh_Vars          ,ONLY: nElems,NGeo,NGeoRef!,Elem_xGP,nSides
+USE MOD_Mesh_Vars          ,ONLY: nElems,NGeoRef!,Elem_xGP,nSides
 USE MOD_Mesh_Vars          ,ONLY: JaCL_N,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,XCL_N,dXCL_N
 ! USE MOD_Mesh_Vars          ,ONLY: Face_xGP,NormVec,TangVec1,TangVec2,SurfElem,Ja_Face
 USE MOD_Mesh_Vars          ,ONLY: sJ!,detJac_Ref
 USE MOD_Mesh_Vars          ,ONLY: detJac_N,detJac_Ref
+#if USE_PARTICLES
 USE MOD_Mesh_Vars          ,ONLY: NGeo
-USE MOD_Particle_Mesh_Vars ,ONLY: XCL_NGeo
-#ifdef PARTICLES
-USE MOD_Mesh_Vars          ,ONLY: dXCL_NGeo
-#endif /*PARTICLES*/
+USE MOD_Particle_Mesh_Vars ,ONLY: XCL_NGeo,dXCL_NGeo
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -130,10 +130,10 @@ REAL,ALLOCATABLE                   :: Metrics_hTilde_LB(:,:,:,:,:,:)
 REAL,ALLOCATABLE                   :: sJ_LB            (  :,:,:,:,:)
 REAL,ALLOCATABLE                   :: DetJac_N_LB(      :,:,:,:,:)
 REAL,ALLOCATABLE                   :: DetJac_Ref_LB(    :,:,:,:,:)
+#if USE_PARTICLES
 REAL,ALLOCATABLE                   :: XCL_NGeo_LB(      :,:,:,:,:)
-#ifdef PARTICLES
 REAL,ALLOCATABLE                   :: dXCL_NGeo_LB(   :,:,:,:,:,:)
-#endif /*PARTICLES*/
+#endif /*USE_PARTICLES*/
 ! REAL,ALLOCATABLE                   :: DetJac_Ref_LB    (:,:,:,:,:)
 ! Sides
 ! REAL,ALLOCATABLE                   :: Face_xGP_LB    (  :,:,:,:)
@@ -155,7 +155,7 @@ INTEGER,PARAMETER                  :: iFV = 0
 ! !===================================================================================================================================
 !
 IF (PerformLoadBalance.AND.(.NOT.UseH5IOLoadBalance)) THEN
-  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' Shift mesh metrics during loadbalance...'
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' | Shift mesh metrics during loadbalance...'
   GETTIME(StartT)
 
   ! volume data
@@ -197,6 +197,7 @@ IF (PerformLoadBalance.AND.(.NOT.UseH5IOLoadBalance)) THEN
   DEALLOCATE(dXCL_N)
   CALL MOVE_ALLOC(dXCL_N_LB,dXCL_N)
 
+#if USE_PARTICLES
   ALLOCATE(XCL_NGeo_LB(1:3,0:NGeo,0:NGeo,0:NGeo,1:nElems))
   ASSOCIATE (&
           counts_send  => INT(MPInElemSend     ) ,&
@@ -216,7 +217,6 @@ IF (PerformLoadBalance.AND.(.NOT.UseH5IOLoadBalance)) THEN
   DEALLOCATE(XCL_NGeo)
   CALL MOVE_ALLOC(XCL_NGeo_LB,XCL_NGeo)
 
-#ifdef PARTICLES
   ALLOCATE(dXCL_NGeo_LB(1:3,1:3,0:NGeo,0:NGeo,0:NGeo,1:nElems))
   ASSOCIATE (&
           counts_send  => INT(MPInElemSend     ) ,&
@@ -235,7 +235,7 @@ IF (PerformLoadBalance.AND.(.NOT.UseH5IOLoadBalance)) THEN
   END ASSOCIATE
   DEALLOCATE(dXCL_NGeo)
   CALL MOVE_ALLOC(dXCL_NGeo_LB,dXCL_NGeo)
-#endif /*PARTICLES*/
+#endif /*USE_PARTICLES*/
 
   ALLOCATE(      JaCL_N_LB(3,3,0:PP_N   ,0:PP_N   ,0:PP_N   ,nElems))
   ASSOCIATE (&
@@ -439,10 +439,9 @@ IF (PerformLoadBalance.AND.(.NOT.UseH5IOLoadBalance)) THEN
 
   GETTIME(EndT)
   WallTime = EndT-StartT
-  CALL DisplayMessageAndTime(WallTime,'DONE',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
+  CALL DisplayMessageAndTime(WallTime,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 END IF
 
 END SUBROUTINE MoveMetrics
-#endif /*USE_LOADBALANCE*/
 
 END MODULE MOD_LoadBalance_Metrics

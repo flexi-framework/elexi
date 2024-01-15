@@ -67,7 +67,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER,PARAMETER               :: SIDE_BCID=5
 ! REAL,PARAMETER                  :: RelTol=1.E-9
 LOGICAL                         :: doCheckMesh!,doCheckRel
 ! INTEGER                         :: NGeo_HDF5

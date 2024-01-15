@@ -13,7 +13,6 @@
 !=================================================================================================================================
 !==================================================================================================================================
 #include "flexi.h"
-#include "particle.h"
 
 !===================================================================================================================================
 ! Module contains the routines for elem distribution
@@ -24,7 +23,6 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-#if USE_LOADBALANCE
 INTERFACE WriteElemTimeStatistics
   MODULE PROCEDURE WriteElemTimeStatistics
 END INTERFACE
@@ -44,12 +42,10 @@ PUBLIC :: WriteElemTimeStatistics
 PUBLIC :: ApplyWeightDistributionMethod
 PUBLIC :: WeightDistribution_Equal
 #endif /*MPI*/
-#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 CONTAINS
 
-#if USE_LOADBALANCE
 #if USE_MPI
 !===================================================================================================================================
 ! Calculate the optimal load partition, subroutine taken from sparta.f90 of HALO
@@ -156,7 +152,6 @@ END DO ! iRank=minRank,maxRank
 CALL MPI_ALLTOALL(send_count,1,MPI_INTEGER,recv_count,1,MPI_INTEGER,MPI_COMM_FLEXI,iERROR)
 NewElems = SUM(recv_count)
 
-
 END SUBROUTINE SingleStepOptimalPartition
 
 
@@ -166,17 +161,19 @@ END SUBROUTINE SingleStepOptimalPartition
 SUBROUTINE ApplyWeightDistributionMethod(ElemTimeExists)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_HDF5_Input       ,ONLY: File_ID,ReadArray,DatasetExists,OpenDataFile,CloseDataFile
+! USE MOD_Particle_Globals
 USE MOD_LoadBalance_Vars ,ONLY: WeightDistributionMethod,ElemGlobalTime
-USE MOD_LoadBalance_Vars ,ONLY: ParticleMPIWeight
-USE MOD_LoadBalance_Vars ,ONLY: nElemsOld,offsetElemMPIOld
 USE MOD_Mesh_Vars        ,ONLY: nGlobalElems
 USE MOD_MPI_Vars         ,ONLY: offsetElemMPI
-USE MOD_Particle_Vars    ,ONLY: PartInt,nSpecies
 USE MOD_ReadInTools      ,ONLY: GETINT,GETREAL
-USE MOD_Restart_Vars     ,ONLY: RestartFile
 USE MOD_StringTools      ,ONLY: set_formatting,clear_formatting
+#if USE_PARTICLES
+USE MOD_HDF5_Input       ,ONLY: File_ID,ReadArray,DatasetExists,OpenDataFile,CloseDataFile
+USE MOD_LoadBalance_Vars ,ONLY: nElemsOld,offsetElemMPIOld
+USE MOD_LoadBalance_Vars ,ONLY: ParticleMPIWeight
+USE MOD_Particle_Vars    ,ONLY: PartInt,nSpecies
+USE MOD_Restart_Vars     ,ONLY: RestartFile
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -186,19 +183,27 @@ LOGICAL,INTENT(IN)             :: ElemTimeExists
 ! LOCAL VARIABLES
 INTEGER,PARAMETER              :: ELEM_FirstPartInd = 1
 INTEGER,PARAMETER              :: ELEM_LastPartInd  = 2
+INTEGER                        :: nProcs
+INTEGER,ALLOCATABLE            :: PartsInElem(:)        ! empty dummy array without particles
+#if USE_PARTICLES
+INTEGER                        :: iElem
+INTEGER                        :: iProc
+INTEGER                        :: ElemPerProc(0:nProcessors-1)
 INTEGER,PARAMETER              :: PartIntSize       = 2 ! number of entries in each line of PartInt
 LOGICAL                        :: PartIntExists
-INTEGER                        :: iElem
-INTEGER                        :: iProc,nProcs
 INTEGER                        :: locnPart
-INTEGER,ALLOCATABLE            :: PartsInElem(:)
 INTEGER,ALLOCATABLE            :: PartIntGlob(:,:)
-INTEGER                        :: ElemPerProc(0:nProcessors-1)
+#endif /*USE_PARTICLES*/
 !===================================================================================================================================
 
 nProcs = nProcessors
-ALLOCATE(PartsInElem(1:nGlobalElems))
 
+ALLOCATE(PartsInElem(1:nGlobalElems))
+#if !USE_PARTICLES
+PartsInElem = 0
+#endif /*!USE_PARTICLES*/
+
+#if USE_PARTICLES
 IF (MPIRoot) ALLOCATE(PartIntGlob(1:nGlobalElems,2))
 
 ! Redistribute/read PartInt array
@@ -254,6 +259,9 @@ IF (.NOT.ElemTimeExists .AND. ALL(PartsInElem(:).EQ.0) .AND. .NOT.postiMode) THE
     CALL clear_formatting()
   END IF
 ELSEIF (postiMode) THEN
+#else
+IF     (postiMode) THEN
+#endif /*USE_PARTICLES*/
   WeightDistributionMethod = -1
 ELSE
   ! ElemTime always exists during load balance, attempt to respect the user choice
@@ -521,9 +529,12 @@ SUBROUTINE WeightDistribution_SingleStepOptimal(nProcs,nGlobalElems,ElemGlobalTi
 ! MODULES
 USE MOD_Globals
 USE MOD_LoadBalance_Vars ,ONLY: WeightDistributionMethod
-USE MOD_LoadBalance_Vars ,ONLY: LoadDistri,ParticleMPIWeight,WeightSum
+USE MOD_LoadBalance_Vars ,ONLY: LoadDistri,WeightSum
 USE MOD_LoadBalance_Vars ,ONLY: offsetElemMPIOld
 USE MOD_StringTools      ,ONLY: set_formatting,clear_formatting
+#if USE_PARTICLES
+USE MOD_LoadBalance_Vars ,ONLY: ParticleMPIWeight
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -683,7 +694,11 @@ DO iProc = 0,nProcs-1
         LoadDistri(iProc) = SUM(PartsInElem(   FirstElemInd:LastElemInd))
       END SELECT
   ELSE
+#if USE_PARTICLES
     LoadDistri(iProc) = LastElemInd-offsetElemMPI(iProc) + SUM(PartsInElem(FirstElemInd:LastElemInd))*ParticleMPIWeight
+#else
+    LoadDistri(iProc) = LastElemInd-offsetElemMPI(iProc)
+#endif /*USE_PARTICLES*/
   END IF
 END DO ! iProc
 
@@ -1002,7 +1017,7 @@ SUBROUTINE CalcDistriFromOffsets(nProcs,nGlobalElems,ElemGlobalTime,offsetElemMP
   ,ElemDistri,LoadDistri,MaxLoadIdx,MaxLoadVal,MinLoadIdx,MinLoadVal,MinLoadIdx_glob,nth_opt,nthMinLoad_Idx)
 ! MODULES
 USE MOD_Globals          ,ONLY: Abort
-USE MOD_Particle_Utils   ,ONLY: InsertionSort
+USE MOD_Utils            ,ONLY: InsertionSort
 #if CODE_ANALYZE
 USE MOD_Globals          ,ONLY: MPIRoot
 #endif /* CODE_ANALYZE */
@@ -1190,12 +1205,12 @@ END SUBROUTINE freeList
 !===================================================================================================================================
 SUBROUTINE WriteElemTimeStatistics(WriteHeader,time,iter)
 ! MODULES
-USE MOD_Globals                   ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,Abort,nProcessors,nGlobalNbrOfParticles
+USE MOD_Globals                   ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,Abort,nProcessors
 USE MOD_Globals_Vars              ,ONLY: SimulationEfficiency,WallTime,InitializationWallTime,ReadMeshWallTime
 USE MOD_Globals_Vars              ,ONLY: DomainDecompositionWallTime,CommMeshReadinWallTime
 USE MOD_Analyze_Vars              ,ONLY: PID
 USE MOD_LoadBalance_Vars          ,ONLY: TargetWeight,nLoadBalanceSteps,CurrentImbalance,MinWeight,MaxWeight,WeightSum
-USE MOD_LoadBalance_Vars          ,ONLY: ElemTimeField,ElemTimePart
+USE MOD_LoadBalance_Vars          ,ONLY: ElemTimeField
 USE MOD_Memory                    ,ONLY: ProcessMemUsage
 USE MOD_Restart_Vars              ,ONLY: DoRestart
 #if USE_MPI
@@ -1203,6 +1218,10 @@ USE MOD_Globals
 USE MOD_MPI_Shared_Vars           ,ONLY: myComputeNodeRank,myLeaderGroupRank
 USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_SHARED
 #endif /*USE_MPI*/
+#if USE_PARTICLES
+USE MOD_Globals                   ,ONLY: nGlobalNbrOfParticles
+USE MOD_LoadBalance_Vars          ,ONLY: ElemTimePart
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -1215,8 +1234,13 @@ INTEGER(KIND=8),INTENT(IN),OPTIONAL     :: iter
 CHARACTER(LEN=22),PARAMETER              :: outfile='ElemTimeStatistics.csv'
 INTEGER                                  :: ioUnit,I
 CHARACTER(LEN=255)                       :: formatStr
-REAL                                     :: SumElemTime,ElemTimeFieldPercent,ElemTimePartPercent
+REAL                                     :: SumElemTime,ElemTimeFieldPercent
+#if USE_PARTICLES
+REAL                                     :: ElemTimePartPercent
 INTEGER,PARAMETER                        :: nOutputVar=23
+#else
+INTEGER,PARAMETER                        :: nOutputVar=20
+#endif /*!USE_PARTICLES*/
 CHARACTER(LEN=255),DIMENSION(nOutputVar) :: StrVarNames(nOutputVar)=(/ CHARACTER(LEN=255) :: &
     'time'                   , &
     'Procs'                  , &
@@ -1236,11 +1260,17 @@ CHARACTER(LEN=255),DIMENSION(nOutputVar) :: StrVarNames(nOutputVar)=(/ CHARACTER
     'MemoryUsed'             , &
     'MemoryAvailable'        , &
     'MemoryTotal'            , &
+#if USE_PARTICLES
     '#Particles'             , &
+#endif /*USE_PARTICLES*/
     'FieldTime'              , &
+#if USE_PARTICLES
     'PartTime'               , &
-    'FieldTimePercent'       , &
-    'PartTimePercent'          &
+#endif /*USE_PARTICLES*/
+    'FieldTimePercent'         &
+#if USE_PARTICLES
+   ,'PartTimePercent'          &
+#endif /*USE_PARTICLES*/
     /)
 CHARACTER(LEN=255),DIMENSION(nOutputVar) :: tmpStr ! needed because PerformAnalyze is called multiple times at the beginning
 CHARACTER(LEN=1000)                      :: tmpStr2
@@ -1250,6 +1280,9 @@ REAL                                     :: memory(1:3)       ! used, available 
 REAL                                     :: ProcMemoryUsed    ! Used memory on a single proc
 REAL                                     :: NodeMemoryUsed    ! Sum of used memory across one compute node
 #endif /*USE_MPI*/
+#if !USE_PARTICLES
+INTEGER,PARAMETER                        :: nGlobalNbrOfParticles = 0
+#endif
 !===================================================================================================================================
 
 ! Get process memory info
@@ -1327,13 +1360,20 @@ IF (WriteHeader) THEN
   CLOSE(ioUnit)
 ELSE !
   ! Calculate elem time proportions for field and particle routines
-  SumElemTime=ElemTimeField+ElemTimePart
+  SumElemTime = ElemTimeField
+#if USE_PARTICLES
+  SumElemTime = SumElemTime + ElemTimePart
+#endif /*USE_PARTICLES*/
   IF(SumElemTime.LE.0.)THEN
     ElemTimeFieldPercent = 0.
+#if USE_PARTICLES
     ElemTimePartPercent  = 0.
+#endif /*USE_PARTICLES*/
   ELSE
     ElemTimeFieldPercent = 100. * ElemTimeField / SumElemTime
-    ElemTimePartPercent  = 100. * ElemTimePart / SumElemTime
+#if USE_PARTICLES
+    ElemTimePartPercent  = 100. * ElemTimePart  / SumElemTime
+#endif /*USE_PARTICLES*/
   END IF ! ElemTimeField+ElemTimePart.LE.0.
 
   IF (FILEEXISTS(outfile)) THEN
@@ -1357,12 +1397,18 @@ ELSE !
         delimiter,InitializationWallTime  ,&
         delimiter,memory(1)               ,&
         delimiter,memory(2)               ,&
-        delimiter,memory(3)                &
-       ,delimiter,REAL(nGlobalNbrOfParticles(3)),&
-        delimiter,ElemTimeField              ,&
-        delimiter,ElemTimePart               ,&
-        delimiter,ElemTimeFieldPercent       ,&
-        delimiter,ElemTimePartPercent
+        delimiter,memory(3)               ,&
+#if USE_PARTICLES
+        delimiter,REAL(nGlobalNbrOfParticles(3)),&
+#endif /*USE_PARTICLES*/
+        delimiter,ElemTimeField           ,&
+#if USE_PARTICLES
+        delimiter,ElemTimePart            ,&
+#endif /*USE_PARTICLES*/
+        delimiter,ElemTimeFieldPercent     &
+#if USE_PARTICLES
+       ,delimiter,ElemTimePartPercent
+#endif /*USE_PARTICLES*/
     ; ! this is required for terminating the "&" when particles=off
     WRITE(ioUnit,'(A)')TRIM(ADJUSTL(tmpStr2)) ! clip away the front and rear white spaces of the data line
     CLOSE(ioUnit)
@@ -1372,6 +1418,5 @@ ELSE !
 END IF
 
 END SUBROUTINE WriteElemTimeStatistics
-#endif /*USE_LOADBALANCE*/
 
 END MODULE MOD_LoadDistribution

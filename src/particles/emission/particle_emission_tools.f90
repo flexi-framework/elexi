@@ -271,7 +271,7 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared,ElemVolume_Shared
 USE MOD_Particle_Tracking      ,ONLY: ParticleInsideCheck
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PEM,PartState
 #if USE_MPI
-USE MOD_Particle_Mesh_Vars     ,ONLY: offsetComputeNodeElem
+USE MOD_MPI_Shared_Vars        ,ONLY: offsetComputeNodeElem
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

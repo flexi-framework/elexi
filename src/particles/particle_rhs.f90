@@ -509,6 +509,7 @@ SUBROUTINE ParticlePushExtend(PartID,nVarPartRHS,FieldAtParticle,GradAtParticle,
 ! All three forces are relevant/significant for unsteady flow independent of rho/rho_p!
 !===================================================================================================================================
 ! MODULES
+USE MOD_PreProc,                ONLY: PP_pi
 USE MOD_Particle_Globals
 USE MOD_Mathtools,              ONLY: CROSS
 USE MOD_Particle_Vars,          ONLY: Species,PartSpecies
@@ -517,19 +518,21 @@ USE MOD_Particle_Vars,          ONLY: PartState,TurbPartState
 !USE MOD_Particle_Vars,          ONLY: tWriteRHS,FileName_RHS,dtWriteRHS,Pt_ext
 USE MOD_Particle_Vars,          ONLY: Pt_ext
 !USE MOD_Output,                 ONLY: OutputToFile
-#endif /* ANALYZE_RHS */
-USE MOD_PreProc,                ONLY: PP_pi
+#endif /*ANALYZE_RHS*/
 #if PARABOLIC
 USE MOD_Viscosity
-#endif
+#endif /*PARABOLIC*/
 #if USE_BASSETFORCE
 USE MOD_Equation_Vars,          ONLY: s43,s23
-USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter,FbCoeff,FbCoeffa,Fbdt,FbCoefft!,Fbi,FbCoeffm
+USE MOD_Particle_Vars,          ONLY: durdt,N_Basset,bIter,FbCoeff,Fbdt!,Fbi,FbCoeffm,FbCoeffa,FbCoefft
 USE MOD_TimeDisc_Vars,          ONLY: nRKStages, RKC
 #endif /* USE_BASSETFORCE */
 #if USE_UNDISTFLOW || USE_VIRTUALMASS
 USE MOD_Particle_TimeDisc_Vars, ONLY: useManualTimeStep
 #endif /* USE_UNDISTFLOW || USE_VIRTUALMASS */
+#if USE_PARTROT
+USE MOD_Utils,                  ONLY: ALMOSTZERO
+#endif /*USE_PARTROT*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -548,7 +551,7 @@ INTEGER,INTENT(IN),OPTIONAL :: iStage
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: Pt(1:PP_nVarPartRHS),Fdi(1:3,10),Fre(1:3,10)
+REAL                     :: Pt(1:PP_nVarPartRHS)!,Fdi(1:3,10),Fre(1:3,10)
 REAL                     :: udiff(3)                    ! velocity difference
 REAL                     :: mu                          ! viscosity
 REAL                     :: globalfactor                ! prefactor of LHS divided by the particle mass
@@ -1223,8 +1226,8 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Analyze_Vars      ,ONLY: wGPVol
 USE MOD_Particle_Globals  ,ONLY: VECNORM
-USE MOD_Mesh_Vars         ,ONLY: Elem_xGP,sJ,nElems,offsetElem
-USE MOD_Particle_Globals  ,ONLY: PP_nElems
+USE MOD_Mesh_Vars         ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars         ,ONLY: Elem_xGP,sJ
 USE MOD_Particle_Mesh_Vars,ONLY: GEO,FIBGM_nElems,FIBGM_offsetElem,FIBGM_Element
 USE MOD_Particle_Mesh_Vars,ONLY: Elem_xGP_Shared
 USE MOD_Particle_Mesh_Tools,ONLY: GetCNElemID
@@ -1305,7 +1308,7 @@ DO iPart = 1,PDM%ParticleVecLength
             ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
             CNElemID = GetCNElemID(ElemID)
             ElemID = ElemID-offsetElem
-            IF (ElemID.LT.1 .OR. ElemID.GT.PP_nElems) CYCLE
+            IF (ElemID.LT.1 .OR. ElemID.GT.nElems) CYCLE
             DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
               IF (NORM2(Elem_xGP_Shared(1:3,i,j,k,CNElemID)-PartState(PART_POS1:PART_POS3,iPart)) .LE. r) THEN
                 ! TODO: sJ_shared
@@ -1351,7 +1354,7 @@ DO iPart = 1,PDM%ParticleVecLength
             ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
             CNElemID = GetCNElemID(ElemID)
             ElemID = ElemID-offsetElem
-            IF (ElemID.LT.1 .OR. ElemID.GT.PP_nElems) CYCLE
+            IF (ElemID.LT.1 .OR. ElemID.GT.nElems) CYCLE
             DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
               min_distance_loc = VECNORM(Elem_xGP_Shared(:,i,j,k,CNElemID)-PartState(1:3,iPart))
               IF (min_distance_loc .LE. r) THEN
@@ -1388,7 +1391,7 @@ DO iPart = 1,PDM%ParticleVecLength
             ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
             CNElemID = GetCNElemID(ElemID)
             ElemID = ElemID-offsetElem
-            IF (ElemID.LT.1 .OR. ElemID.GT.PP_nElems) CYCLE
+            IF (ElemID.LT.1 .OR. ElemID.GT.nElems) CYCLE
             DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
               min_distance_loc = VECNORM(Elem_xGP_Shared(:,i,j,k,CNElemID)-PartState(1:3,iPart))
               IF (min_distance_loc .LE. r) THEN

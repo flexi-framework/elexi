@@ -52,7 +52,7 @@ USE MOD_HDF5_Output            ,ONLY: FlushFiles
 ! Memory
 USE MOD_Memory                 ,ONLY: Allocate_Safe
 ! Mesh
-USE MOD_Mesh_Vars              ,ONLY: OffsetElem,nGlobalElems
+USE MOD_Mesh_Vars              ,ONLY: nElems,OffsetElem,nGlobalElems
 ! Particles
 USE MOD_Particle_Boundary_Vars ,ONLY: doParticleReflectionTrack,doParticleImpactTrack
 USE MOD_Particle_Vars          ,ONLY: PartInt,PartData,TurbPartData
@@ -66,7 +66,7 @@ USE MOD_LoadBalance_Vars       ,ONLY: nElemsOld,offsetElemOld,ElemInfoRank_Share
 USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
 USE MOD_LoadBalance_Vars       ,ONLY: MPInPartSend,MPInPartRecv,MPIoffsetPartSend,MPIoffsetPartRecv
 USE MOD_Mesh_Vars              ,ONLY: nElems
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared
+USE MOD_Mesh_Vars              ,ONLY: ElemInfo_Shared
 USE MOD_Particle_Output_Vars   ,ONLY: PartDataVarSpecies
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
@@ -119,7 +119,7 @@ REAL                               :: StartT,EndT
 !===================================================================================================================================
 
 FirstElemInd = offsetElem+1
-LastElemInd  = offsetElem+PP_nElems
+LastElemInd  = offsetElem+nElems
 
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) THEN
@@ -258,7 +258,7 @@ ELSE
     ALLOCATE(PartInt(PartIntSize,FirstElemInd:LastElemInd))
 
     ! Read number of local particles and their offset from HDF5
-    CALL ReadArray('PartInt',2,(/PartIntSize,PP_nElems/),offsetElem,2,IntArray=PartInt)
+    CALL ReadArray('PartInt',2,(/PartIntSize,nElems/),offsetElem,2,IntArray=PartInt)
 
     ! ------------------------------------------------
     ! PartData

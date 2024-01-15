@@ -98,21 +98,24 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE InitBC()
 ! MODULES
-USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Viscosity
-USE MOD_ReadInTools
+USE MOD_Preproc
+USE MOD_EOS               ,ONLY: ConsToPrim
 USE MOD_Equation_Vars     ,ONLY: EquationInitIsDone
 USE MOD_Equation_Vars     ,ONLY: nRefState,BCData,BCDataPrim,nBCByType,BCSideID
-USE MOD_Equation_Vars     ,ONLY: BCStateFile,RefStatePrim,IniRefState
+USE MOD_Equation_Vars     ,ONLY: BCStateFile,RefStatePrim
+USE MOD_Exactfunc_Vars    ,ONLY: JetRadius,RoundJetInitDone,Ramping
+USE MOD_ExactFunc         ,ONLY: ExactFunc
 USE MOD_Interpolation_Vars,ONLY: InterpolationInitIsDone
 USE MOD_Mesh_Vars         ,ONLY: MeshInitIsDone,nBCSides,BC,BoundaryType,nBCs,Face_xGP
-USE MOD_Exactfunc_Vars    ,ONLY: JetRadius,RoundJetInitDone,Ramping
+USE MOD_ReadInTools
+USE MOD_Viscosity
 #if PARABOLIC
 USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
 #endif
-USE MOD_EOS               ,ONLY: ConsToPrim
-USE MOD_ExactFunc         ,ONLY: ExactFunc
+#if FV_RECONSTRUCT
+USE MOD_Equation_Vars     ,ONLY: IniRefState
+#endif /*FV_RECONSTRUCT*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

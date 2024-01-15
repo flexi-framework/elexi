@@ -191,9 +191,6 @@ SUBROUTINE ParticleInserting()
 ! Particle Inserting
 !===================================================================================================================================
 ! Modules
-#if USE_MPI
-USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
-#endif /* MPI*/
 USE MOD_Globals
 USE MOD_Restart_Vars           ,ONLY: RestartTime
 USE MOD_Part_Emission_Tools    ,ONLY: SamplePoissonDistri
@@ -202,12 +199,16 @@ USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
 USE MOD_Part_Tools             ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Tools ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
-USE MOD_Particle_Globals       ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists,EmissionTime
 USE MOD_Particle_Timedisc_Vars ,ONLY: RKdtFrac,RKdtFracTotal
 USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PartSpecies,PDM,sumOfMatchedParticlesSpecies
 USE MOD_Particle_Vars          ,ONLY: DoPoissonRounding,DoTimeDepInflow,doPartIndex,PartIndex
 USE MOD_Timedisc_Vars          ,ONLY: dt,t,RKc,nRKStages,currentStage
+USE MOD_Utils                  ,ONLY: ALMOSTEQUAL
+#if USE_MPI
+USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
+#endif /* MPI*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -215,7 +216,6 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-! Local variable declaration
 INTEGER                          :: i,k,iPart,PositionNbr,iInit,IntSample,particle_count
 INTEGER                          :: NbrOfParticle
 INTEGER(KIND=8)                  :: inserted_Particle_iter,inserted_Particle_time

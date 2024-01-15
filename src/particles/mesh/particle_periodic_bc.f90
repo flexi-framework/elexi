@@ -86,10 +86,10 @@ SUBROUTINE CheckPeriodicVectors()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals,            ONLY: ALMOSTZERO
 USE MOD_Particle_Mesh_Vars,          ONLY: GEO
 USE MOD_Particle_Tracking_Vars,      ONLY: CartesianPeriodic,FastPeriodic
 USE MOD_ReadInTools,                 ONLY: GETLOGICAL,PrintOption
+USE MOD_Utils,                       ONLY: ALMOSTZERO
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

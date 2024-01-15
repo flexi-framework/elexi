@@ -97,6 +97,7 @@ SUBROUTINE InitParticleBoundarySampling()
 USE MOD_Globals
 USE MOD_Basis                   ,ONLY:LegendreGaussNodesAndWeights
 USE MOD_Mesh_Vars               ,ONLY: NGeo,nBCs,BoundaryName
+USE MOD_Mesh_Vars               ,ONLY: SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfOnNode
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfSample,dXiEQ_SurfSample,PartBound,XiEQ_SurfSample
 USE MOD_Particle_Boundary_Vars  ,ONLY: nComputeNodeSurfSides,nComputeNodeSurfTotalSides
@@ -110,7 +111,6 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSampleBCs
 USE MOD_Particle_Boundary_Vars  ,ONLY: nImpactVars,doParticleImpactSample,WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetCNElemID
-USE MOD_Particle_Mesh_Vars      ,ONLY: SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemSideNodeID_Shared
 USE MOD_Particle_Surfaces       ,ONLY: EvaluateBezierPolynomialAndGradient
 USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D
@@ -119,17 +119,17 @@ USE MOD_Particle_Vars           ,ONLY: nSpecies
 USE MOD_ReadInTools             ,ONLY: GETINT,GETLOGICAL,GETINTARRAY,GETSTR,COUNTOPTION
 USE MOD_StringTools             ,ONLY: LowCase
 #if USE_MPI
+USE MOD_Mesh_Vars               ,ONLY: ElemInfo_Shared
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,nLeaderGroupProcs
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_LEADERS_SURF,mySurfRank
 USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,nComputeNodeProcessors
 USE MOD_MPI_Shared_Vars         ,ONLY: myLeaderGroupRank,nLeaderGroupProcs
+USE MOD_Mesh_Vars               ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide_Shared,GlobalSide2SurfSide_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSide2GlobalSide_Shared,SurfSide2GlobalSide_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSideArea_Shared,SurfSideArea_Shared_Win
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared_Win
-USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared
-USE MOD_Particle_Mesh_Vars      ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_MPI_Boundary_Sampling,ONLY: InitSurfCommunication
 #else
 USE MOD_Particle_Boundary_Vars  ,ONLY: mySurfRank

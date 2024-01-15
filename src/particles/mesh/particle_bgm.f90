@@ -91,10 +91,10 @@ USE MOD_Preproc
 USE MOD_CalcTimeStep           ,ONLY: CalcTimeStep
 USE MOD_DG                     ,ONLY: DGTimeDerivative_weakForm
 USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars              ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Globals       ,ONLY: VECNORM,ElementOnNode
 USE MOD_Particle_Periodic_BC   ,ONLY: InitPeriodicBC
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBGM_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems
@@ -108,15 +108,20 @@ USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray,PrintOption
 USE MOD_TimeDisc_Vars          ,ONLY: dt,t
 #if USE_MPI
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
+USE MOD_Mesh_Vars              ,ONLY: SideInfo_Shared,ElemInfo_Shared_Win
+USE MOD_Mesh_Vars              ,ONLY: nNonUniqueGlobalSides,nNonUniqueGlobalNodes
 USE MOD_MPI_Shared
-USE MOD_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars        ,ONLY: nProcessors_Global,nComputeNodeProcessors,ComputeNodeRootRank,myComputeNodeRank
+USE MOD_MPI_Shared_Vars        ,ONLY: nLeaderGroupProcs
+USE MOD_MPI_Shared_Vars        ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
+USE MOD_MPI_Shared_Vars        ,ONLY: nComputeNodeElems,offsetComputeNodeElem,nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars        ,ONLY: nComputeNodeSides,nComputeNodeTotalSides
+USE MOD_MPI_Shared_Vars        ,ONLY: nComputeNodeTotalNodes
 USE MOD_MPI_Vars               ,ONLY: offsetElemMPI
 USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalElem2CNTotalElem
 USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalElem2GlobalElem
 USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalSide2CNTotalSide
 USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalSide2GlobalSide
-USE MOD_Particle_Mesh_Vars     ,ONLY: nComputeNodeElems,offsetComputeNodeElem,nComputeNodeSides,nNonUniqueGlobalSides,nNonUniqueGlobalNodes
-USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared,ElemInfo_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared_Win,ElemToBGM_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nTotalElems,FIBGM_nTotalElems_Shared,FIBGM_nTotalElems_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProcFlag,FIBGMToProcFlag_Shared,FIBGMToProcFlag_Shared_Win
@@ -132,8 +137,8 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalElem2CNTotalElem_Shared,GlobalElem2C
 USE MOD_Particle_Mesh_Vars     ,ONLY: CNTotalElem2GlobalElem_Shared,CNTotalElem2GlobalElem_Shared_Win
 USE MOD_Particle_Mesh_Vars     ,ONLY: MeshHasPeriodic
 USE MOD_Particle_MPI_Vars      ,ONLY: SafetyFactor,halo_eps_velo,halo_eps,halo_eps2
-USE MOD_Particle_Utils         ,ONLY: InsertionSort
 USE MOD_TimeDisc_Vars          ,ONLY: nRKStages,RKc
+USE MOD_Utils                  ,ONLY: InsertionSort
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
@@ -424,7 +429,7 @@ END DO
 ! >> Communicate global maximum
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,maxCellRadius,1,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_SHARED,iError)
 CALL PrintOption('max. cell radius','INFO',RealOpt=maxCellRadius)
-SWRITE(UNIT_stdOut,'(A)') ' | Building halo BGM ...'
+LBWRITE(UNIT_stdOut,'(A)') ' | Building halo BGM ...'
 GETTIME(StartT)
 
 ! ! enlarge BGM with halo region (all element outside of this region will be cut off)
@@ -1212,7 +1217,7 @@ CALL DisplayMessageAndTime(EndT-StartT, '| Building halo BGM DONE!', DisplayDesp
 !===================================================================================================================================
 #endif /*USE_MPI*/
 
-SWRITE(UNIT_stdOut,'(A)')' BUILDING FIBGM ELEMENT MAPPING ...'
+LBWRITE(UNIT_stdOut,'(A)')' BUILDING FIBGM ELEMENT MAPPING ...'
 GETTIME(StartT)
 
 #if USE_MPI
@@ -1638,13 +1643,13 @@ SUBROUTINE WriteHaloInfo()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_IO_HDF5                 ,ONLY: AddToElemData,ElementOut
-USE MOD_Mesh_Vars               ,ONLY: nGlobalElems,offsetElem
+USE MOD_Mesh_Vars               ,ONLY: nElems,nGlobalElems,offsetElem
+USE MOD_Mesh_Vars               ,ONLY: ElemInfo_Shared
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
-USE MOD_Particle_Globals        ,ONLY: PP_nElems
 USE MOD_Particle_Mesh_Vars      ,ONLY: ElemHaloID
-USE MOD_Particle_Mesh_Vars      ,ONLY: ElemHaloInfo_Array,ElemHaloInfo_Shared,ElemHaloInfo_Shared_Win,ElemInfo_Shared
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemHaloInfo_Array,ElemHaloInfo_Shared,ElemHaloInfo_Shared_Win
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -1678,12 +1683,12 @@ CALL BARRIER_AND_SYNC(ElemHaloInfo_Shared_Win,MPI_COMM_SHARED)
 ! Add ElemInfo halo information to ElemData
 DO iRank = 0,nLeaderGroupProcs-1
   WRITE(UNIT=tmpStr,FMT='(I0)') iRank
-  CALL AddToElemData(ElementOut,'CNRank'//TRIM(tmpStr)//'_ElemHaloInfo',IntArray=ElemHaloInfo_Shared(offsetElem+1:offsetElem+PP_nElems,iRank))
+  CALL AddToElemData(ElementOut,'CNRank'//TRIM(tmpStr)//'_ElemHaloInfo',IntArray=ElemHaloInfo_Shared(offsetElem+1:offsetElem+nElems,iRank))
 END DO
 
 ! Add ElemHaloID information to ElemData to ease debugging
-ALLOCATE(ElemHaloID(1:PP_nElems))
-DO iElem = 1,PP_nElems
+ALLOCATE(ElemHaloID(1:nElems))
+DO iElem = 1,nElems
   ElemHaloID(iElem) = offsetElem+iElem
 END DO
 CALL AddToElemData(ElementOut,'ElemID',IntArray=ElemHaloID)
@@ -1737,11 +1742,14 @@ SUBROUTINE CheckPeriodicSides()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
-USE MOD_MPI_Shared_Vars
+USE MOD_Mesh_Vars              ,ONLY: ElemInfo_Shared
+USE MOD_MPI_Shared_Vars        ,ONLY: ComputeNodeRootRank,myComputeNodeRank,nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars        ,ONLY: nComputeNodeElems
+USE MOD_MPI_Shared_Vars        ,ONLY: MPI_COMM_SHARED
 USE MOD_MPI_Vars               ,ONLY: offsetElemMPI
 USE MOD_Particle_Globals       ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared,BoundsOfElem_Shared,nComputeNodeElems
+USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared
 USE MOD_Particle_MPI_Vars      ,ONLY: halo_eps
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 ! IMPLICIT VARIABLE HANDLING
@@ -1960,8 +1968,8 @@ LOGICAL FUNCTION SideIsExchangeSide(SideID)
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals                ,ONLY: Abort
+USE MOD_Mesh_Vars              ,ONLY: SideInfo_Shared
 USE MOD_Particle_Globals       ,ONLY: ElementOnProc,ElementOnNode
-USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!

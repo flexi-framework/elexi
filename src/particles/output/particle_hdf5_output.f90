@@ -26,31 +26,26 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Do not define an interface for this, cast information directly into subroutine
-!INTERFACE DistributedWriteArray
+! INTERFACE DistributedWriteArray
 !  MODULE PROCEDURE DistributedWriteArray
-!END INTERFACE
+! END INTERFACE
 
 INTERFACE WriteParticle
   MODULE PROCEDURE WriteParticle
 END INTERFACE
 
-#if USE_LOADBALANCE
-!INTERFACE WriteElemDataToSeparateContainer
+! #if USE_LOADBALANCE
+! INTERFACE WriteElemDataToSeparateContainer
 !  MODULE PROCEDURE WriteElemDataToSeparateContainer
-!END INTERFACE
-
-INTERFACE WriteElemTime
-  MODULE PROCEDURE WriteElemTime
-END INTERFACE
-#endif /*USE_LOADBALANCE*/
+! END INTERFACE
+! #endif /*USE_LOADBALANCE*/
 
 PUBLIC :: WriteParticle
 #if USE_MPI
 PUBLIC :: DistributedWriteArray
 #endif
 #if USE_LOADBALANCE
-!PUBLIC :: WriteElemDataToSeparateContainer
-PUBLIC :: WriteElemTime
+! PUBLIC :: WriteElemDataToSeparateContainer
 #endif
 !==================================================================================================================================
 
@@ -67,7 +62,7 @@ SUBROUTINE WriteParticle(FileName)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Mesh_Vars               ,ONLY: nGlobalElems,offsetElem
+USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem,nGlobalElems
 USE MOD_Part_Tools              ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Vars   ,ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleReflectionTrack
@@ -128,7 +123,7 @@ END IF
 ASSOCIATE (&
       nGlobalElems    => INT(nGlobalElems)                              ,&
       nVar            => INT(PartIntSize)                               ,&
-      PP_nElems       => INT(PP_nElems)                                 ,&
+      nElems          => INT(nElems)                                    ,&
       offsetElem      => INT(offsetElem)                                ,&
       PartDataSize    => INT(PartDataSize))
 
@@ -137,7 +132,7 @@ ASSOCIATE (&
                           DataSetName = 'PartInt'                       ,&
                           rank        = 2                               ,&
                           nValGlobal  = (/nVar,nGlobalElems/)           ,&
-                          nVal        = (/nVar,PP_nElems   /)           ,&
+                          nVal        = (/nVar,nElems      /)           ,&
                           offset      = (/0   ,offsetElem  /)           ,&
                           collective  = .TRUE.                          ,&
                           IntArray    = PartInt)
@@ -320,64 +315,5 @@ END IF
 
 END SUBROUTINE DistributedWriteArray
 #endif /*USE_MPI*/
-
-
-#if USE_LOADBALANCE
-SUBROUTINE WriteElemTime(FileName)
-!===================================================================================================================================
-!> Similar to WriteAdditionalElemData() but only writes one of the fields to a separate container
-!> ----------------
-!> Write additional data for analyze purpose to HDF5.
-!> The data is taken from a lists, containing either pointers to data arrays or pointers
-!> to functions to generate the data, along with the respective varnames.
-!>
-!> Two options are available:
-!>    1. WriteAdditionalElemData:
-!>       Element-wise scalar data, e.g. the timestep or indicators.
-!>       The data is collected in a single array and written out in one step.
-!>       DO NOT MISUSE NODAL DATA FOR THIS! IT WILL DRASTICALLY INCREASE FILE SIZE AND SLOW DOWN IO!
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals
-USE MOD_PreProc
-USE MOD_Mesh_Vars        ,ONLY: nElems
-USE MOD_LoadBalance_Vars ,ONLY: ElemTime,ElemTime_tmp
-USE MOD_Restart_Vars     ,ONLY: DoRestart
-USE MOD_Mesh_Vars        ,ONLY: nGlobalElems,offsetelem
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN)        :: FileName
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-
-! ElemTime might not be allocated, e.g, when running in posti mode
-IF (.NOT.ALLOCATED(ElemTime)) RETURN
-
-! Check if ElemTime is all zeros and if this is a restart (save the old values)
-IF((MAXVAL(ElemTime).LE.0.0)          .AND.& ! Restart
-    DoRestart                         .AND.& ! Restart
-    ALLOCATED(ElemTime_tmp)) THEN            ! only allocated when not starting simulation from zero
-  ! Additionally, store old values in ElemData container
-  ElemTime = ElemTime_tmp
-END IF ! (MAXVAL(ElemData).LE.0.0).AND.DoRestart)
-
-! Write 'ElemTime' container
-CALL GatheredWriteArray(FileName                               ,&
-                        create          = .FALSE.              ,&
-                        DataSetName     = 'ElemTime'           ,&
-                        rank            = 2                    ,&
-                        nValGlobal      = (/1   ,nGlobalElems/),&
-                        nVal            = (/1   ,nElems      /),&
-                        offset          = (/0   ,offsetElem  /),&
-                        collective      = .TRUE.               ,&
-                        RealArray       = ElemTime)
-
-END SUBROUTINE WriteElemTime
-#endif /*USE_LOADBALANCE*/
 
 END MODULE MOD_Particle_HDF5_Output

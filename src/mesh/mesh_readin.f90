@@ -43,11 +43,11 @@ INTEGER,PARAMETER    :: ELEM_LastNodeInd=6
 !>  Named parameters for SideInfo array in mesh file
 !> @{
 INTEGER,PARAMETER    :: SideInfoSize=5        !< number of entries in each line of SideInfo
-INTEGER,PARAMETER    :: SIDE_Type=1
-INTEGER,PARAMETER    :: SIDE_ID=2
-INTEGER,PARAMETER    :: SIDE_nbElemID=3
-INTEGER,PARAMETER    :: SIDE_Flip=4
-INTEGER,PARAMETER    :: SIDE_BCID=5
+! INTEGER,PARAMETER    :: SIDE_TYPE=1
+! INTEGER,PARAMETER    :: SIDE_ID=2
+! INTEGER,PARAMETER    :: SIDE_NBELEMID=3
+! INTEGER,PARAMETER    :: SIDE_FLIP=4
+! INTEGER,PARAMETER    :: SIDE_BCID=5
 !> @}
 
 #if USE_PARTICLES
@@ -225,16 +225,16 @@ USE MOD_Mesh_Vars,          ONLY:ElemInfo,SideInfo
 USE MOD_Mesh_Vars,          ONLY:nGlobalSides,nGlobalBCSides,nGlobalMPISides,nGlobalPeriodicSides
 USE MOD_MPI_Vars,           ONLY:nMPISides_Proc,nNbProcs,NbProc
 #endif
-#if USE_PARTICLES
-USE MOD_Particle_Mesh_Readin, ONLY: ReadMeshBasics
-USE MOD_Particle_Mesh_Readin, ONLY: ReadMeshElems,ReadMeshSides,ReadMeshSideNeighbors
-USE MOD_Particle_Mesh_Readin, ONLY: ReadMeshNodes,ReadMeshTrees
-USE MOD_Particle_Mesh_Readin, ONLY: StartCommunicateMeshReadin,FinishCommunicateMeshReadin
+#if USE_PARTICLES || USE_LOADBALANCE
+USE MOD_Mesh_Shared,        ONLY:ReadMeshBasics
+USE MOD_Mesh_Shared,        ONLY:ReadMeshElems,ReadMeshSides,ReadMeshSideNeighbors
+USE MOD_Mesh_Shared,        ONLY:ReadMeshNodes,ReadMeshTrees
+USE MOD_Mesh_Shared,        ONLY:StartCommunicateMeshReadin,FinishCommunicateMeshReadin
+#endif /*PARTICLES || USE_LOADBALANCE*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
-USE MOD_Particle_Mesh_Vars   ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
+USE MOD_LoadBalance_Vars,   ONLY:PerformLoadBalance
+USE MOD_Mesh_Vars,          ONLY:ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 #endif /*USE_LOADBALANCE*/
-#endif /*PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -297,9 +297,9 @@ IF (.NOT.PerformLoadBalance) THEN
 END IF
 #endif /*USE_LOADBALANCE*/
 
-#if USE_PARTICLES
+#if USE_PARTICLES || USE_LOADBALANCE
 CALL ReadMeshBasics(FileString)
-#endif
+#endif /*USE_PARTICLES || USE_LOADBALANCE*/
 
 !----------------------------------------------------------------------------------------------------------------------------
 !                              ELEMENTS
@@ -332,9 +332,9 @@ DO iElem = FirstElemInd,LastElemInd
   aElem%Zone  =  ElemInfo(ELEM_Zone,iElem)
 END DO
 
-#if USE_PARTICLES
+#if USE_PARTICLES || USE_LOADBALANCE
 CALL ReadMeshElems()
-#endif
+#endif /*USE_PARTICLES || USE_LOADBALANCE*/
 
 !----------------------------------------------------------------------------------------------------------------------------
 !                              SIDES
@@ -369,9 +369,9 @@ ELSE
 END IF
 #endif /*USE_LOADBALANCE*/
 
-#if USE_PARTICLES
+#if USE_PARTICLES || USE_LOADBALANCE
 CALL ReadMeshSides()
-#endif
+#endif /*USE_PARTICLES || USE_LOADBALANCE*/
 
 ! iterate over all local elements and within each element over all sides
 DO iElem = FirstElemInd,LastElemInd
@@ -382,7 +382,7 @@ DO iElem = FirstElemInd,LastElemInd
   DO iLocSide = 1,6
     aSide => aElem%Side(iLocSide)%sp
     iSide    = iSide+1
-    nbElemID = SideInfo(SIDE_nbElemID,iSide) ! get neighboring element index of element adjacent to this side
+    nbElemID = SideInfo(SIDE_NBELEMID,iSide) ! get neighboring element index of element adjacent to this side
 
 #if PP_dim == 2
     ! In 2D check that there is only one layer of elements in z-direction
@@ -416,7 +416,7 @@ DO iElem = FirstElemInd,LastElemInd
     END IF
 
     ! mark side as belonging to a mortar
-    IF(SideInfo(SIDE_Type,iSide).LT.0) aSide%MortarType = -1
+    IF(SideInfo(SIDE_TYPE,iSide).LT.0) aSide%MortarType = -1
 
     ! side is not a big Mortar side
     IF(aSide%MortarType.LE.0)THEN
@@ -428,7 +428,7 @@ DO iElem = FirstElemInd,LastElemInd
         aSide%flip = 0
       ! not oriented side
       ELSE
-        aSide%flip = MOD(Sideinfo(SIDE_Flip,iSide),10)
+        aSide%flip = MOD(Sideinfo(SIDE_FLIP,iSide),10)
         IF((aSide%flip.LT.0).OR.(aSide%flip.GT.4)) CALL Abort(__STAMP__,'NodeID doesnt belong to side')
       END IF
 
@@ -473,7 +473,7 @@ DO iElem = FirstElemInd,LastElemInd
         iSide =  iSide+1
         aSide => aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
       END IF
-      nbElemID      = SideInfo(SIDE_nbElemID,iSide)
+      nbElemID      = SideInfo(SIDE_NBELEMID,iSide)
       aSide%BCindex = SideInfo(SIDE_BCID,iSide)
 
       ! BC sides don't need a connection, except for internal (BC_TYPE=0), periodic (BC_TYPE=1) and "dummy" inner BCs (BC_TYPE=100).
@@ -523,9 +523,9 @@ DO iElem = FirstElemInd,LastElemInd
 #endif
         END IF
       END IF
-#if USE_PARTICLES
+#if USE_PARTICLES || USE_LOADBALANCE
       CALL ReadMeshSideNeighbors(nbElemID,iSide)
-#endif
+#endif /*USE_PARTICLES || USE_LOADBALANCE*/
     END DO !iMortar
   END DO !iLocSide
 END DO !iElem
@@ -534,10 +534,10 @@ END DO !iElem
 !----------------------------------------------------------------------------------------------------------------------------
 !                              NODES
 !----------------------------------------------------------------------------------------------------------------------------
-#if USE_PARTICLES
+#if USE_PARTICLES || USE_LOADBALANCE
 ! Particles want to node coordinates in the old 2D format, hence this read-in happens twice
 CALL ReadMeshNodes()
-#endif
+#endif /*USE_PARTICLES || USE_LOADBALANCE*/
 
 ! get physical coordinates
 #if USE_LOADBALANCE
@@ -646,19 +646,19 @@ IF(isMortarMesh)THEN
   TreeCoords = -1.
   CALL ReadArray('TreeCoords',2,(/3,(NGeoTree+1)**3*nTrees/),&
                  (NGeoTree+1)**3*offsetTree,2,RealArray=TreeCoords)
-#if USE_PARTICLES
+#if USE_PARTICLES || USE_LOADBALANCE
   CALL ReadMeshTrees()
-#endif
+#endif /*USE_PARTICLES || USE_LOADBALANCE*/
 ! no mortar mesh
 ELSE
   nTrees = 0
 END IF
 CALL CloseDataFile()
 
-#if USE_PARTICLES
+#if USE_PARTICLES || USE_LOADBALANCE
 ! Start non-blocking communication of mesh information
 CALL StartCommunicateMeshReadin()
-#endif /*USE_PARTICLES*/
+#endif /*USE_PARTICLES || USE_LOADBALANCE*/
 ! Readin of mesh is now finished
 
 
@@ -815,10 +815,10 @@ ReduceData(8)  = nAnalyzeSides
 ReduceData(9)  = nMortarSides
 ReduceData(10) = nMPIPeriodics
 
-#if USE_PARTICLES
+#if USE_PARTICLES || USE_LOADBALANCE
 ! Finish non-blocking communication of mesh information
 CALL FinishCommunicateMeshReadin()
-#endif /*USE_PARTICLES*/
+#endif /*USE_PARTICLES || USE_LOADBALANCE*/
 
 ! Store information if mesh has mortars, independent of existence of trees
 meshHasMortars = MERGE(.TRUE.,.FALSE.,ReduceData(9).GT.0)
@@ -868,17 +868,15 @@ END SUBROUTINE ReadMesh
 SUBROUTINE BuildPartition(FileString)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Mesh_Vars,         ONLY:nGlobalElems,nElems
+USE MOD_Mesh_Vars,         ONLY:nGlobalElems
 #if USE_MPI
 USE MOD_MPI_Vars,          ONLY:offsetElemMPI
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance,       ONLY:InitLoadBalanceTracking
 USE MOD_LoadBalance_Tools, ONLY:DomainDecomposition
 USE MOD_LoadBalance_Vars,  ONLY:PerformLoadBalance,offsetElemMPIOld
-USE MOD_Particle_Globals,  ONLY:PP_nElems
 #else
-USE MOD_Mesh_Vars,         ONLY:offsetElem
+USE MOD_Mesh_Vars,         ONLY:nElems,offsetElem
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -918,7 +916,6 @@ offsetElemMPI = 0
 
 #if USE_LOADBALANCE
 CALL DomainDecomposition()
-CALL InitLoadBalanceTracking()
 #else /*USE_LOADBALANCE*/
 ! Simple partition: nGlobalelems/nprocs, do this on proc 0
 nElems = nGlobalElems/nProcessors
@@ -937,9 +934,6 @@ LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
 nElems     = nGlobalElems   ! local number of Elements
 offsetElem = 0              ! offset is the index of first entry, hdf5 array starts at 0-.GT. -1
 #endif /*USE_MPI*/
-#if USE_LOADBALANCE
-PP_nElems  = nElems
-#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE BuildPartition
 

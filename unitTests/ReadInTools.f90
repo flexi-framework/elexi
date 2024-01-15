@@ -9,6 +9,7 @@ PROGRAM ReadInToolsUnitTest
 USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_MPI,         ONLY: InitMPI
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

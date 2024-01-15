@@ -75,8 +75,8 @@ SUBROUTINE InitParticleInterpolation()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals,       ONLY: PP_nElems
 USE MOD_Memory,                 ONLY: Allocate_Safe
+USE MOD_Mesh_Vars,              ONLY: nElems
 USE MOD_ReadInTools
 USE MOD_Particle_Vars,          ONLY: PDM
 USE MOD_Particle_Interpolation_Vars
@@ -99,7 +99,7 @@ IF (PartInterpolationInitIsDone) THEN
 END IF
 
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE INTERPOLATION...'
+LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE INTERPOLATION...'
 
 ! For low number of particles, the loop over all elements becomes quite inefficient. User can opt out with setting
 ! InterpolationElemLoop = F.
@@ -108,7 +108,7 @@ InterpolationElemLoop = GETLOGICAL('Part-InterpolationElemLoop')
 ! Even if the user did not opt out, switch InterpolationElemLoop off for procs with high number of elems.
 !>> so far arbitrary treshold of 10 elems per proc
 LoopDisabled = 0
-IF (InterpolationElemLoop.AND.(PP_nElems.GT.10)) THEN
+IF (InterpolationElemLoop.AND.(nElems.GT.10)) THEN
   InterpolationElemLoop = .FALSE.
   LoopDisabled          = 1
 END IF

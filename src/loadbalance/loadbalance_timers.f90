@@ -125,13 +125,15 @@ END SUBROUTINE LBPauseTime
 
 SUBROUTINE LBElemSplitTime(ElemID,tLBStart)
 !===================================================================================================================================
-!> Measure particle-related times for specific elements. Splits the time and resets LB_start. 
+!> Measure particle-related times for specific elements. Splits the time and resets LB_start.
 !> Adds time to Elemtime(ElemID) and ElemTimePart.
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_LoadBalance_Vars ,ONLY: ElemTime, PerformLBSample
+USE MOD_LoadBalance_Vars ,ONLY: ElemTime,PerformLBSample
+#if USE_PARTICLES
 USE MOD_LoadBalance_Vars ,ONLY: ElemTimePart
+#endif /*USE_PARTICLES*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -147,7 +149,9 @@ IF(.NOT. PerformLBSample) RETURN
 tLBEnd           = LOCALTIME() ! LB Time End
 DeltaTime        = tLBEnd-tLBStart
 ElemTime(ELemID) = ElemTime(ElemID) + DeltaTime
+#if USE_PARTICLES
 ElemTimePart     = ElemTimePart     + DeltaTime
+#endif /*USE_PARTICLES*/
 tLBStart         = tLBEnd !LOCALTIME() ! LB Time Start
 END SUBROUTINE LBElemSplitTime
 
@@ -160,8 +164,10 @@ SUBROUTINE LBElemPauseTime(ElemID,tLBStart)
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_LoadBalance_Vars ,ONLY: ElemTime, PerformLBSample
+USE MOD_LoadBalance_Vars ,ONLY: ElemTime,PerformLBSample
+#if USE_PARTICLES
 USE MOD_LoadBalance_Vars ,ONLY: ElemTimePart
+#endif /*USE_PARTICLES*/
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -177,7 +183,9 @@ IF(.NOT. PerformLBSample) RETURN
 tLBEnd = LOCALTIME() ! LB Time End
 DeltaTime        = tLBEnd-tLBStart
 ElemTime(ELemID) = ElemTime(ElemID) + DeltaTime
+#if USE_PARTICLES
 ElemTimePart     = ElemTimePart     + DeltaTime
+#endif /*USE_PARTICLES*/
 END SUBROUTINE LBElemPauseTime
 
 

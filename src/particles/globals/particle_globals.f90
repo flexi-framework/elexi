@@ -35,30 +35,12 @@ INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(18)
 INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(8)
 #endif
 
-REAL,PARAMETER                        :: PI         = ACOS(-1.0D0)
-REAL,PARAMETER                        :: epsMach    = epsilon(0.)
-REAL,PARAMETER                        :: TwoEpsMach = 2.d0 * epsilon(0.)
-
-! Keep nElems and PP_nElems separate for now
-INTEGER                               :: PP_nElems
-! INTEGER(KIND=IK)                      :: nGlobalNbrOfParticles(6) !< 1-3: min,max,total number of simulation particles over all processors
+! INTEGER(KIND=IK)    :: nGlobalNbrOfParticles(6) !< 1-3: min,max,total number of simulation particles over all processors
 !=================================================================================================================================
 
 INTERFACE CROSSNORM
   MODULE PROCEDURE CROSSNORM
 END INTERFACE CROSSNORM
-
-INTERFACE ALMOSTZERO
-  MODULE PROCEDURE ALMOSTZERO
-END INTERFACE ALMOSTZERO
-
-INTERFACE ALMOSTEQUAL
-  MODULE PROCEDURE ALMOSTEQUAL
-END INTERFACE ALMOSTEQUAL
-
-INTERFACE LESSEQUALTOLERANCE
-  MODULE PROCEDURE LESSEQUALTOLERANCE
-END INTERFACE
 
 INTERFACE DOTPRODUCT
   MODULE PROCEDURE DOTPRODUCT
@@ -103,9 +85,6 @@ END INTERFACE
 PUBLIC :: PI
 PUBLIC :: CROSSNORM
 PUBLIC :: VECNORM
-PUBLIC :: ALMOSTZERO
-PUBLIC :: ALMOSTEQUAL
-PUBLIC :: LESSEQUALTOLERANCE
 PUBLIC :: DOTPRODUCT
 PUBLIC :: UnitVector
 PUBLIC :: OrthoNormVec
@@ -164,96 +143,6 @@ REAL            :: VECNORM  ! Euclidean norm (length) of the vector v1
 !===================================================================================================================================
 VECNORM = SQRT(v1(1)*v1(1)+v1(2)*v1(2)+v1(3)*v1(3))
 END FUNCTION VECNORM
-
-
-PURE FUNCTION ALMOSTZERO(num)
-!===================================================================================================================================
-! Performe an almost zero check. But ...
-! Bruce Dawson quote:
-! "There is no silver bullet. You have to choose wisely."
-!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless.
-!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs
-!      to your calculation. Maybe."
-!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
-!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs.
-!      An absolute epsilon could be used if you knew exactly what number you were comparing against."
-!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
-!      Good luck and God speed."
-!===================================================================================================================================
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN) :: Num ! Number
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-LOGICAL         :: AlmostZero
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-
-AlmostZero=.FALSE.
-IF(ABS(Num).LE.EpsMach) AlmostZero=.TRUE.
-
-END FUNCTION ALMOSTZERO
-
-
-PURE FUNCTION ALMOSTEQUAL(num1,num2)
-!===================================================================================================================================
-! Bruce Dawson quote:
-! "There is no silver bullet. You have to choose wisely."
-!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless.
-!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs
-!      to your calculation. Maybe."
-!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
-!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs.
-!      An absolute epsilon could be used if you knew exactly what number you were comparing against."
-!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
-!      Good luck and God speed."
-!===================================================================================================================================
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN) :: Num1,Num2      ! Number
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-LOGICAL         :: ALMOSTEQUAL
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-IF(ABS(Num1-Num2).LE.MAX(ABS(Num1),ABS(Num2))*TwoEpsMach*1.01)THEN
- ALMOSTEQUAL=.TRUE.
-ELSE
- ALMOSTEQUAL=.FALSE.
-END IF
-END FUNCTION ALMOSTEQUAL
-
-
-!===================================================================================================================================
-!> Check if a <= b or a is almost equal to b via ALMOSTEQUALRELATIVE
-!> Catch tolerance issues when b is only an epsilon smaller than a but the inquiry should be that they are equal
-!===================================================================================================================================
-PPURE LOGICAL FUNCTION LESSEQUALTOLERANCE(a,b,tol)
-! MODULES
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN) :: a,b !< Two real numbers for comparison
-REAL,INTENT(IN) :: tol !< fix for tolerance issues
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-IF((a.LE.b).OR.(ALMOSTEQUALRELATIVE(a,b,tol)))THEN
-  LESSEQUALTOLERANCE = .TRUE.
-ELSE
-  LESSEQUALTOLERANCE = .FALSE.
-END IF
-END FUNCTION LESSEQUALTOLERANCE
 
 
 PURE FUNCTION DOTPRODUCT(v1)
@@ -534,7 +423,7 @@ END FUNCTION StringBeginsWith
 PPURE LOGICAL FUNCTION ElementOnProc(GlobalElemID) RESULT(L)
 ! MODULES
 USE MOD_Preproc
-USE MOD_Mesh_Vars                ,ONLY: offsetElem
+USE MOD_Mesh_Vars                ,ONLY: nElems,offsetElem
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -548,7 +437,7 @@ INTEGER             :: LocalElemID
 !-----------------------------------------------------------------------------------------------------------------------------------
 !===================================================================================================================================
 LocalElemID = GlobalElemID - offsetElem
-L = (LocalElemID.GE.1).AND.(LocalElemID.LE.PP_nElems)
+L = (LocalElemID.GE.1).AND.(LocalElemID.LE.nElems)
 END FUNCTION ElementOnProc
 
 

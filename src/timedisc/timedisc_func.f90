@@ -314,7 +314,7 @@ USE MOD_Particle_TimeDisc_Vars,ONLY: UseManualTimeStep
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,LoadBalanceSample,PerformLBSample
-USE MOD_Particle_Globals    ,ONLY: LESSEQUALTOLERANCE
+USE MOD_Utils               ,ONLY: LESSEQUALTOLERANCE
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -441,23 +441,28 @@ USE MOD_FV_Blending         ,ONLY: FV_Info
 #if PP_LIMITER
 USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
 #endif /*PP_LIMITER*/
-#if USE_PARTICLES
-USE MOD_Particle_Output     ,ONLY: FillParticleData
-USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime,UseManualTimeStep
-#endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_HDF5_output         ,ONLY: RemoveHDF5
 USE MOD_LoadBalance         ,ONLY: ComputeElemLoad
 USE MOD_LoadBalance_TimeDisc,ONLY: LoadBalance
-USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,ElemTime,ElemTimePart,ElemTimeField,DoLoadBalanceBackup,LoadBalanceSampleBackup
-USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample,PerformLBSample,PerformLoadBalance,LoadBalanceMaxSteps,nLoadBalanceSteps
+USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance,DoLoadBalanceBackup,LoadBalanceSampleBackup
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTime,ElemTimeField
+USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample,PerformLBSample,PerformLoadBalance
+USE MOD_LoadBalance_Vars    ,ONLY: PerformLoadBalance,LoadBalanceMaxSteps,nLoadBalanceSteps
 USE MOD_LoadBalance_Vars    ,ONLY: DoInitialAutoRestart,ForceInitialLoadBalance
-USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeField,RestartTimeBackup
-USE MOD_Particle_Globals    ,ONLY: ALMOSTEQUAL
-USE MOD_Particle_Localization,ONLY:CountPartsPerElem
+USE MOD_LoadBalance_Vars    ,ONLY: RestartTimeBackup
 USE MOD_Restart_Vars        ,ONLY: RestartFile
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,time_start
+USE MOD_Utils               ,ONLY: ALMOSTEQUAL
 #endif /*USE_LOADBALANCE*/
+#if USE_PARTICLES
+USE MOD_Particle_Output       ,ONLY: FillParticleData
+USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime,UseManualTimeStep
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars      ,ONLY: ElemTimePart
+USE MOD_Particle_Localization ,ONLY: CountPartsPerElem
+#endif /*USE_LOADBALANCE*/
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -607,7 +612,9 @@ IF(doAnalyze)THEN
     END IF
   ELSE
     ElemTime      = 0. ! nullify ElemTime before measuring the time in the next cycle
+#if USE_PARTICLES
     ElemTimePart  = 0.
+#endif /*USE_PARTICLES*/
     ElemTimeField = 0.
   END IF
 

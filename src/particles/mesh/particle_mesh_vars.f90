@@ -27,25 +27,23 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 LOGICAL            :: ParticleMeshInitIsDone   = .FALSE.
-INTEGER            :: NGeoOverride
-REAL               :: meshScale
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Mesh info
 REAL               :: MeshVolume                            ! total Volume of mesh
 REAL               :: LocalVolume                           ! volume of proc
-INTEGER            :: nNonUniqueGlobalSides                 !> total nb. of non-unique sides of mesh (hexahedral: 6*nElems)
-INTEGER            :: nNonUniqueGlobalNodes                 !> total nb. of non-unique nodes of mesh (hexahedral: 8**NGeo * nElems)
-INTEGER            :: nNonUniqueGlobalTrees                 !> total nb. of trees
-INTEGER            :: nUniqueMasterMortarSides              !> total nb. of master mortar sides in the mesh
-INTEGER            :: nUniqueBCSides                        !> total nb. of BC sides in the mesh
-INTEGER            :: nComputeNodeElems                     !> Number of elems on current compute-node
-INTEGER            :: nComputeNodeSides                     !> Number of sides on current compute-node
-INTEGER            :: nComputeNodeNodes                     !> Number of nodes on current compute-node
-INTEGER            :: nComputeNodeTrees                     !> Number of trees on current compute-node
-INTEGER            :: offsetComputeNodeElem                 !> elem offset of compute-node root
-INTEGER            :: offsetComputeNodeSide                 !> side offset of compute-node root
-INTEGER            :: offsetComputeNodeNode                 !> node offset of compute-node root
-INTEGER            :: offsetComputeNodeTree                 !> tree offset of compute-node root
+! INTEGER            :: nNonUniqueGlobalSides                 !> total nb. of non-unique sides of mesh (hexahedral: 6*nElems)
+! INTEGER            :: nNonUniqueGlobalNodes                 !> total nb. of non-unique nodes of mesh (hexahedral: 8**NGeo * nElems)
+! INTEGER            :: nNonUniqueGlobalTrees                 !> total nb. of trees
+! INTEGER            :: nUniqueMasterMortarSides              !> total nb. of master mortar sides in the mesh
+! INTEGER            :: nUniqueBCSides                        !> total nb. of BC sides in the mesh
+! INTEGER            :: nComputeNodeElems                     !> Number of elems on current compute-node
+! INTEGER            :: nComputeNodeSides                     !> Number of sides on current compute-node
+! INTEGER            :: nComputeNodeNodes                     !> Number of nodes on current compute-node
+! INTEGER            :: nComputeNodeTrees                     !> Number of trees on current compute-node
+! INTEGER            :: offsetComputeNodeElem                 !> elem offset of compute-node root
+! INTEGER            :: offsetComputeNodeSide                 !> side offset of compute-node root
+! INTEGER            :: offsetComputeNodeNode                 !> node offset of compute-node root
+! INTEGER            :: offsetComputeNodeTree                 !> tree offset of compute-node root
 
 ! ====================================================================
 ! MPI3 shared variables
@@ -91,19 +89,9 @@ LOGICAL,ALLOCPOINT,DIMENSION(:,:,:,:)    :: FIBGMToProcFlag
 INTEGER,ALLOCPOINT,DIMENSION(:,:,:)      :: FIBGMToProcExtent
 INTEGER,ALLOCPOINT,DIMENSION(:)          :: FIBGMProcs
 
-! Shared arrays containing information for complete mesh
-INTEGER,ALLOCPOINT,DIMENSION(:)          :: ElemToTree_Shared
-INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: ElemInfo_Shared
-INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: SideInfo_Shared
-INTEGER,ALLOCPOINT,DIMENSION(:)          :: NodeInfo_Shared
-REAL,ALLOCPOINT,DIMENSION(:,:)           :: NodeCoords_Shared
-REAL,ALLOCPOINT,DIMENSION(:,:,:,:,:)     :: TreeCoords_Shared
-
 ! Shared arrays for halo debug information
 INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: ElemHaloInfo_Shared
 INTEGER,ALLOCPOINT,DIMENSION(:)          :: ElemHaloInfo_Array
-
-REAL,ALLOCPOINT    :: xiMinMax_Shared(:,:,:)
 
 INTEGER,ALLOCPOINT :: ElemToBCSides_Shared(:,:)                !> Mapping from elem to BC sides within halo eps
 REAL,ALLOCPOINT    :: SideBCMetrics_Shared(:,:)                !> Metrics for BC sides, see piclas.h
@@ -181,17 +169,8 @@ REAL,ALLOCPOINT    :: ElemVolume_Shared(:)
 
 #if USE_MPI
 ! integers to hold shared memory windows
-INTEGER           :: ElemToTree_Shared_Win
-INTEGER           :: ElemInfo_Shared_Win
-INTEGER           :: SideInfo_Shared_Win
-INTEGER           :: NodeInfo_Shared_Win
-INTEGER           :: NodeCoords_Shared_Win
-INTEGER           :: TreeCoords_Shared_Win
-
 LOGICAL           :: CalcHaloInfo                          !> Output halo element information to ElemData
 INTEGER           :: ElemHaloInfo_Shared_Win
-
-INTEGER           :: xiMinMax_Shared_Win
 
 INTEGER           :: ElemToBCSides_Shared_Win
 INTEGER           :: SideBCMetrics_Shared_Win

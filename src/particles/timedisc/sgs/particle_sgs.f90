@@ -328,17 +328,18 @@ USE MOD_Globals
 USE MOD_DG_Vars                     ,ONLY: U,UPrim
 USE MOD_Filter                      ,ONLY: Filter_Pointer
 USE MOD_Filter_Vars                 ,ONLY: FilterMat
-USE MOD_Mesh_Vars                   ,ONLY: offsetElem
-USE MOD_Particle_Globals
-USE MOD_Particle_SGS_Vars
-USE MOD_Particle_Interpolation      ,ONLY: InterpolateFieldToParticle,InterpolateFieldToSingleParticle
-USE MOD_Particle_Interpolation_Vars ,ONLY: FieldAtParticle
-USE MOD_Particle_Vars               ,ONLY: TurbPartState,PDM,PEM,PartState
-USE MOD_Particle_Vars               ,ONLY: Species,PartSpecies
 USE MOD_Lifting_Vars                ,ONLY: gradUx, gradUy, gradUz
 USE MOD_Lifting_BR1_gen             ,ONLY: Lifting_BR1_gen
-!USE MOD_Particle_Vars               ,ONLY: TurbPt_Temp
+USE MOD_Mesh_Vars                   ,ONLY: offsetElem
+USE MOD_Particle_Globals            ,ONLY: VECNORM,RandNormal
+USE MOD_Particle_Interpolation      ,ONLY: InterpolateFieldToParticle,InterpolateFieldToSingleParticle
+USE MOD_Particle_Interpolation_Vars ,ONLY: FieldAtParticle
+USE MOD_Particle_SGS_Vars
+USE MOD_Particle_Vars               ,ONLY: TurbPartState,PDM,PEM,PartState
+USE MOD_Particle_Vars               ,ONLY: Species,PartSpecies
+! USE MOD_Particle_Vars               ,ONLY: TurbPt_Temp
 USE MOD_TimeDisc_Vars               ,ONLY: nRKStages, RKC
+USE MOD_Utils                       ,ONLY: ALMOSTZERO
 USE MOD_Viscosity
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1344,16 +1345,15 @@ SUBROUTINE CalcDivTau()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,      ONLY: s23
-USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_Lifting_BR1_gen,    ONLY: Lifting_BR1_gen
+USE MOD_Particle_SGS_Vars,  ONLY: divTau
+USE MOD_Particle_Vars,      ONLY: gradUx2,gradUy2,gradUz2
 #if !FAXEN_CORR
 USE MOD_Lifting_Vars,       ONLY: gradUx,gradUy,gradUz
 USE MOD_Lifting_Vars,       ONLY: gradUx_master,gradUx_slave
 USE MOD_Lifting_Vars,       ONLY: gradUy_master,gradUy_slave
 USE MOD_Lifting_Vars,       ONLY: gradUz_master,gradUz_slave
 #endif
-USE MOD_Particle_Vars,      ONLY: gradUx2,gradUy2,gradUz2
-USE MOD_Particle_SGS_Vars,  ONLY: divTau
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1395,11 +1395,11 @@ END SUBROUTINE CalcDivTau
 !===================================================================================================================================
 SUBROUTINE ParticleFinalizeSGS()
 ! MODULES
+USE MOD_Particle_SGS_Vars
 USE MOD_Particle_Vars,              ONLY: TurbPartState,TurbPt_temp
 #if !FAXEN_CORR
 USE MOD_Particle_Vars,              ONLY: gradUx2,gradUy2,gradUz2
 #endif
-USE MOD_Particle_SGS_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

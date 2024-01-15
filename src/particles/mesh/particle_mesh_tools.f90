@@ -402,7 +402,7 @@ PURE INTEGER FUNCTION GetGlobalNonUniqueSideID(ElemID,localSideID)
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_Particle_Mesh_Vars   ,ONLY: ElemInfo_Shared, SideInfo_Shared
+USE MOD_Mesh_Vars   ,ONLY: ElemInfo_Shared, SideInfo_Shared
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -437,7 +437,8 @@ END FUNCTION GetGlobalNonUniqueSideID
 !==================================================================================================================================!
 SUBROUTINE GetSideBoundingBoxTria(SideID, BoundingBox)
 ! MODULES
-USE MOD_Particle_Mesh_Vars      ,ONLY: NodeCoords_Shared,ElemSideNodeID_Shared, SideInfo_Shared
+USE MOD_Mesh_Vars               ,ONLY: SideInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars      ,ONLY: ElemSideNodeID_Shared
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES

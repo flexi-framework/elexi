@@ -51,10 +51,10 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_CalcTimeStep            ,ONLY: CalcTimeStep
 USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars               ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_MPI_Vars                ,ONLY: offsetElemMPI
-USE MOD_Particle_Globals        ,ONLY: VECNORM,ALMOSTZERO
+USE MOD_Particle_Globals        ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars      ,ONLY: GEO
-USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: BoundsOfElem_Shared
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID,GetGlobalNonUniqueSideID
 USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeTotalElems
@@ -66,6 +66,7 @@ USE MOD_Particle_Timedisc_Vars  ,ONLY: ManualTimeStep
 USE MOD_Particle_Tracking_Vars  ,ONLY: TrackingMethod
 USE MOD_ReadInTools             ,ONLY: PrintOption
 USE MOD_TimeDisc_Vars           ,ONLY: nRKStages,RKc
+USE MOD_Utils                   ,ONLY: ALMOSTZERO
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

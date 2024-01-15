@@ -100,7 +100,8 @@ USE MOD_Mesh_Vars
 USE MOD_HDF5_Input
 USE MOD_ChangeBasisByDim   ,ONLY:ChangeBasisVolume
 USE MOD_Interpolation      ,ONLY:GetVandermonde
-USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone,NodeType,NodeTypeVISU,xGP
+USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone,NodeType,NodeTypeVISU
+! USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 USE MOD_Mesh_ReadIn,        ONLY:readMesh
 USE MOD_Prepare_Mesh,       ONLY:setLocalSideIDs,fillMeshInfo
 USE MOD_ReadInTools,        ONLY:GETLOGICAL,GETSTR,GETREAL,GETINT
@@ -109,22 +110,21 @@ USE MOD_DebugMesh,          ONLY:writeDebugMesh
 USE MOD_Mappings,           ONLY:buildMappings
 #if USE_MPI
 USE MOD_Prepare_Mesh,       ONLY:exchangeFlip
-#endif
+#endif /*USE_MPI*/
 #if FV_ENABLED
 USE MOD_FV_Metrics,         ONLY:InitFV_Metrics
-#endif
-USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
+#endif /*FV_ENABLED*/
 #if (PP_dim == 2)
 USE MOD_2D
-#endif
+#endif /*(PP_dim == 2)*/
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Metrics,ONLY: MoveCoords,MoveMetrics
-USE MOD_LoadBalance_Vars   ,ONLY: DoLoadBalance,PerformLoadBalance,UseH5IOLoadBalance
+USE MOD_LoadBalance_Metrics,ONLY:MoveCoords,MoveMetrics
+USE MOD_LoadBalance_Vars   ,ONLY:PerformLoadBalance,UseH5IOLoadBalance
+! USE MOD_Interpolation_Vars, ONLY:xGP
 #endif /*USE_LOADBALANCE*/
 #if USE_PARTICLES
 USE MOD_Particle_Mesh      ,ONLY:InitParticleMeshBasis
-USE MOD_Particle_Mesh_Vars ,ONLY:NGeoOverride,meshScale
-#endif
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -143,10 +143,6 @@ INTEGER           :: firstMasterSide     ! lower side ID of array U_master/gradU
 INTEGER           :: lastMasterSide      ! upper side ID of array U_master/gradUx_master...
 INTEGER           :: firstSlaveSide      ! lower side ID of array U_slave/gradUx_slave...
 INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx_slave...
-#if !USE_PARTICLES
-REAL              :: meshScale
-INTEGER           :: NGeoOverride
-#endif /*!USE_PARTICLES*/
 ! Timer
 REAL              :: StartT,EndT,WallTime
 !==================================================================================================================================
@@ -538,12 +534,13 @@ USE MOD_Mappings             ,ONLY: FinalizeMappings
 USE MOD_FV_Vars              ,ONLY: FV_Elems_master
 USE MOD_FV_Metrics           ,ONLY: FinalizeFV_Metrics
 #endif
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
+USE MOD_Mesh_Shared          ,ONLY: FinalizeMeshShared
+#endif /*USE_LOADBALANCE*/
 #if USE_PARTICLES
 USE MOD_Particle_Mesh        ,ONLY: FinalizeParticleMeshBasis
 #endif /*USE_PARTICLES*/
-#if USE_LOADBALANCE
-USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
-#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !============================================================================================================================
@@ -601,14 +598,12 @@ CALL FinalizeParticleMeshBasis()
 
 MeshInitIsDone = .FALSE.
 
+! Shared mesh readin happens during mesh readin, finalize with gathered routine here
 #if USE_LOADBALANCE
+CALL FinalizeMeshShared()
+
 IF (PerformLoadBalance) RETURN
 #endif /*USE_LOADBALANCE*/
-
-! Arrays are being shifted along load balancing, so they need to be kept allocated
-#if USE_PARTICLES && USE_LOADBALANCE
-IF (PerformLoadBalance) RETURN
-#endif /*USE_PARTICLES && USE_LOADBALANCE*/
 
 ! geometry information and VDMS
 ! SDEALLOCATE(DCL_N)

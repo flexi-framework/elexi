@@ -38,6 +38,19 @@
 #define SIZEOF_F(x) (STORAGE_SIZE(x)/8)
 #define NO_OP(x)    ASSOCIATE( x => x ); END ASSOCIATE
 
+! Size of data types
+#define SIZE_LOG  KIND(.TRUE.)
+#define SIZE_INT  KIND(INT(1))
+#define SIZE_INT4 4
+#define SIZE_INT8 8
+#define SIZE_REAL KIND(REAL(1))
+#define SIZE_CHAR KIND('a')
+#ifdef INTKIND8
+#define MPI_INTEGER_INT_KIND MPI_INTEGER8
+#else
+#define MPI_INTEGER_INT_KIND MPI_INTEGER
+#endif
+
 #ifdef GNU
 #define CHECKSAFEINT(x,k)  IF(x>HUGE(INT( 1,KIND=k)).OR.x<-HUGE(INT( 1,KIND=k))) CALL Abort(__STAMP__,'Integer conversion failed: out of range!')
 #define CHECKSAFEREAL(x,k) IF(x>HUGE(REAL(1,KIND=k)).OR.x<-HUGE(REAL(1,KIND=k))) CALL Abort(__STAMP__,'Real conversion failed: out of range!')
@@ -144,6 +157,53 @@
 ! Entry position in BC
 #define SEND 1
 #define RECV 2
+
+! Shared memory mesh arrays
+! number of entry in each line of ElemInfo
+#define ELEMINFOSIZE_H5   6
+!#if USE_MPI
+#define ELEMINFOSIZE      9
+!#else
+!#define ELEMINFOSIZE      6
+!#endif /* USE_MPI*/
+! ElemInfo in H5 file
+#define ELEM_TYPE         1
+#define ELEM_ZONE         2
+#define ELEM_FIRSTSIDEIND 3
+#define ELEM_LASTSIDEIND  4
+#define ELEM_FIRSTNODEIND 5
+#define ELEM_LASTNODEIND  6
+! ElemInfo for shared array
+#define ELEM_RANK         7
+#define ELEM_HALOFLAG     8
+#define ELEM_HASMORTAR    9
+
+! number of entries in each line of SideInfo
+#define SIDEINFOSIZE_H5   5
+#define SIDEINFOSIZE      8
+#define SIDE_TYPE         1
+#define SIDE_ID           2
+#define SIDE_NBELEMID     3
+#define SIDE_FLIP         4
+#define SIDE_BCID         5
+#define SIDE_ELEMID       6
+#define SIDE_LOCALID      7
+#define SIDE_NBSIDEID     8
+#define SIDE_NBELEMTYPE   9
+
+#if USE_LOADBALANCE
+! Load Balance (LB) position in array for measuring the time that is spent on specific operations
+#define LB_DG            1
+#define LB_DGCOMM        2
+#define LB_EMISSION      3
+#define LB_TRACK         4
+#define LB_INTERPOLATION 5
+#define LB_PUSH          6
+#define LB_PARTCOMM      7
+#define LB_SURFFLUX      8
+
+#define LB_NTIMES        8
+#endif /*USE_LOADBALANCE*/
 
 !#define DEBUGMESH
 

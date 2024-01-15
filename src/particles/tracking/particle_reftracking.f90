@@ -52,10 +52,11 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: ElemToBCSides
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_Element,FIBGM_offsetElem
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID,GetCNElemID
 USE MOD_Particle_Tracking_Vars ,ONLY: nTracks,Distance,ListDistance,CartesianPeriodic
-USE MOD_Particle_Utils         ,ONLY: InsertionSort
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef,LastPartPos
+USE MOD_Utils                  ,ONLY: ALMOSTEQUAL
+USE MOD_Utils                  ,ONLY: InsertionSort
 #if USE_MPI
-USE MOD_Mesh_Vars              ,ONLY: offsetElem
+USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_Mesh_Vars              ,ONLY: nElems
@@ -129,7 +130,7 @@ DO iPart = 1,PDM%ParticleVecLength
        PEM%Element(iPart) = ElemID
 #if USE_LOADBALANCE
        ! Particle is on current proc, assign load to new cell
-       IF (ElemID.GT.offsetElem+1 .AND. ElemID.LE.offsetElem+PP_nElems) &
+       IF (ElemID.GT.offsetElem+1 .AND. ElemID.LE.offsetElem+nElems) &
          CALL LBElemPauseTime(ElemID-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
       CYCLE
@@ -160,7 +161,7 @@ DO iPart = 1,PDM%ParticleVecLength
       PEM%Element(iPart) = ElemID
 #if USE_LOADBALANCE
        ! Particle is on current proc, assign load to new cell
-       IF (ElemID.GT.offsetElem+1 .AND. ElemID.LE.offsetElem+PP_nElems) &
+       IF (ElemID.GT.offsetElem+1 .AND. ElemID.LE.offsetElem+nElems) &
          CALL LBElemPauseTime(ElemID-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
       CYCLE
@@ -169,7 +170,7 @@ DO iPart = 1,PDM%ParticleVecLength
 
 #if USE_LOADBALANCE
   ! Particle is on current proc, assign load to new cell
-  IF (ElemID.GT.offsetElem+1 .AND. ElemID.LE.offsetElem+PP_nElems) THEN
+  IF (ElemID.GT.offsetElem+1 .AND. ElemID.LE.offsetElem+nElems) THEN
     CALL LBElemSplitTime(ElemID-offsetElem,tLBStart)
   ELSE
     CALL LBStartTime(tLBStart)
@@ -287,11 +288,11 @@ DO iPart = 1,PDM%ParticleVecLength
           CALL PrintParticleInfo(iPart,CNElemID,oldXi,newXi)
 #if USE_MPI
           InElem   = PEM%Element(iPart)
-          HaloStat = MERGE('T','F',InElem.GE.offsetElem+1 .AND. InElem.LE.offsetElem+PP_nElems)
+          HaloStat = MERGE('T','F',InElem.GE.offsetElem+1 .AND. InElem.LE.offsetElem+nElems)
           IPWRITE(UNIT_stdOut,'(I0,A,I0,A,A,A)')   ' ElemID       ', InElem,' (halo-elem = ',HaloStat,')'
 
           InElem = PEM%LastElement(iPart)
-          HaloStat = MERGE('T','F',InElem.GE.offsetElem+1 .AND. InElem.LE.offsetElem+PP_nElems)
+          HaloStat = MERGE('T','F',InElem.GE.offsetElem+1 .AND. InElem.LE.offsetElem+nElems)
           IPWRITE(UNIT_stdOut,'(I0,A,I0,A,A,A)')   ' Last-ElemID  ', InElem,' (halo-elem = ',HaloStat,')'
 #else
           IPWRITE(UNIT_stdOut,'(I0,A,I0)')         ' ElemID       ', PEM%Element(iPart)
@@ -362,11 +363,11 @@ RECURSIVE SUBROUTINE ParticleBCTracking(lengthPartTrajectory0 &
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
+USE MOD_Mesh_Vars                   ,ONLY: SideInfo_Shared
 USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteraction
 USE MOD_Particle_Globals            ,ONLY: VECNORM
 USE MOD_Particle_Localization       ,ONLY: PARTHASMOVED
 USE MOD_Particle_Mesh_Vars          ,ONLY: SideBCMetrics,ElemToBCSides
-USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars          ,ONLY: GEO,ElemRadiusNGeo
 USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID,GetCNSideID
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
@@ -375,9 +376,9 @@ USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
 USE MOD_Particle_Tracking_Vars      ,ONLY: CartesianPeriodic
-USE MOD_Particle_Utils              ,ONLY: InsertionSort
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM
 USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
+USE MOD_Utils                       ,ONLY: InsertionSort
 #if CODE_ANALYZE
 USE MOD_Particle_Tracking_Vars,      ONLY:PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
@@ -752,6 +753,7 @@ SUBROUTINE FallBackFaceIntersection(ElemID,firstSide,LastSide,nlocSides,PartID)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
+USE MOD_Mesh_Vars,                   ONLY: SideInfo_Shared
 USE MOD_Particle_Boundary_Condition, ONLY: GetBoundaryInteraction
 USE MOD_Particle_Globals,            ONLY: VECNORM
 USE MOD_Particle_Localization,       ONLY: LocateParticleInElement
@@ -760,12 +762,11 @@ USE MOD_Particle_Intersection,       ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection,       ONLY: ComputePlanarRectIntersection
 USE MOD_Particle_Intersection,       ONLY: ComputePlanarNonRectIntersection
 USE MOD_Particle_Intersection,       ONLY: ComputeBiLinearIntersection
-USE MOD_Particle_Mesh_Vars,          ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars,          ONLY: SideBCMetrics
 USE MOD_Particle_Mesh_Vars,          ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID,GetCNSideID
 USE MOD_Particle_Surfaces_Vars,      ONLY: SideType
-USE MOD_Particle_Utils,              ONLY: InsertionSort
+USE MOD_Utils,                       ONLY: InsertionSort
 USE MOD_Particle_Vars,               ONLY: PDM,PartState,LastPartPos
 ! USE MOD_Particle_Vars,               ONLY: PartPosRef
 ! IMPLICIT VARIABLE HANDLING

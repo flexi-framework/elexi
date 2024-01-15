@@ -12,7 +12,6 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "particle.h"
 
 !===================================================================================================================================
 !> Module contains the routines for load balancing
@@ -25,18 +24,15 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-#if USE_LOADBALANCE
 INTERFACE LoadBalance
   MODULE PROCEDURE LoadBalance
 END INTERFACE
 
 PUBLIC :: LoadBalance
-#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 CONTAINS
 
-#if USE_LOADBALANCE
 SUBROUTINE LoadBalance(OutputTime)
 !===================================================================================================================================
 ! routine perfoming the load balancing
@@ -51,7 +47,7 @@ USE MOD_Equation                   ,ONLY: InitEquation,FinalizeEquation
 USE MOD_Filter                     ,ONLY: InitFilter,FinalizeFilter
 USE MOD_Lifting                    ,ONLY: InitLifting,FinalizeLifting
 USE MOD_LoadBalance_Restart        ,ONLY: FieldRestart
-USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ElemTimeField,ElemTimePart
+USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ElemTimeField
 USE MOD_LoadBalance_Vars           ,ONLY: nLoadBalanceSteps,LoadBalanceMaxSteps,NewImbalance,MinWeight,MaxWeight
 USE MOD_LoadBalance_Vars           ,ONLY: CurrentImbalance,MaxWeight,MinWeight
 USE MOD_LoadBalance_Vars           ,ONLY: PerformLoadBalance,LoadBalanceCounter
@@ -61,8 +57,6 @@ USE MOD_Mesh_Vars                  ,ONLY: nElems
 USE MOD_MPI                        ,ONLY: InitMPIVars,FinalizeMPI
 USE MOD_Output_Vars                ,ONLY: ProjectName
 USE MOD_Overintegration            ,ONLY: InitOverintegration,FinalizeOverintegration
-USE MOD_Particle_Init              ,ONLY: InitParticles,FinalizeParticles
-USE MOD_Particle_MPI               ,ONLY: InitParticleMPI,FinalizeParticleMPI
 USE MOD_Predictor                  ,ONLY: InitPredictor,FinalizePredictor
 USE MOD_RecordPoints               ,ONLY: InitRecordPoints,FinalizeRecordPoints
 USE MOD_ReadInTools                ,ONLY: prms
@@ -81,6 +75,11 @@ USE MOD_Lifting                    ,ONLY: InitLifting
 USE MOD_FV                         ,ONLY: InitFV,FinalizeFV
 USE MOD_Indicator                  ,ONLY: InitIndicator,FinalizeIndicator
 #endif /* FV_ENABLED */
+#if USE_PARTICLES
+USE MOD_LoadBalance_Vars           ,ONLY: ElemTimePart
+USE MOD_Particle_Init              ,ONLY: InitParticles,FinalizeParticles
+USE MOD_Particle_MPI               ,ONLY: InitParticleMPI,FinalizeParticleMPI
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -94,8 +93,10 @@ REAL                            :: LB_Time,LB_StartTime
 IF (.NOT.PerformLoadBalance) THEN
   ElemTime               = 0.
   ElemTimeField          = 0.
-  ElemTimePart           = 0.
   InitializationWallTime = 0.
+#if USE_PARTICLES
+  ElemTimePart           = 0.
+#endif /*USE_PARTICLES*/
   RETURN
 END IF
 
@@ -147,8 +148,10 @@ CALL FinalizeMesh()
 CALL FinalizeSponge()
 CALL FinalizeOverintegration()
 CALL FinalizeFilter()
+#if USE_PARTICLES
 CALL FinalizeParticleMPI()
 CALL FinalizeParticles()
+#endif /*USE_PARTICLES*/
 CALL FinalizeMPI()
 CALL FinalizeIOHDF5()
 
@@ -193,12 +196,16 @@ dtElem = 0.
 CALL InitAnalyze()
 CALL InitRecordpoints()
 CALL FieldRestart()
+#if USE_PARTICLES
 CALL InitParticleMPI()
 CALL InitParticles(doLoadBalance_opt=.TRUE.)
+#endif /*USE_PARTICLES*/
 
 ! zero ElemTime, the measurement starts again
 ElemTime      = 0.
+#if USE_PARTICLES
 ElemTimePart  = 0.
+#endif /*USE_PARTICLES*/
 ElemTimeField = 0.
 
 IF(NewImbalance.GT.CurrentImbalance) THEN
@@ -221,6 +228,5 @@ SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)')
 
 END SUBROUTINE LoadBalance
-#endif /*USE_LOADBALANCE*/
 
 END MODULE MOD_LoadBalance_TimeDisc

@@ -12,9 +12,6 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#if USE_LOADBALANCE
-#include "particle.h"
-#endif /*USE_LOADBALANCE*/
 
 !==================================================================================================================================
 !> Module that provides functions for computing the solutions time history at a defined set of points ("recordpoints")
@@ -209,7 +206,7 @@ USE MOD_Analyze_Vars          ,ONLY: WriteData_dt
 USE MOD_LoadBalance_Vars      ,ONLY: PerformLoadBalance
 USE MOD_LoadBalance_Vars      ,ONLY: nElemsOld,offsetElemOld,ElemInfoRank_Shared
 USE MOD_LoadBalance_Vars      ,ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
-USE MOD_Particle_Mesh_Vars    ,ONLY: ElemInfo_Shared
+USE MOD_Mesh_Vars             ,ONLY: ElemInfo_Shared
 USE MOD_RecordPoints_Vars     ,ONLY: RP_Data,iSample,nSamples,RP_fileExists
 USE MOD_RecordPoints_Vars     ,ONLY: RP_Buffersize,RP_MaxBufferSize,RP_SamplingOffset
 USE MOD_Timedisc_Vars         ,ONLY: dt

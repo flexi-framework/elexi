@@ -75,15 +75,17 @@ CONTAINS
   PROCEDURE :: CreateIntArrayOption       !< routine to generate an integer array option
   PROCEDURE :: CreateLogicalArrayOption   !< routine to generate an logical array option
   PROCEDURE :: CreateRealArrayOption      !< routine to generate an real array option
-  !PROCEDURE :: CreateStringArrayOption    !< routine to generate an string array option
+  ! PROCEDURE :: CreateStringArrayOption    !< routine to generate an string array option
   PROCEDURE :: CountOption_               !< function to count the number of options of a given name
   PROCEDURE :: read_options               !< routine that loops over the lines of a parameter files
                                           !< and calls read_option for every option. Outputs all unknow options
   PROCEDURE :: read_option                !< routine that parses a single line from the parameter file.
   PROCEDURE :: count_unread               !< routine that counts the number of parameters, that are set in ini but not read
-!  PROCEDURE :: removeUnnecessary          !< routine that removes unused parameters from linked list
+  ! PROCEDURE :: removeUnnecessary          !< routine that removes unused parameters from linked list
 #if USE_LOADBALANCE
+#if USE_PARTICLES
   PROCEDURE :: removeUnnecessary          !< routine that removes unused parameters from linked list
+#endif /*USE_PARTICLES*/
   PROCEDURE :: finalize                   !< routine that resets the parameters for loadbalance
 #endif /*USE LOADBALANCE*/
 END TYPE Parameters
@@ -301,6 +303,7 @@ CLASS(link), POINTER            :: current
 END SUBROUTINE finalize
 
 
+#if USE_PARTICLES
 !==================================================================================================================================
 !> Remove not used entries in the linked list of THIS parameters.
 !> reduce size of list for faster loadbalance init
@@ -332,6 +335,7 @@ DO WHILE (ASSOCIATED(current%next))
 END DO
 
 END SUBROUTINE removeUnnecessary
+#endif /*USE_PARTICLES*/
 #endif /*USE_LOADBALANCE*/
 
 !==================================================================================================================================
@@ -1952,9 +1956,9 @@ END FUNCTION GETDESCRIPTION
 FUNCTION GETINTFROMSTR(name) result(value)
 ! MODULES
 USE MOD_StringTools ,ONLY: ISINT, STRICMP
-#if USE_LOADBALANCE
+#if USE_PARTICLES && USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
-#endif /*USE_LOADBALANCE*/
+#endif /USE_PARTICLES && *USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

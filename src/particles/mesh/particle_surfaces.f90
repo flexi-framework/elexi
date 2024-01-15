@@ -102,11 +102,11 @@ SUBROUTINE InitParticleSurfaces()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Preproc
+USE MOD_PreProc
 USE MOD_Mesh_Vars,                  ONLY: NGeo
-USE MOD_Particle_Globals
 USE MOD_Particle_Surfaces_Vars
 USE MOD_ReadInTools,                ONLY: GETREAL,GETINT,GETLOGICAL,PrintOption
+USE MOD_Utils,                      ONLY: ALMOSTZERO
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,     ONLY: rBoundingBoxChecks,rPerformBezierClip,rPerformBezierNewton
 #endif /*CODE_ANALYZE*/
@@ -275,11 +275,12 @@ SUBROUTINE CalcNormAndTangTriangle(nVec,tang1,tang2,area,midpoint,ndist,xyzNod,V
 !================================================================================================================================
 USE MOD_Globals,                              ONLY: Abort
 USE MOD_PreProc
-USE MOD_Particle_Globals
-USE MOD_Particle_Mesh_Vars,                   ONLY: SideInfo_Shared,NodeCoords_Shared,ElemSideNodeID_Shared
+USE MOD_Mesh_Vars,                            ONLY: SideInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars,                   ONLY: ElemSideNodeID_Shared
 USE MOD_Particle_Mesh_Tools,                  ONLY: GetCNElemID,GetCNSideID
 USE MOD_Particle_Surfaces_Vars,               ONLY: SideNormVec,SideType
 USE MOD_Particle_Tracking_Vars,               ONLY: TrackingMethod
+USE MOD_Utils,                                ONLY: ALMOSTZERO
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -632,9 +633,10 @@ SUBROUTINE GetSideSlabNormalsAndIntervals(BezierControlPoints3D,SideSlabNormals,
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals
 USE MOD_Preproc
+USE MOD_Particle_Globals,         ONLY: CROSSNORM
 USE MOD_Particle_Mesh_Vars,       ONLY: NGeoElevated
+USE MOD_Utils,                    ONLY: ALMOSTZERO
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT VARIABLES
@@ -671,7 +673,7 @@ IF (ALL(SideSlabNormals(:,1).EQ.0)) &
   CALL Abort(__STAMP__,             &
   'Error while calculating side slab normals and intervals. Normal vector length zero. Possibly wrong BezierControlPoints')
 
-SideSlabNormals(:,1)=SideSlabNormals(:,1)/SQRT(DOT_PRODUCT(SideSlabNormals(:,1),SideSlabNormals(:,1)))
+SideSlabNormals(:,1) = SideSlabNormals(:,1)/SQRT(DOT_PRODUCT(SideSlabNormals(:,1),SideSlabNormals(:,1)))
 ! n_2=n_1 x (U_1+U_2) (U: corner vectors in eta-direction)
 SideSlabNormals(:,2) = BezierControlPoints3D(:,0,NGeoElevated)                      &
                      - BezierControlPoints3D(:,0,0)                                         &
@@ -679,10 +681,10 @@ SideSlabNormals(:,2) = BezierControlPoints3D(:,0,NGeoElevated)                  
                      - BezierControlPoints3D(:,NGeoElevated,0)
 
 !fehlt das?
-SideSlabNormals(:,2)=CROSSNORM(SideSlabNormals(:,1),SideSlabNormals(:,2))
+SideSlabNormals(:,2) = CROSSNORM(SideSlabNormals(:,1),SideSlabNormals(:,2))
 
 ! n_3=n_1 x n_2
-SideSlabNormals(:,3)=CROSSNORM(SideSlabNormals(:,2),SideSlabNormals(:,1))
+SideSlabNormals(:,3) = CROSSNORM(SideSlabNormals(:,2),SideSlabNormals(:,1))
 
 ! check vector length=1
 IF((ABS(DOT_PRODUCT(SideSlabNormals(:,1),SideSlabNormals(:,1))-1.)).GT.1.E-6) CALL Abort(&

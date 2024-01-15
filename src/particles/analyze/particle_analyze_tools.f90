@@ -111,7 +111,7 @@ SUBROUTINE ParticleRecordPath()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals        ,ONLY: VECNORM,ALMOSTZERO
+USE MOD_Particle_Globals        ,ONLY: VECNORM
 USE MOD_HDF5_Output             ,ONLY: WriteArray
 USE MOD_Output_Vars             ,ONLY: WriteStateFiles
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_Plane,RecordPart,RPP_Records,RPP_Records_Glob
@@ -120,6 +120,7 @@ USE MOD_Particle_Vars           ,ONLY: PartState,PDM,LastPartPos,PartSpecies
 USE MOD_Particle_Vars           ,ONLY: doPartIndex,PartIndex
 USE MOD_Particle_Vars           ,ONLY: PartReflCount
 USE MOD_TimeDisc_Vars           ,ONLY: t,dt,currentStage,RKC,nRKStages
+USE MOD_Utils                   ,ONLY: ALMOSTZERO
 #if USE_MPI
 USE MOD_Particle_Analyze_Vars   ,ONLY: RPP_MPI_Request
 #endif /*USE_MPI*/

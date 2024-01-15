@@ -50,20 +50,19 @@ SUBROUTINE ParticleTriaTracking()
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
+USE MOD_Mesh_Vars                   ,ONLY: ElemInfo_Shared,SideInfo_Shared
 USE MOD_Particle_Globals            ,ONLY: DOTPRODUCT,VECNORM
 USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteraction
 USE MOD_Particle_Boundary_Vars      ,ONLY: PartBound
 USE MOD_Particle_Localization       ,ONLY: ParticleInsideQuad3D
 USE MOD_Particle_Intersection       ,ONLY: IntersectionWithWall
 USE MOD_Particle_Mesh_Tools         ,ONLY: GetCNElemID
-USE MOD_Particle_Mesh_Vars          ,ONLY: ElemInfo_Shared,SideInfo_Shared
 USE MOD_Particle_Tracking_Vars      ,ONLY: TrackInfo !CountNbOfLostParts,NbrOfLostParticles
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM,PartSpecies
 USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Timers          ,ONLY: LBStartTime, LBElemSplitTime, LBElemPauseTime
-USE MOD_Mesh_Vars                   ,ONLY: offsetElem
-USE MOD_Particle_Globals            ,ONLY: PP_nElems
+USE MOD_Mesh_Vars                   ,ONLY: nElems,offsetElem
 USE MOD_Particle_Tracking_Vars      ,ONLY: nTracks,MeasureTrackTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
@@ -376,7 +375,7 @@ DO iPart = 1,PDM%ParticleVecLength
           IF (.NOT.PDM%ParticleInside(iPart)) PartisDone = .TRUE.
 
 #if USE_LOADBALANCE
-          IF (OldElemID.GE.offsetElem+1 .AND. OldElemID.LE.offsetElem+PP_nElems) &
+          IF (OldElemID.GE.offsetElem+1 .AND. OldElemID.LE.offsetElem+nElems) &
             CALL LBElemSplitTime(OldElemID-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
 
@@ -421,7 +420,7 @@ DO iPart = 1,PDM%ParticleVecLength
     END DO  ! .NOT.PartisDone
 
 #if USE_LOADBALANCE
-    IF (PEM%Element(iPart).GE.offsetElem+1 .AND. PEM%Element(iPart).LE.offsetElem+PP_nElems) &
+    IF (PEM%Element(iPart).GE.offsetElem+1 .AND. PEM%Element(iPart).LE.offsetElem+nElems) &
       CALL LBElemPauseTime(PEM%Element(iPart)-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
 
@@ -441,8 +440,9 @@ SUBROUTINE ParticleThroughSideCheck3DFast(PartID,PartTrajectory,iLocSide,Element
 !===================================================================================================================================
 ! MODULES
 USE MOD_Particle_Vars
+USE MOD_Mesh_Vars,                   ONLY: NodeCoords_Shared
 USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID
-USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Mesh_Vars,          ONLY: ElemSideNodeID_Shared
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -550,10 +550,11 @@ SUBROUTINE ParticleThroughSideLastPosCheck(i,iLocSide,Element,InElementCheck,Tri
 !> is inside the element. Output of determinant is used to determine which of the sides was crossed first.
 !===================================================================================================================================
 ! MODULES
+USE MOD_Mesh_Vars,                   ONLY: NodeCoords_Shared
 USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID
-USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Mesh_Vars,          ONLY: ElemSideNodeID_Shared
 USE MOD_Particle_Vars
-!-----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES

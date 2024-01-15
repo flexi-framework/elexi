@@ -58,7 +58,7 @@ USE MOD_Eval_XYZ,                   ONLY: GetPositionInRefElem
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Mesh_Vars,         ONLY: ElemEpsOneCell
 ! Mesh
-USE MOD_Mesh_Vars,                  ONLY: offsetElem
+USE MOD_Mesh_Vars,                  ONLY: nElems,offsetElem
 USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
 ! Particles
 USE MOD_Particle_Output,            ONLY: GetOffsetAndGlobalNumberOfParts
@@ -125,13 +125,13 @@ INTEGER                            :: iProc
 CALL ParticleReadin(doFlushFiles)
 
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' RESTARTING PARTICLES...'
+LBWRITE(UNIT_stdOut,'(A)',ADVANCE='YES') ' RESTARTING PARTICLES...'
 GETTIME(StartT)
 
 IF(PartIntExists)THEN
   IF(PartDataExists)THEN
     FirstElemInd = offsetElem+1
-    LastElemInd  = offsetElem+PP_nElems
+    LastElemInd  = offsetElem+nElems
     locnPart     = PartInt(ELEM_LastPartInd,LastElemInd)-PartInt(ELEM_FirstPartInd,FirstElemInd)
     offsetnPart  = PartInt(ELEM_FirstPartInd,FirstElemInd)
 
@@ -164,7 +164,7 @@ IF(PartIntExists)THEN
         PartReflCount(1:locnPart) = INT(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
 
       FirstElemInd = offsetElem+1
-      LastElemInd  = offsetElem+PP_nElems
+      LastElemInd  = offsetElem+nElems
 
       ! Fill the particle-to-element-mapping (PEM) with the information from HDF5
       DO iElem = FirstElemInd,LastElemInd

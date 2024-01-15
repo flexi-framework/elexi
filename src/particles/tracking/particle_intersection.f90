@@ -72,8 +72,9 @@ SUBROUTINE IntersectionWithWall(PartTrajectory,alpha,iPart,iLocSide,Element,TriN
 ! Compute the Intersection with bilinear surface by approximating the surface with two triangles
 !===================================================================================================================================
 ! MODULES
+USE MOD_Mesh_Vars,                   ONLY: NodeCoords_Shared
 USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID
-USE MOD_Particle_Mesh_Vars
+USE MOD_Particle_Mesh_Vars,          ONLY: ElemSideNodeID_Shared
 USE MOD_Particle_Vars,               ONLY: lastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -179,6 +180,7 @@ USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,epsilontol,SideDistance
 USE MOD_Particle_Surfaces_Vars,  ONLY:BaseVectors0,BaseVectors1,BaseVectors2
 USE MOD_Particle_Vars,           ONLY:LastPartPos
+USE MOD_Utils,                   ONLY:ALMOSTZERO
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
@@ -354,6 +356,7 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,epsilontol,SideDistance
 USE MOD_Particle_Vars,           ONLY:LastPartPos
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Mesh_Vars,               ONLY:NGeo
+USE MOD_Utils,                   ONLY:ALMOSTZERO
 #if CODE_ANALYZE
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
@@ -535,8 +538,9 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,SideSlabNormals
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D,BezierControlPoints3D
 USE MOD_Particle_Surfaces_Vars,  ONLY:locXi,locEta,locAlpha,SideDistance
 USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
-USE MOD_Particle_Utils,          ONLY:InsertionSort
 USE MOD_Particle_Vars,           ONLY:LastPartPos
+USE MOD_Utils,                   ONLY:ALMOSTZERO
+USE MOD_Utils,                   ONLY:InsertionSort
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:rBoundingBoxChecks
 #endif /*CODE_ANALYZE*/
@@ -701,21 +705,22 @@ SUBROUTINE ComputeBiLinearIntersection(isHit,PartTrajectory,lengthPartTrajectory
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
+USE MOD_Mesh_Vars,               ONLY:SideInfo_Shared
 USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
-USE MOD_Particle_Mesh_Vars,      ONLY:SideInfo_Shared
 USE MOD_Particle_Surfaces_Vars,  ONLY:BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,SideNormVec,epsilonTol!,BaseVectorsScale
 USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBilinear
 USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
 USE MOD_Particle_Vars,           ONLY:LastPartPos
 ! USE MOD_Particle_Vars,           ONLY:PartState,PEM
+USE MOD_Utils,                   ONLY:ALMOSTEQUAL
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
 USE MOD_Mesh_Vars,               ONLY:NGeo
 #endif /*CODE_ANALYZE*/
-#if USE_MPI
-!USE MOD_Mesh_Vars,               ONLY:BC
-#endif /*USE_MPI*/
+! #if USE_MPI
+! USE MOD_Mesh_Vars,               ONLY:BC
+! #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1018,8 +1023,8 @@ SUBROUTINE ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,a
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Mesh_Vars,               ONLY:NGeo
+USE MOD_Mesh_Vars,               ONLY:SideInfo_Shared
 USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
-USE MOD_Particle_Mesh_Vars,      ONLY:SideInfo_Shared
 USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,BezierNewtonAngle
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D,BezierControlPoints3D
@@ -1028,8 +1033,9 @@ USE MOD_Particle_Surfaces_Vars,  ONLY:BoundingBoxIsEmpty
 USE MOD_Particle_Surfaces_Vars,  ONLY:SideSlabNormals
 USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipTolerance,BezierClipLocalTol
 USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
-USE MOD_Particle_Utils,          ONLY:InsertionSort
 USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos
+USE MOD_Utils,                   ONLY:ALMOSTZERO
+USE MOD_Utils,                   ONLY:InsertionSort
 #if CODE_ANALYZE
 USE MOD_Globals,                 ONLY:myRank,UNIT_stdOut
 USE MOD_Particle_Surfaces,       ONLY:OutputBezierControlPoints
@@ -2078,7 +2084,7 @@ PURE FUNCTION ComputeXi(eta,A1,A2)
 !================================================================================================================================
 ! compute the xi value with algorithm 3.3 of Ramsey paper
 !================================================================================================================================
-USE MOD_Particle_Globals                    ,ONLY: ALMOSTZERO
+USE MOD_Utils                               ,ONLY: ALMOSTZERO
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------

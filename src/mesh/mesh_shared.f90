@@ -12,12 +12,11 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "particle.h"
 
 !===================================================================================================================================
 ! Builds the mesh for particle tracking, separate from the DG mesh
 !===================================================================================================================================
-MODULE MOD_Particle_Mesh_Readin
+MODULE MOD_Mesh_Shared
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -58,8 +57,8 @@ INTERFACE FinishCommunicateMeshReadin
   MODULE PROCEDURE FinishCommunicateMeshReadin
 END INTERFACE
 
-INTERFACE FinalizeMeshReadin
-  MODULE PROCEDURE FinalizeMeshReadin
+INTERFACE FinalizeMeshShared
+  MODULE PROCEDURE FinalizeMeshShared
 END INTERFACE
 
 PUBLIC :: ReadMeshBasics
@@ -70,7 +69,7 @@ PUBLIC :: ReadMeshNodes
 PUBLIC :: ReadMeshTrees
 PUBLIC :: StartCommunicateMeshReadin
 PUBLIC :: FinishCommunicateMeshReadin
-PUBLIC :: FinalizeMeshReadin
+PUBLIC :: FinalizeMeshShared
 !===================================================================================================================================
 
 CONTAINS
@@ -84,7 +83,7 @@ USE MOD_Globals
 USE MOD_HDF5_Input                ,ONLY: File_ID,ReadAttribute
 USE MOD_HDF5_Input                ,ONLY: OpenDataFile,CloseDataFile
 USE MOD_Mesh_Vars                 ,ONLY: NGeo,nGlobalElems
-USE MOD_Particle_Mesh_Vars        ,ONLY: nNonUniqueGlobalSides,nNonUniqueGlobalNodes
+USE MOD_Mesh_Vars                 ,ONLY: nNonUniqueGlobalSides,nNonUniqueGlobalNodes
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
 #endif /*USE_LOADBALANCE*/
@@ -115,12 +114,11 @@ END SUBROUTINE ReadMeshBasics
 
 SUBROUTINE ReadMeshElems()
 !===================================================================================================================================
-! Create particle mesh arrays for elems
+! Create shared mesh arrays for elems
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars
-USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_MPI_Vars                  ,ONLY: offsetElemMPI
 USE MOD_MPI_Shared
@@ -137,7 +135,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-! do not build particle mesh information in posti mode
+! do not build shared mesh information in posti mode
 IF (postiMode) RETURN
 
 #if USE_MPI
@@ -177,12 +175,11 @@ END SUBROUTINE ReadMeshElems
 
 SUBROUTINE ReadMeshSides()
 !===================================================================================================================================
-! Create particle mesh arrays for sides
+! Create shared mesh arrays for sides
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars
-USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
@@ -200,7 +197,7 @@ INTEGER                        :: FirstElemInd,LastElemInd,iElem
 INTEGER                        :: nSideIDs,offsetSideID,iSide
 !===================================================================================================================================
 
-! do not build particle mesh information in posti mode
+! do not build shared mesh information in posti mode
 IF (postiMode) RETURN
 
 FirstElemInd = offsetElem+1
@@ -256,7 +253,6 @@ USE MOD_Globals
 USE MOD_Mesh_Vars
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
-USE MOD_Particle_Mesh_Vars
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -268,7 +264,7 @@ INTEGER,INTENT(IN)             :: SideID
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-! do not build particle mesh information in posti mode
+! do not build shared mesh information in posti mode
 IF (postiMode) RETURN
 
 IF (ElemID.EQ.0) THEN
@@ -292,7 +288,7 @@ END SUBROUTINE ReadMeshSideNeighbors
 
 SUBROUTINE ReadMeshNodes()
 !===================================================================================================================================
-! Create particle mesh arrays for nodes
+! Create shared mesh arrays for nodes
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -301,11 +297,15 @@ USE MOD_HDF5_Input                ,ONLY: ReadArray,OpenDataFile
 USE MOD_IO_HDF5                   ,ONLY: CloseDataFile
 USE MOD_Interpolation             ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars        ,ONLY: NodeType,NodeTypeVISU
-USE MOD_Mesh_Vars                 ,ONLY: MeshFile,nElems,NGeo,nGlobalElems,offsetElem,useCurveds
-USE MOD_Particle_Mesh_Vars
+USE MOD_Mesh_Vars                 ,ONLY: MeshFile,NGeo,NGeoOverride,useCurveds
+USE MOD_Mesh_Vars                 ,ONLY: nElems,offsetElem,nGlobalElems
+USE MOD_Mesh_Vars                 ,ONLY: meshScale
+USE MOD_Mesh_Vars                 ,ONLY: ElemInfo_Shared,ElemInfo_Shared_Win
+USE MOD_Mesh_Vars                 ,ONLY: NodeCoords_Shared,NodeCoords_Shared_Win
 #if USE_MPI
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
+USE MOD_Mesh_Vars                 ,ONLY: nNonUniqueGlobalNodes
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
@@ -327,7 +327,7 @@ REAL,ALLOCATABLE               :: Vdm_EQNGeo_EQNGeoOverride(:,:)
 REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:),NodeCoordsNew(:,:,:,:)
 !===================================================================================================================================
 
-! do not build particle mesh information in posti mode
+! do not build shared mesh information in posti mode
 IF (postiMode) RETURN
 
 ! calculate all offsets
@@ -477,15 +477,19 @@ END SUBROUTINE ReadMeshNodes
 
 SUBROUTINE ReadMeshTrees()
 !===================================================================================================================================
-! Create particle mesh arrays for trees
+! Create shared mesh arrays for trees
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Mesh_Vars
-USE MOD_Particle_Mesh_Vars
+USE MOD_Mesh_Vars                 ,ONLY: nElems,offsetElem,nGlobalElems
+USE MOD_Mesh_Vars                 ,ONLY: nNonUniqueGlobalTrees
+USE MOD_Mesh_Vars                 ,ONLY: nTrees,offsetTree,NGeoTree
+USE MOD_Mesh_Vars                 ,ONLY: xiMinMax,xiMinMax_Shared,xiMinMax_Shared_Win
+USE MOD_Mesh_Vars                 ,ONLY: ElemToTree,ElemToTree_Shared,ElemToTree_Shared_Win
+USE MOD_Mesh_Vars                 ,ONLY: TreeCoords,TreeCoords_Shared,TreeCoords_Shared_Win
 #if USE_MPI
 USE MOD_MPI_Shared
-USE MOD_MPI_Shared_Vars
+USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
@@ -498,7 +502,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-! do not build particle mesh information in posti mode
+! do not build shared mesh information in posti mode
 IF (postiMode) RETURN
 
 #if USE_LOADBALANCE
@@ -542,7 +546,6 @@ SUBROUTINE StartCommunicateMeshReadin()
 USE MOD_Globals
 USE MOD_Globals_Vars              ,ONLY: StartT
 USE MOD_Mesh_Vars
-USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
@@ -564,7 +567,7 @@ INTEGER                        :: offsetNodeID!,nNodeIDs
 #endif /*USE_MPI*/
 !===================================================================================================================================
 
-! do not build particle mesh information in posti mode
+! do not build shared mesh information in posti mode
 IF (postiMode) RETURN
 
 ! Start timer: finished in FinishCommunicateMeshReadin()
@@ -738,7 +741,6 @@ SUBROUTINE FinishCommunicateMeshReadin()
 USE MOD_Globals
 USE MOD_Globals_Vars              ,ONLY: CommMeshReadinWallTime,StartT
 USE MOD_Mesh_Vars
-USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
@@ -760,7 +762,7 @@ INTEGER :: iLocSide,jLocSide,nlocSides,nlocSidesNb,NbSideID
 REAL    :: EndT
 !===================================================================================================================================
 
-! do not build particle mesh information in posti mode
+! do not build shared mesh information in posti mode
 IF (postiMode) RETURN
 
 #if USE_LOADBALANCE
@@ -882,14 +884,13 @@ SWRITE(UNIT_stdOut,'(132("."))')
 END SUBROUTINE FinishCommunicateMeshReadin
 
 
-SUBROUTINE FinalizeMeshReadin()
+SUBROUTINE FinalizeMeshShared()
 !===================================================================================================================================
 ! Finalizes the shared mesh readin
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars
-USE MOD_Particle_Mesh_Vars
 #if USE_MPI
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
@@ -916,6 +917,7 @@ SDEALLOCATE(displsSide)
 SDEALLOCATE(recvcountSide)
 
 #if USE_LOADBALANCE
+! Keep pure mesh geometry available during loadbalance, distributed arrays will be restored in mesh_readin
 IF (PerformLoadBalance) THEN
   CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
   RETURN
@@ -959,7 +961,6 @@ SDEALLOCATE(displsTree)
 SDEALLOCATE(recvcountTree)
 #endif /*USE_MPI*/
 
-END SUBROUTINE FinalizeMeshReadin
+END SUBROUTINE FinalizeMeshShared
 
-
-END MODULE MOD_Particle_Mesh_Readin
+END MODULE MOD_Mesh_Shared

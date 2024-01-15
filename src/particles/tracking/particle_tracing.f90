@@ -75,6 +75,7 @@ SUBROUTINE ParticleTracing()
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Eval_xyz                    ,ONLY: GetPositionInRefElem
+USE MOD_Mesh_Vars                   ,ONLY: SideInfo_Shared
 USE MOD_Particle_Localization       ,ONLY: LocateParticleInElement,PARTHASMOVED
 USE MOD_Particle_Localization       ,ONLY: PartInElemCheck
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
@@ -82,13 +83,12 @@ USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID,GetCNElemID,GetCNSideID,GetGlobalNonUniqueSideID
-USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars          ,ONLY: ElemRadiusNGeo
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
 USE MOD_Particle_Tracking_vars,      ONLY: ntracks,MeasureTrackTime, CountNbOfLostParts , NbrOfLostParticles
-USE MOD_Particle_Utils              ,ONLY: InsertionSort
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM
 USE MOD_Particle_Vars               ,ONLY: PartState,LastPartPos
+USE MOD_Utils                       ,ONLY: InsertionSort
 #if CODE_ANALYZE
 USE MOD_Particle_Globals            ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Intersection       ,ONLY: OutputTrajectory
@@ -98,8 +98,7 @@ USE MOD_TimeDisc_Vars               ,ONLY: currentStage
 #endif /*CODE_ANALYZE*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Timers          ,ONLY: LBStartTime,LBElemPauseTime,LBElemSplitTime
-USE MOD_Mesh_Vars                   ,ONLY: offsetElem
-USE MOD_Particle_Globals            ,ONLY: PP_nElems
+USE MOD_Mesh_Vars                   ,ONLY: nElems,offsetElem
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -430,7 +429,7 @@ DO iPart = 1,PDM%ParticleVecLength
 ! -- 6. Update particle position and decide if double check might be necessary
 ! check what happened with particle (crossedBC or switched element) and set partisdone or double check
 #if USE_LOADBALANCE
-          IF (OldElemID.GE.offsetElem+1 .AND.OldElemID.LE.offsetElem+PP_nElems) &
+          IF (OldElemID.GE.offsetElem+1 .AND.OldElemID.LE.offsetElem+nElems) &
             CALL LBElemSplitTime(OldElemID-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
           IF(crossedBC) THEN
@@ -533,7 +532,7 @@ DO iPart = 1,PDM%ParticleVecLength
     END DO ! PartisDone=.FALSE.
 
 #if USE_LOADBALANCE
-    IF (PEM%Element(iPart).GE.offsetElem+1 .AND. PEM%Element(iPart).LE.offsetElem+PP_nElems) &
+    IF (PEM%Element(iPart).GE.offsetElem+1 .AND. PEM%Element(iPart).LE.offsetElem+nElems) &
       CALL LBElemPauseTime(PEM%Element(iPart)-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
   END IF ! Part inside
@@ -675,13 +674,13 @@ SUBROUTINE SelectInterSectionType(PartIsDone,crossedBC,doLocSide,flip,PartTrajec
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
+USE MOD_Mesh_Vars                   ,ONLY: SideInfo_Shared
 USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteraction
 USE MOD_Particle_Intersection       ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarRectIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarNonRectIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
-USE MOD_Particle_Mesh_Vars          ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalNonUniqueSideID,GetCNSideID
 USE MOD_Particle_Surfaces           ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars,      ONLY: SideNormVec

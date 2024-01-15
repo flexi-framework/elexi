@@ -112,8 +112,8 @@ SUBROUTINE BuildElementRadiusTria()
 !================================================================================================================================
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_Mesh_Vars                 ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Globals          ,ONLY: VECNORM
-USE MOD_Particle_Mesh_Vars        ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars        ,ONLY: ElemBaryNGeo,ElemRadius2NGeo
 USE MOD_Particle_Mesh_Tools       ,ONLY: GetGlobalElemID
 #if USE_MPI
@@ -485,16 +485,16 @@ SUBROUTINE BuildBCElemDistance()
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_Particle_Globals         ,ONLY: ALMOSTZERO,VECNORM
+USE MOD_Mesh_Vars                ,ONLY: ElemInfo_Shared,SideInfo_Shared
+USE MOD_Mesh_Vars                ,ONLY: nUniqueBCSides
+USE MOD_Particle_Globals         ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars       ,ONLY: GEO
-USE MOD_Particle_Mesh_Vars       ,ONLY: ElemInfo_Shared,SideInfo_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides,SideBCMetrics
 USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID,SideID2BCSide,BCSideMetrics
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemBaryNGeo,ElemRadiusNGeo
-USE MOD_Particle_Mesh_Vars       ,ONLY: nUniqueBCSides
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID,GetCNElemID,GetCNElemID,GetGlobalNonUniqueSideID
-USE MOD_Particle_Utils           ,ONLY: InsertionSort
 USE MOD_ReadInTools              ,ONLY: PrintOption
+USE MOD_Utils                    ,ONLY: InsertionSort,ALMOSTZERO
 #if USE_MPI
 USE MOD_CalcTimeStep             ,ONLY: CalcTimeStep
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides_Shared,SideBCMetrics_Shared
@@ -1159,12 +1159,12 @@ SUBROUTINE BuildSideOriginAndRadius()
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Mesh_Vars                ,ONLY: NGeo
+USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
+USE MOD_Mesh_Vars                ,ONLY: nNonUniqueGlobalSides,nUniqueBCSides
 USE MOD_Particle_Basis           ,ONLY: DeCasteljauInterpolation
 USE MOD_Particle_Globals         ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID
-USE MOD_Particle_Mesh_Vars       ,ONLY: SideInfo_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: BCSide2SideID,SideID2BCSide,BCSideMetrics
-USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides,nUniqueBCSides
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D
 #if USE_MPI
 USE MOD_MPI_Shared
@@ -1307,8 +1307,8 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Mathtools                ,ONLY: CROSS
 USE MOD_Mesh_Vars                ,ONLY: NGeo
+USE MOD_Mesh_Vars                ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_Mesh_Vars       ,ONLY: NGeoElevated
-USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierElevation
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D,BezierControlPoints3DElevated
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3!,BaseVectorsScale
@@ -1330,7 +1330,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                        :: iSide,firstSide,lastSide
 REAL                           :: StartT,EndT
-!REAL                           :: crossVec(3)
+! REAL                           :: crossVec(3)
 !===================================================================================================================================
 
 LBWRITE(UNIT_stdOut,'(132("-"))')
@@ -1416,8 +1416,8 @@ SUBROUTINE GetMeshMinMax()
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Mesh_Vars               ,ONLY: offsetElem,nElems
+USE MOD_Mesh_Vars               ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars      ,ONLY: GEO
-USE MOD_Particle_Mesh_Vars      ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Tracking_Vars  ,ONLY: TrackingMethod
 USE MOD_ReadInTools             ,ONLY: PrintOption
@@ -1561,14 +1561,16 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_ChangeBasis              ,ONLY: changeBasis3D
 USE MOD_Mesh_Vars                ,ONLY: NGeo,nElems
-USE MOD_Particle_Globals         ,ONLY: ALMOSTZERO,CROSSNORM,UNITVECTOR
-USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides
+USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
+USE MOD_Mesh_Vars                ,ONLY: nNonUniqueGlobalSides
+USE MOD_Particle_Globals         ,ONLY: CROSSNORM,UNITVECTOR
 USE MOD_Particle_Mesh_Vars       ,ONLY: Vdm_CLNGeo1_CLNGeo,Vdm_CLNGeo1_CLNGeo
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo_Shared,ElemBaryNGeo
-USE MOD_Particle_Mesh_Vars       ,ONLY: SideInfo_Shared,ElemCurved
+USE MOD_Particle_Mesh_Vars       ,ONLY: ElemCurved
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID,GetCNElemID,GetCNSideID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BoundingBoxIsEmpty
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D,SideType,SideNormVec,SideDistance
+USE MOD_Utils                    ,ONLY: ALMOSTZERO
 #if USE_MPI
 USE MOD_Mesh_Vars                ,ONLY: offsetElem
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemCurved_Shared,ElemCurved_Shared_Win
@@ -2040,7 +2042,8 @@ SUBROUTINE WeirdElementCheck()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Particle_Mesh_Vars        ,ONLY: NodeCoords_Shared,ConcaveElemSide_Shared,ElemSideNodeID_Shared
+USE MOD_Mesh_Vars                 ,ONLY: NodeCoords_Shared
+USE MOD_Particle_Mesh_Vars        ,ONLY: ConcaveElemSide_Shared,ElemSideNodeID_Shared
 USE MOD_Particle_Mesh_Vars        ,ONLY: WeirdElems
 USE MOD_Particle_Mesh_Tools       ,ONLY: GetGlobalElemID
 USE MOD_ReadInTools               ,ONLY: GETLOGICAL
@@ -2199,11 +2202,13 @@ SUBROUTINE ComputePeriodicVec()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Mesh_Vars                ,ONLY: nElems,NGeo,offsetElem,BoundaryType
+USE MOD_Mesh_Vars                ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Boundary_Vars   ,ONLY: PartBound
-USE MOD_Particle_Globals         ,ONLY: VECNORM,ALMOSTZERO
-USE MOD_Particle_Mesh_Vars       ,ONLY: GEO,MeshHasPeriodic,ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
+USE MOD_Particle_Globals         ,ONLY: VECNORM
+USE MOD_Particle_Mesh_Vars       ,ONLY: GEO,MeshHasPeriodic
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_ReadInTools              ,ONLY: PrintOption
+USE MOD_Utils                    ,ONLY: ALMOSTZERO
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -2359,9 +2364,9 @@ USE MOD_Mesh_Vars                ,ONLY: NGeo
 USE MOD_Mesh_Vars                ,ONLY: nElems,nGlobalElems,offsetElem
 ! USE MOD_Mesh_Vars                ,ONLY: InterpolateFromTree
 ! USE MOD_Mesh_Vars                ,ONLY: UseCurveds
+! USE MOD_Mesh_Vars                ,ONLY: ElemInfo_Shared,NodeCoords_Shared,TreeCoords_Shared
 USE MOD_Metrics                  ,ONLY: BuildCoords
 ! USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems
-! USE MOD_Particle_Mesh_Vars       ,ONLY: ElemInfo_Shared,NodeCoords_Shared,TreeCoords_Shared
 ! USE MOD_Particle_Mesh_Vars       ,ONLY: Vdm_NGeo_CLNGeo
 USE MOD_Particle_Mesh_Vars       ,ONLY: XCL_NGeo_Array,dXCL_NGeo_Array
 USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Array
@@ -2559,7 +2564,8 @@ USE MOD_PreProc
 USE MOD_ChangeBasis              ,ONLY: ChangeBasis2D
 USE MOD_Mappings                 ,ONLY: CGNS_SideToVol2
 USE MOD_Mesh_Vars                ,ONLY: NGeo
-USE MOD_Particle_Mesh_Vars       ,ONLY: nNonUniqueGlobalSides,SideInfo_Shared
+USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
+USE MOD_Mesh_Vars                ,ONLY: nNonUniqueGlobalSides
 USE MOD_Particle_Mesh_Vars       ,ONLY: NGeoElevated,XCL_NGeo_Shared
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalNonUniqueSideID!,GetGlobalElemID
 USE MOD_Particle_Surfaces        ,ONLY: GetBezierControlPoints3DElevated
@@ -2743,10 +2749,10 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: ElemVolume_Shared
 USE MOD_ReadInTools              ,ONLY: PrintOption
 #if USE_MPI
 USE MOD_Mesh_Vars                ,ONLY: offsetElem
-USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems,offsetComputeNodeElem
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemVolume_Shared_Win
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeElems,offsetComputeNodeElem
 USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
@@ -2848,8 +2854,8 @@ SUBROUTINE InitParticleGeometry()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars                ,ONLY: NGeo
+USE MOD_Mesh_Vars                ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetGlobalElemID
-USE MOD_Particle_Mesh_Vars       ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ConcaveElemSide_Shared,ElemNodeID_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemSideNodeID_Shared,ElemMidPoint_Shared
 #if USE_MPI

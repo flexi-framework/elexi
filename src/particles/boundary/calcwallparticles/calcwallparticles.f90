@@ -41,13 +41,13 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_AnalyzeEquation_Vars     ,ONLY: isWall
 USE MOD_Mesh_Vars                ,ONLY: nBCs
+USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
 USE MOD_Particle_Analyze_Vars    ,ONLY: TimeSample
 USE MOD_Particle_Boundary_Vars   ,ONLY: SurfOnNode,nComputeNodeSurfSides
 USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSideArea,nSurfSample
 USE MOD_Particle_Boundary_Vars   ,ONLY: SurfSide2GlobalSide
 USE MOD_Particle_Boundary_Vars   ,ONLY: MacroSurfaceVal
-USE MOD_Particle_Globals
-USE MOD_Particle_Mesh_Vars       ,ONLY: SideInfo_Shared
+USE MOD_Utils                    ,ONLY: ALMOSTZERO
 #if USE_MPI
 USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_LEADERS_SURF,myComputeNodeRank
 USE MOD_Particle_Boundary_Vars   ,ONLY: SampWallState_Shared

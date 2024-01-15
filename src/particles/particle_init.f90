@@ -71,10 +71,6 @@ USE MOD_Particle_Interpolation,     ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY:DefineParametersParticleMesh
 USE MOD_Particle_Surface_Flux,      ONLY:DefineParametersParticleSurfaceFlux
 USE MOD_Particle_Vars
-#if USE_MPI
-USE MOD_LoadBalance,                ONLY:DefineParametersLoadBalance
-USE MOD_MPI_Shared,                 ONLY:DefineParametersMPIShared
-#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -532,10 +528,6 @@ CALL DefineParametersParticleBoundaryTracking()
 CALL DefineParametersParticleInterpolation()
 CALL DefineParametersParticleMesh()
 CALL DefineParametersParticleSurfaceFlux()
-#if USE_MPI
-CALL DefineParametersLoadBalance()
-CALL DefineParametersMPIShared()
-#endif /*USE_MPI*/
 
 END SUBROUTINE DefineParametersParticles
 
@@ -606,6 +598,9 @@ USE MOD_Particle_TimeDisc,          ONLY: Particle_InitTimeDisc
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,nSpecies,PDM
 USE MOD_ReadInTools,                ONLY: PrintOption
+#if USE_LOADBALANCE
+USE MOD_LoadBalance,                ONLY:InitLoadBalanceTracking
+#endif /*USE_LOADBALANCE*/
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
 #endif
@@ -696,6 +691,10 @@ CALL ParticleInitSGS()
 
 ! Requires information about initialized variables
 CALL InitParticleAnalyze()
+
+#if USE_LOADBALANCE
+CALL InitLoadBalanceTracking()
+#endif /*USE_LOADBALANCE*/
 
 ! Restart particles here, otherwise we can not know if we need to have an initial emission
 IF (PRESENT(doLoadBalance_opt)) THEN
@@ -1103,14 +1102,15 @@ SUBROUTINE InitializeVariablesSpeciesInits()
 ! Initialize the variables first
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_ReadInTools
-USE MOD_Particle_Vars
 USE MOD_ISO_VARYING_STRING
-USE MOD_Part_RHS              ,ONLY: InitRHS
-USE MOD_Viscosity
+USE MOD_Globals
 USE MOD_Equation_Vars         ,ONLY: RefStatePrim
+USE MOD_Part_RHS              ,ONLY: InitRHS
+USE MOD_Particle_Globals
+USE MOD_Particle_Vars
+USE MOD_ReadInTools
+USE MOD_Utils                 ,ONLY: ALMOSTEQUAL
+USE MOD_Viscosity
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

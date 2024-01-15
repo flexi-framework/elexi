@@ -92,7 +92,7 @@ IF (nInitRegions.EQ.0) THEN
 END IF
 
 ! SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE PARALLEL EMISSION...'
+LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE PARALLEL EMISSION...'
 GETTIME(StartT)
 
 ! allocate communicators
@@ -466,12 +466,12 @@ SUBROUTINE SendEmissionParticlesToProcs(chunkSize,DimSend,FractNbr,iInit,mySumOf
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
+USE MOD_Mesh_Vars              ,ONLY: ElemInfo_Shared
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement,SinglePointToElement
 USE MOD_Particle_Mesh_Vars     ,ONLY: GEO
-USE MOD_Particle_Mesh_Vars     ,ONLY: ElemInfo_Shared
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGMToProc,FIBGMProcs
-!USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID
-!USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
+! USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID
+! USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems, FIBGM_offsetElem, FIBGM_Element
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_nTotalElems
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI,PartMPIInsert,PartMPILocate
 USE MOD_Particle_MPI_Vars      ,ONLY: EmissionSendBuf,EmissionRecvBuf

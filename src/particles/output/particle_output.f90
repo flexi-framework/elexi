@@ -64,7 +64,7 @@ SUBROUTINE FillParticleData()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Mesh_Vars               ,ONLY: offsetElem
+USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem
 USE MOD_Part_Tools              ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Vars   ,ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleReflectionTrack
@@ -170,23 +170,23 @@ CALL GetOffsetAndGlobalNumberOfParts('WriteParticleToHDF5',offsetnPart,nGlobalNb
 SDEALLOCATE(PartInt)
 SDEALLOCATE(PartData)
 ! Allocate data arrays for mean particle quantities
-ALLOCATE(PartInt( PartIntSize ,offsetElem +1:offsetElem +PP_nElems))
+ALLOCATE(PartInt( PartIntSize ,offsetElem +1:offsetElem +nElems))
 ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
 ! Allocate data arrays for turbulent particle quantities
 IF (ALLOCATED(TurbPartState) .AND. TurbPartDataSize.GT.0) ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
 
 ! Order the particles along the SFC using a linked list
-ALLOCATE(PEM%pStart (offsetElem+1:offsetElem+PP_nElems) , &
-         PEM%pNumber(offsetElem+1:offsetElem+PP_nElems) , &
+ALLOCATE(PEM%pStart (offsetElem+1:offsetElem+nElems)    , &
+         PEM%pNumber(offsetElem+1:offsetElem+nElems)    , &
          PEM%pNext  (1           :PDM%maxParticleNumber), &
-         PEM%pEnd   (offsetElem+1:offsetElem+PP_nElems))
+         PEM%pEnd   (offsetElem+1:offsetElem+nElems))
 useLinkedList = .TRUE.
 CALL UpdateNextFreePosition()
 
 ! Walk along the linked list and fill the data arrays
 iPart = offsetnPart
 ! Walk over all elements on local proc
-DO iElem = offsetElem+1,offsetElem+PP_nElems
+DO iElem = offsetElem+1,offsetElem+nElems
   ! Set start of particle numbers in current element
   PartInt(1,iElem) = iPart
   ! Find all particles in current element
@@ -213,7 +213,7 @@ DO iElem = offsetElem+1,offsetElem+PP_nElems
     CALL Abort(__STAMP__, " Particle HDF5-Output method not supported! PEM%pNumber not associated")
   END IF
   PartInt(2,iElem)=iPart
-END DO ! iElem = offsetElem+1,offsetElem+PP_nElems
+END DO ! iElem = offsetElem+1,offsetElem+nElems
 
 ! De-allocate linked list and return to normal particle array mode
 useLinkedList=.FALSE.
@@ -436,9 +436,10 @@ SUBROUTINE Visualize_Particles(OutputTime)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Output_Vars     ,ONLY: ProjectName
+! USE MOD_Mesh_Vars        ,ONLY: nElems
+USE MOD_Output_Vars      ,ONLY: ProjectName
 USE MOD_Particle_Vars
-USE MOD_Particle_Globals,ONLY: pi
+USE MOD_Particle_Globals ,ONLY: pi
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -458,7 +459,7 @@ DO i=1,PDM%ParticleVecLength
     nParts = nParts + 1
   END IF
 END DO
-!CALL WriteDataToTecplotBinary(NVisu,PP_nElems,PP_nVar,0,VarNames,Coords_NVisu(1:3,:,:,:,:),U_NVisu,TRIM(FileString))
+! CALL WriteDataToTecplotBinary(NVisu,nElems,PP_nVar,0,VarNames,Coords_NVisu(1:3,:,:,:,:),U_NVisu,TRIM(FileString))
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" WRITE PARTICLE DATA TO TECPLOT ASCII FILE..."
 
 index_unit = 45

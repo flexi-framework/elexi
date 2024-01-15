@@ -1147,11 +1147,11 @@ SUBROUTINE CalcPartInsSubSidesStandardCase(iSpec,iSF,PartInsSubSides)
 ! MODULES
 USE MOD_Globals
 USE MOD_Part_Emission_Tools     ,ONLY: IntegerDivide, SamplePoissonDistri
-USE MOD_Particle_Globals        ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfFluxSideSize, BCdata_auxSF
 USE MOD_Particle_TimeDisc_Vars  ,ONLY: RKdtFrac,RKdtFracTotal
 USE MOD_Particle_Vars           ,ONLY: Species
 USE MOD_TimeDisc_Vars           ,ONLY: t,dt
+USE MOD_Utils                   ,ONLY: ALMOSTEQUAL
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1247,7 +1247,6 @@ USE MOD_Part_Pos_and_Velo       ,ONLY: SetParticleVelocity
 USE MOD_Part_Tools              ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Tools  ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars   ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
-USE MOD_Particle_Globals        ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalNonUniqueSideID
 USE MOD_Particle_Surfaces       ,ONLY: EvaluateBezierPolynomialAndGradient
 USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfFluxSideSize,TriaSurfaceFlux
@@ -1258,6 +1257,7 @@ USE MOD_Particle_Vars           ,ONLY: Species,nSpecies,PDM,PEM
 USE MOD_Particle_Vars           ,ONLY: PartState,LastPartPos,PartSpecies
 USE MOD_Particle_Vars           ,ONLY: DoSurfaceFlux,DoPoissonRounding,DoTimeDepInflow
 USE MOD_TimeDisc_Vars           ,ONLY: t,dt
+USE MOD_Utils                   ,ONLY: ALMOSTEQUAL
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars        ,ONLY: nSurfacefluxPerElem
 USE MOD_LoadBalance_Timers      ,ONLY: LBStartTime,LBElemSplitTime,LBPauseTime
@@ -1579,9 +1579,9 @@ END SUBROUTINE ParticleSurfaceflux
 SUBROUTINE AnalyzePartPos(ParticleIndexNbr)
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals   ,ONLY: ALMOSTEQUAL
 USE MOD_Particle_Vars      ,ONLY: LastPartPos,PDM
 USE MOD_Particle_Mesh_Vars ,ONLY: GEO
+USE MOD_Utils              ,ONLY: ALMOSTEQUAL
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

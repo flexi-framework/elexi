@@ -59,34 +59,34 @@ USE MOD_Precond,           ONLY:DefineParametersPrecond
 USE MOD_ReadInTools,       ONLY:prms,PrintDefaultParameterFile,ExtractParameterFile
 USE MOD_RecordPoints,      ONLY:DefineParametersRecordPoints,InitRecordPoints
 USE MOD_Restart,           ONLY:DefineParametersRestart,InitRestart,Restart
+USE MOD_Sponge,            ONLY:DefineParametersSponge,InitSponge
 USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
 USE MOD_TestCase,          ONLY:DefineParametersTestcase
 USE MOD_TimeDisc,          ONLY:TimeDisc
 USE MOD_TimeDisc_Functions,ONLY:DefineParametersTimedisc,InitTimeDisc
 USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
-#if PARABOLIC
-USE MOD_Lifting,           ONLY:DefineParametersLifting,InitLifting
-#endif /*PARABOLIC*/
-#if USE_MPI
-USE MOD_MPI,               ONLY:InitMPIvars
-USE MOD_MPI_Shared,        ONLY:InitMPIShared
-#endif /*USE_MPI*/
-#if USE_PARTICLES
-USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticleGlobals,InitParticles
-#if USE_MPI
-USE MOD_LoadBalance,       ONLY:InitLoadBalance
-USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
-#if USE_LOADBALANCE
-USE MOD_Restart_Vars,      ONLY:DoRestart,RestartFile
-#endif /*USE_LOADBALANCE*/
-#endif /*USE_MPI*/
-#endif /*USE_PARTICLES*/
-USE MOD_Sponge,            ONLY:DefineParametersSponge,InitSponge
 #if FV_ENABLED
 USE MOD_FV,                ONLY:DefineParametersFV,InitFV
 USE MOD_FV_Basis,          ONLY:InitFV_Basis
 USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
 #endif /*FV_ENABLED*/
+#if PARABOLIC
+USE MOD_Lifting,           ONLY:DefineParametersLifting,InitLifting
+#endif /*PARABOLIC*/
+#if USE_MPI
+USE MOD_MPI,               ONLY:InitMPIvars
+USE MOD_MPI_Shared,        ONLY:DefineParametersMPIShared,InitMPIShared
+#endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance,       ONLY:DefineParametersLoadBalance,InitLoadBalance
+USE MOD_Restart_Vars,      ONLY:DoRestart,RestartFile
+#endif /*USE_LOADBALANCE*/
+#if USE_PARTICLES
+USE MOD_Particle_Init,     ONLY:DefineParametersParticles,InitParticleGlobals,InitParticles
+#if USE_MPI
+USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
+#endif /*USE_MPI*/
+#endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -164,10 +164,16 @@ CALL DefineParametersImplicit()
 CALL DefineParametersPrecond()
 CALL DefineParametersAnalyze()
 CALL DefineParametersRecordPoints()
-#if USE_PARTICLES
 #if USE_MPI
+CALL DefineParametersMPIShared()
+#if USE_LOADBALANCE
+CALL DefineParametersLoadBalance()
+#endif /*USE_LOADBALANCE*/
+#if USE_PARTICLES
 CALL DefineParticleMPI
+#endif /*USE_PARTICLES*/
 #endif /*USE_MPI*/
+#if USE_PARTICLES
 CALL DefineParametersParticles()
 #endif /*USE_PARTICLES*/
 
@@ -255,13 +261,13 @@ CALL InitAnalyze()
 CALL InitImplicit()
 CALL InitRecordpoints()
 CALL Restart()
-#if USE_PARTICLES
-#if USE_MPI
+#if USE_PARTICLES && USE_MPI
 CALL InitParticleMPI()
-#endif /*USE_MPI*/
+#endif /*USE_PARTICLES && USE_MPI*/
 #if USE_LOADBALANCE
 CALL InitLoadBalance()
 #endif /*USE_LOADBALANCE*/
+#if USE_PARTICLES
 CALL InitParticles()
 #endif /*USE_PARTICLES*/
 CALL prms%WriteUnused()
@@ -314,6 +320,9 @@ USE MOD_Lifting,           ONLY:FinalizeLifting
 USE MOD_MPI,               ONLY:FinalizeMPI
 USE MOD_MPI_Shared        ,ONLY:FinalizeMPIShared
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
+#endif /*USE_LOADBALANCE*/
 #if FV_ENABLED
 USE MOD_FV,                ONLY:FinalizeFV
 USE MOD_FV_Basis,          ONLY:FinalizeFV_Basis
@@ -322,7 +331,6 @@ USE MOD_Indicator,         ONLY:FinalizeIndicator
 #if USE_PARTICLES
 USE MOD_Particle_Init,     ONLY:FinalizeParticles
 #if USE_MPI
-USE MOD_LoadBalance,       ONLY:FinalizeLoadBalance
 USE MOD_Particle_MPI,      ONLY:FinalizeParticleMPI
 #endif /*USE_MPI*/
 #endif /*USE_PARTICLES*/
@@ -358,13 +366,13 @@ CALL FinalizeFilter()
 CALL FinalizeFV_Basis()
 CALL FinalizeIndicator()
 #endif
-#if USE_PARTICLES
-#if USE_MPI
+#if USE_PARTICLES && USE_MPI
 CALL FinalizeParticleMPI()
-#endif /*MPI*/
+#endif /*USE_PARTICLES && USE_MPI*/
 #if USE_LOADBALANCE
 CALL FinalizeLoadBalance()
 #endif /*USE_LOADBALANCE*/
+#if USE_PARTICLES
 CALL FinalizeParticles()
 #endif /*USE_PARTICLES*/
 #if USE_MPI

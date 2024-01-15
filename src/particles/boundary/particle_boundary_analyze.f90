@@ -42,12 +42,9 @@ SUBROUTINE CalcSurfaceValues(restart_opt,remap_opt)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals
-USE MOD_Restart_Vars               ,ONLY: DoRestart,RestartTime
 USE MOD_Analyze_Vars               ,ONLY: analyze_dt
+USE MOD_CalcWallParticles_Vars
 USE MOD_Mesh_Vars                  ,ONLY: MeshFile
-USE MOD_Timedisc_Vars              ,ONLY: t
-USE MOD_Restart_Vars               ,ONLY: RestartTime
 USE MOD_Particle_Analyze_Vars      ,ONLY: TimeSample
 USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues,MacroValSampTime
 USE MOD_Particle_Boundary_Vars     ,ONLY: nSurfSample
@@ -56,7 +53,9 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: nComputeNodeSurfSides,SampWallState_Sh
 USE MOD_Particle_Boundary_Sampling ,ONLY: WriteSurfSample
 USE MOD_Particle_Boundary_Vars     ,ONLY: MacroSurfaceVal,MacroSurfaceSpecVal,nImpactVars
 USE MOD_Particle_Vars              ,ONLY: nSpecies
-USE MOD_CalcWallParticles_Vars
+USE MOD_Restart_Vars               ,ONLY: DoRestart,RestartTime
+USE MOD_Timedisc_Vars              ,ONLY: t
+USE MOD_Utils                      ,ONLY: ALMOSTZERO
 #if USE_MPI
 USE MOD_MPI_Shared_Vars            ,ONLY: MPI_COMM_LEADERS_SURF
 USE MOD_Particle_Boundary_Vars     ,ONLY: SurfOnNode

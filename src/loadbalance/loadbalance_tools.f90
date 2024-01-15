@@ -12,7 +12,6 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "particle.h"
 
 !===================================================================================================================================
 !> Module contains the tools for load_balancing
@@ -50,6 +49,7 @@ USE MOD_LoadDistribution           ,ONLY: ApplyWeightDistributionMethod,WeightDi
 USE MOD_LoadBalance_Vars           ,ONLY: NewImbalance,MaxWeight,MinWeight,ElemGlobalTime,LoadDistri,TargetWeight
 USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ProcTime,PerformLoadBalance
 USE MOD_Mesh_Vars                  ,ONLY: offsetElem,nElems,nGlobalElems!,MeshFile
+USE MOD_Mesh_Vars                  ,ONLY: ElemInfo_Shared,ElemInfo_Shared_Win
 USE MOD_MPI_Vars                   ,ONLY: offsetElemMPI
 USE MOD_Restart_Vars               ,ONLY: DoRestart
 USE MOD_ReadInTools                ,ONLY: PrintOption
@@ -59,7 +59,6 @@ USE MOD_LoadBalance_Vars           ,ONLY: nElemsOld,offsetElemOld
 USE MOD_LoadBalance_Vars           ,ONLY: ElemInfoRank_Shared,ElemInfoRank_Shared_Win
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars            ,ONLY: myComputeNodeRank,MPI_COMM_SHARED
-USE MOD_Particle_Mesh_Vars         ,ONLY: ElemInfo_Shared,ElemInfo_Shared_Win
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!

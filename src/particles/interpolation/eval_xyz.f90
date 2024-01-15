@@ -927,7 +927,6 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Interpolation_Vars,      ONLY: xGP
 USE MOD_Mesh_Vars,               ONLY: NGeo!,Elem_xGP,offsetElem
-!USE MOD_Particle_Globals,        ONLY: PP_nElems
 USE MOD_Particle_Mesh_Vars,      ONLY: ElemBaryNGeo
 USE MOD_Particle_Mesh_Vars,      ONLY: RefMappingGuess,RefMappingEps
 USE MOD_Particle_Mesh_Vars,      ONLY: XiEtaZetaBasis,slenXiEtaZetaBasis

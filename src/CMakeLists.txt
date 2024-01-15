@@ -247,13 +247,23 @@ ELSE()
 ENDIF()
 
 # =========================================================================
+# Load Balancing
+# =========================================================================
+CMAKE_DEPENDENT_OPTION(FLEXI_LOADBALANCE  "Use load balance time measurement" OFF
+                                          "LIBS_USE_MPI"                      OFF)
+IF(FLEXI_LOADBALANCE)
+  MESSAGE(STATUS "Building Flexi with load balance")
+  ADD_DEFINITIONS(-DUSE_LOADBALANCE=1)
+ELSE()
+  ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
+ENDIF()
+
+# =========================================================================
 # Particle tracking
 # =========================================================================
 OPTION(PARTICLES "Enable particle tracking" OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_CODE_ANALYZE "Output code analyze messages"         OFF
                                               "PARTICLES"                            OFF)
-CMAKE_DEPENDENT_OPTION(PARTICLES_LOADBALANCE  "Use LoadBalance timemeasurement"      OFF
-                                              "PARTICLES;LIBS_USE_MPI"               OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_RW           "Use random walk model for particles"  OFF
                                               "PARTICLES;LIBS_USE_MPI"               OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_INTKIND8     "Enable particle numbers larger standard integer size" OFF
@@ -299,14 +309,6 @@ IF(PARTICLES)
     ADD_DEFINITIONS(-DCODE_ANALYZE=1)
   ELSE()
     ADD_DEFINITIONS(-DCODE_ANALYZE=0)
-  ENDIF()
-
-  # Load Balance
-  IF(PARTICLES_LOADBALANCE)
-    MESSAGE(STATUS "Building Flexi with LoadBalance")
-    ADD_DEFINITIONS(-DUSE_LOADBALANCE=1)
-  ELSE()
-    ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
   ENDIF()
 
   # Random Walk
@@ -397,7 +399,6 @@ ELSE()
   ADD_DEFINITIONS(-DUSE_PARTICLES=0)
   ADD_DEFINITIONS(-DCODE_ANALYZE=0)
   ADD_DEFINITIONS(-DUSE_INTKIND8=0)
-  ADD_DEFINITIONS(-DUSE_LOADBALANCE=0)
   ADD_DEFINITIONS(-DUSE_RW=0)
   ADD_DEFINITIONS(-DUSE_EXTEND_RHS=0)
   ADD_DEFINITIONS(-DUSE_FAXEN_CORR=0)
@@ -572,6 +573,18 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     MESSAGE (STATUS "GFortran v${CMAKE_Fortran_COMPILER_VERSION} with invalid handling of typeless constants detected, setting -fno-range-check")
     SET_SOURCE_FILES_PROPERTIES(./src/hash/sha256.f90 PROPERTIES COMPILE_FLAGS "${CMAKE_Fortran_FLAGS} -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays -fno-range-check -Wno-conversion")
   ENDIF()
+ENDIF()
+
+# collect F90 files of 'loadbalance' directory (recursive) in new list 'loadbalanceF90'
+IF (FLEXI_LOADBALANCE)
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/loadbalance)
+  FILE(GLOB_RECURSE loadbalanceF90 ./src/loadbalance/*.f90)
+  LIST(APPEND flexiF90 ${loadbalanceF90})
+
+  # ADD_LIBRARY(memusagelib STATIC ./src/particles/globals/processmemusage.cxx)
+  # SET_TARGET_PROPERTIES(memusagelib PROPERTIES LANGUAGE CXX LINKER_LANGUAGE CXX
+  #                                              COMPILE_FLAGS "-fPIC")
+  # LIST(APPEND particlelibs memusagelib)
 ENDIF()
 
 # collect F90 files of 'particle' directory (recursive) in new list 'particlesF90'

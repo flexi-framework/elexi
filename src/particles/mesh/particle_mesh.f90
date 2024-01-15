@@ -242,7 +242,8 @@ SUBROUTINE InitParticleMesh()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Mesh_Vars              ,ONLY: NGeo,nElems,useCurveds
+USE MOD_Mesh_Vars              ,ONLY: NGeo,useCurveds
+USE MOD_Mesh_Vars              ,ONLY: SideInfo_Shared
 USE MOD_Particle_Basis         ,ONLY: BuildBezierVdm,BuildBezierDMat
 USE MOD_Particle_BGM           ,ONLY: BuildBGMAndIdentifyHaloRegion
 USE MOD_Particle_Globals
@@ -277,8 +278,6 @@ USE MOD_Particle_BGM           ,ONLY: WriteHaloInfo
 #endif /* USE_MPI */
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
-#else
-USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,ProcTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -304,8 +303,6 @@ IF(ParticleMeshInitIsDone) CALL Abort(__STAMP__, ' Particle-Mesh is already init
 !===================================================================================================================================
 ! Collect particle variables that are not initialized somewhere else
 !===================================================================================================================================
-PP_nElems = nElems
-
 # if USE_LOADBALANCE
 IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
@@ -313,16 +310,6 @@ IF (.NOT.PerformLoadBalance) THEN
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/
-
-! ElemTime already set in loadbalance.f90
-#if !USE_LOADBALANCE
-SDEALLOCATE(ElemTime)
-SDEALLOCATE(ProcTime)
-ALLOCATE(ElemTime(1:nElems),&
-         ProcTime(1:nElems))
-ElemTime = 0.
-ProcTime = 0.
-#endif /*!USE_LOADBALANCE*/
 !===================================================================================================================================
 
 ! Initialize Vandermonde for Bezier basis surface representation (particle tracking with curved elements)
@@ -632,7 +619,6 @@ SUBROUTINE FinalizeParticleMesh()
 USE MOD_Globals
 USE MOD_Particle_BGM                ,ONLY: FinalizeBGM
 USE MOD_Particle_Interpolation_Vars ,ONLY: DoInterpolation
-USE MOD_Particle_Mesh_Readin        ,ONLY: FinalizeMeshReadin
 USE MOD_Particle_Mesh_Vars
 USE MOD_Particle_Surfaces_Vars
 USE MOD_Particle_Tracking_Vars      ,ONLY: TrackingMethod,Distance,ListDistance
@@ -642,8 +628,6 @@ USE MOD_MPI_Shared_Vars             ,ONLY: MPI_COMM_SHARED
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars            ,ONLY: PerformLoadBalance
-#else
-USE MOD_LoadBalance_Vars            ,ONLY: ElemTime,ProcTime
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -654,9 +638,6 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-
-! Particle mesh readin happens during mesh readin, finalize with gathered routine here
-CALL FinalizeMeshReadin()
 
 ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 #if USE_MPI
@@ -1000,12 +981,6 @@ SDEALLOCATE(GEO%FIBGM)
 ! Tracking Vars
 SDEALLOCATE(Distance)
 SDEALLOCATE(ListDistance)
-
-! Load Balance
-#if !USE_LOADBALANCE
-SDEALLOCATE(ElemTime)
-SDEALLOCATE(ProcTime)
-#endif /* !USE_LOADBALANCE */
 
 ParticleMeshInitIsDone=.FALSE.
 

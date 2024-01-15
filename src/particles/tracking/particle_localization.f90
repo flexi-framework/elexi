@@ -99,18 +99,18 @@ END SUBROUTINE LocateParticleInElement
 INTEGER FUNCTION SinglePointToElement(Pos3D,doHALO,doEmission_opt,PartID_opt)
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Globals
 USE MOD_Preproc
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
-USE MOD_Mesh_Vars              ,ONLY: offsetElem
+USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemRadius2NGeo
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo,ElemEpsOneCell
 USE MOD_Particle_Mesh_Vars     ,ONLY: Geo
 USE MOD_Particle_Mesh_Vars     ,ONLY: FIBGM_nElems,FIBGM_offsetElem,FIBGM_Element
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetGlobalElemID,GetCNElemID
 USE MOD_Particle_Tracking_Vars ,ONLY: Distance,ListDistance,TrackingMethod
-USE MOD_Particle_Utils         ,ONLY: InsertionSort
 USE MOD_Particle_Vars          ,ONLY: PartPosRef
+USE MOD_Utils                  ,ONLY: ALMOSTEQUAL
+USE MOD_Utils                  ,ONLY: InsertionSort
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -174,7 +174,7 @@ DO iBGMElem = 1,nBGMElems
   ElemID    = ListDistance(iBGMElem)
 
   IF (.NOT.doHALO) THEN
-    IF (ElemID.LT.offsetElem+1 .OR. ElemID.GT.offsetElem+PP_nElems) CYCLE
+    IF (ElemID.LT.offsetElem+1 .OR. ElemID.GT.offsetElem+nElems) CYCLE
   END IF
 
   SELECT CASE(TrackingMethod)
@@ -222,7 +222,8 @@ SUBROUTINE PartInElemCheck(PartPos_In,PartID,ElemID,FoundInElem,IntersectPoint_O
 ! Checks if particle is in Element
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Globals       ,ONLY: ALMOSTZERO,VECNORM
+USE MOD_Particle_Globals       ,ONLY: VECNORM
+USE MOD_Mesh_Vars              ,ONLY: SideInfo_Shared
 USE MOD_Particle_Intersection  ,ONLY: ComputePlanarRectIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputePlanarNonRectIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputePlanarCurvedIntersection
@@ -230,10 +231,10 @@ USE MOD_Particle_Intersection  ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Intersection  ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID,GetCNSideID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
-USE MOD_Particle_Mesh_Vars     ,ONLY: SideInfo_Shared
 USE MOD_Particle_Surfaces      ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideType,SideNormVec
 USE MOD_Particle_Vars          ,ONLY: LastPartPos
+USE MOD_Utils                  ,ONLY: ALMOSTZERO
 #if CODE_ANALYZE
 USE MOD_Globals                ,ONLY: MyRank,UNIT_stdOut
 USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
@@ -426,8 +427,8 @@ SUBROUTINE ParticleInsideQuad3D(PartStateLoc,ElemID,InElementCheck,Det)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Mesh_Vars             ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Tools   ,ONLY: GetCNElemID,GetGlobalNonUniqueSideID
-USE MOD_Particle_Mesh_Vars    ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars    ,ONLY: ConcaveElemSide_Shared,ElemSideNodeID_Shared
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -576,8 +577,8 @@ PURE SUBROUTINE ParticleInsideNbMortar(PartStateLoc,ElemID,InElementCheck)
 !> after it was determined that the particle is not in the concave part but in the convex part of the element.
 !===================================================================================================================================
 ! MODULES
+USE MOD_Mesh_Vars             ,ONLY: SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Tools   ,ONLY: GetCNElemID,GetGlobalNonUniqueSideID
-USE MOD_Particle_Mesh_Vars    ,ONLY: SideInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Mesh_Vars    ,ONLY: ConcaveElemSide_Shared,ElemSideNodeID_Shared
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -695,8 +696,7 @@ SUBROUTINE CountPartsPerElem(ResetNumberOfParticles)
 ! MODULES
 USE MOD_Preproc
 USE MOD_LoadBalance_Vars,        ONLY: nPartsPerElem
-USE MOD_Mesh_Vars,               ONLY: offsetElem
-USE MOD_Particle_Globals
+USE MOD_Mesh_Vars,               ONLY: nElems,offsetElem
 USE MOD_Particle_Vars,           ONLY: PDM,PEM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -722,7 +722,7 @@ DO iPart = 1,PDM%ParticleVecLength
     ElemID = PEM%Element(iPart) - offsetElem
 
     ! Only consider elements currently on the same proc
-    IF (ElemID.GE.1 .AND. ElemID.LE.PP_nElems) THEN
+    IF (ElemID.GE.1 .AND. ElemID.LE.nElems) THEN
       nPartsPerElem(ElemID) = nPartsPerElem(ElemID) + 1
     END IF
   END IF
@@ -789,7 +789,7 @@ PURE FUNCTION PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo)
 !================================================================================================================================
 ! check if particle has moved significantly within an element
 !================================================================================================================================
-USE MOD_Particle_Globals,           ONLY:ALMOSTZERO
+USE MOD_Utils,                      ONLY:ALMOSTZERO
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------

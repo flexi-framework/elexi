@@ -13,9 +13,6 @@
 !=================================================================================================================================
 #include "flexi.h"
 #include "eos.h"
-#if USE_LOADBALANCE
-#include "particle.h"
-#endif /*USE_LOADBALANCE*/
 
 !==================================================================================================================================
 !> \brief Computes the DGSEM spatial operator and updates residual Ut

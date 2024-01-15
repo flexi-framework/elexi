@@ -33,6 +33,7 @@ SAVE
 INTEGER          :: NGeo                        !< polynomial degree of geometric transformation
 INTEGER          :: NGeoRef                     !< polynomial degree of geometric transformation
 INTEGER          :: NGeoElevated                !< polynomial degree of elevated geometric transformation
+INTEGER          :: NGeoOverride                !< polynomial degree of geometric transformation (overwritten in parameter file)
 ! REAL,ALLOCATABLE :: Xi_NGeo(:)                  !< 1D equidistant point positions for curved elements (during readin)
 ! REAL             :: DeltaXi_NGeo
 REAL,ALLOCATABLE :: Vdm_EQ_N(:,:)               !< Vandermonde mapping from equidistant (visu) to NodeType node set
@@ -71,6 +72,27 @@ INTEGER          :: nGlobalTrees               !< Global number of trees in mesh
 INTEGER          :: offsetTree                 !< Tree offset (for MPI)
 INTEGER,ALLOCATABLE :: ElemToTree(:)           !< Index of the tree corresponding to an element
 INTEGER,ALLOCATABLE :: ElemNaN(:)              !< current distribution of elems containing NaNs
+!----------------------------------------------------------------------------------------------------------------------------------
+! SHARED MESH DATA (INCLUDING FALLBACK ARRAYS IF MPI=OFF)
+!----------------------------------------------------------------------------------------------------------------------------------
+! Shared arrays containing information for complete mesh
+INTEGER,ALLOCPOINT,DIMENSION(:)      :: ElemToTree_Shared
+INTEGER,ALLOCPOINT,DIMENSION(:,:)    :: ElemInfo_Shared
+INTEGER,ALLOCPOINT,DIMENSION(:,:)    :: SideInfo_Shared
+INTEGER,ALLOCPOINT,DIMENSION(:)      :: NodeInfo_Shared
+REAL,ALLOCPOINT,DIMENSION(:,:)       :: NodeCoords_Shared
+REAL,ALLOCPOINT,DIMENSION(:,:,:,:,:) :: TreeCoords_Shared
+REAL,ALLOCPOINT,DIMENSION(:,:,:)     :: xiMinMax_Shared
+#if USE_MPI
+! integers to hold shared memory windows
+INTEGER          :: ElemToTree_Shared_Win
+INTEGER          :: ElemInfo_Shared_Win
+INTEGER          :: SideInfo_Shared_Win
+INTEGER          :: NodeInfo_Shared_Win
+INTEGER          :: NodeCoords_Shared_Win
+INTEGER          :: TreeCoords_Shared_Win
+INTEGER          :: xiMinMax_Shared_Win
+#endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Metrics on GaussPoints
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -152,6 +174,12 @@ INTEGER             :: nMPISides_MINE=0        !< number of MINE MPI sides (on l
 INTEGER             :: nMPISides_YOUR=0        !< number of YOUR MPI sides (on neighbour processors)
 INTEGER             :: nBCs=0                  !< number of BCs in mesh
 INTEGER             :: nUserBCs=0              !< number of BC in inifile
+! Unique/non-unique sides
+INTEGER             :: nNonUniqueGlobalSides   !> total nb. of non-unique sides of mesh (hexahedral: 6*nElems)
+INTEGER             :: nNonUniqueGlobalNodes   !> total nb. of non-unique nodes of mesh (hexahedral: 8**NGeo * nElems)
+INTEGER             :: nNonUniqueGlobalTrees   !> total nb. of trees
+INTEGER             :: nUniqueMasterMortarSides!> total nb. of master mortar sides in the mesh
+INTEGER             :: nUniqueBCSides          !> total nb. of BC sides in the mesh
 #if USE_MPI
 INTEGER             :: nGlobalSides=0          !< number of global sides in mesh
 INTEGER             :: nGlobalMPISides=0       !< number of global MPI sides in mesh
@@ -189,7 +217,7 @@ CHARACTER(LEN=255)             :: MeshFile     !< name of hdf5 meshfile (write w
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL          :: useCurveds                 !< Marker wheter curved boundaries should be used in the mesh, read from parameter
                                                !< file. If set to false only linear part of curved meshes is used.
-
+REAL             :: meshScale                  !< Global scale applied to mesh in mesh_readin
 LOGICAL          :: CrossProductMetrics        !< Compute metrics in cross-product form instead of curl formulation
                                                !< (not recommended)
 !----------------------------------------------------------------------------------------------------------------------------------

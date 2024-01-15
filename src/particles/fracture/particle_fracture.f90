@@ -171,12 +171,11 @@ USE MOD_Globals
 #if USE_PARTROT
 USE MOD_Mathtools                  ,ONLY: CROSS
 #endif
-USE MOD_Particle_Globals
+USE MOD_Mesh_Vars                  ,ONLY: SideInfo_Shared
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
-USE MOD_Particle_Mesh_Vars         ,ONLY: SideInfo_Shared
 USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars              ,ONLY: PDM,PEM
 USE MOD_Part_Operations            ,ONLY: CreateParticle

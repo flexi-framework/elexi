@@ -247,7 +247,7 @@ DO WHILE(ASSOCIATED(e))
 END DO
 
 IF(MPIRoot)THEN
-  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   CALL WriteAttribute(File_ID,'VarNamesAdd',nVar,StrArray=VarNames)
   CALL CloseDataFile()
 END IF

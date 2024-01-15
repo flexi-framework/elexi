@@ -173,7 +173,7 @@ SDEALLOCATE(PartData)
 ALLOCATE(PartInt( PartIntSize ,offsetElem +1:offsetElem +PP_nElems))
 ALLOCATE(PartData(PartDataSize,offsetnPart+1:offsetnPart+locnPart))
 ! Allocate data arrays for turbulent particle quantities
-IF (ALLOCATED(TurbPartState)) ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
+IF (ALLOCATED(TurbPartState) .AND. TurbPartDataSize.GT.0) ALLOCATE(TurbPartData(TurbPartDataSize,offsetnPart+1:offsetnPart+locnPart))
 
 ! Order the particles along the SFC using a linked list
 ALLOCATE(PEM%pStart (offsetElem+1:offsetElem+PP_nElems) , &
@@ -202,7 +202,7 @@ DO iElem = offsetElem+1,offsetElem+PP_nElems
       IF (doParticleDispersionTrack.OR.doParticlePathTrack) PartData(PartDataVarStart+PartDataVarShift:PartDataVarStart+2+PartDataVarShift,iPart) = PartPath(1:3,pcount)
 
       ! Turbulent particle properties
-      IF (ALLOCATED(TurbPartState))  TurbPartData(:,iPart) = TurbPartState(:,pcount)
+      IF (ALLOCATED(TurbPartState) .AND. TurbPartDataSize.GT.0)  TurbPartData(:,iPart) = TurbPartState(:,pcount)
 
       ! Set the index to the next particle
       pcount = PEM%pNext(pcount)

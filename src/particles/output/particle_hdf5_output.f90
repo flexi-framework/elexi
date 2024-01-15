@@ -106,7 +106,7 @@ IF (MPIRoot) THEN
   StrVarNames(1) = 'FirstPartID'
   StrVarNames(2) = 'LastPartID'
 
-  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   CALL WriteAttribute(File_ID,'VarNamesPartInt',PartIntSize,StrArray=StrVarNames)
   ! Write the beginning of the emission for restart from fluid solution
   IF (EmissionTime .NE. 0) &
@@ -132,7 +132,7 @@ ASSOCIATE (&
       offsetElem      => INT(offsetElem)                                ,&
       PartDataSize    => INT(PartDataSize))
 
-  CALL GatheredWriteArray(FileName                                      ,&
+  CALL GatheredWriteArray(TRIM(FileName)                                ,&
                           create      = .FALSE.                         ,&
                           DataSetName = 'PartInt'                       ,&
                           rank        = 2                               ,&
@@ -168,7 +168,7 @@ ASSOCIATE (&
     IF (doParticleDispersionTrack.OR.doParticlePathTrack) &
       StrVarNames(PartDataVarStart+PartDataVarShift:PartDataVarStart+2+PartDataVarShift)=(/'PartPathX','PartPathY','PartPathZ'/)
 
-    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+    CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
     CALL WriteAttribute(File_ID,'VarNamesParticles',PartDataSize,StrArray=StrVarNames)
     CALL CloseDataFile()
 
@@ -178,7 +178,7 @@ ASSOCIATE (&
   ! Zero particles present in the complete domain.
   ! > Root writes empty dummy container to .h5 file (required for subsequent file access in ParaView)
   IF (nGlobalNbrOfParticles(3).EQ.0 .AND. MPIRoot) THEN
-      CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+      CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
       CALL WriteArray(      DataSetName  = 'PartData'     , rank = 2                          ,&
                             nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles(3)/)        ,&
                             nVal         = (/PartDataSize , locnPart                /)        ,&
@@ -187,7 +187,7 @@ ASSOCIATE (&
       CALL CloseDataFile()
   END IF ! nGlobalNbrOfParticles(3).EQ.0 .AND. MPIRoot
 #if USE_MPI
- CALL DistributedWriteArray(FileName                                                         ,&
+ CALL DistributedWriteArray(TRIM(FileName)                                                   ,&
                             DataSetName  = 'PartData'     , rank = 2                         ,&
                             nValGlobal   = (/PartDataSize , nGlobalNbrOfParticles(3)/)       ,&
                             nVal         = (/PartDataSize , locnPart                /)       ,&
@@ -206,8 +206,8 @@ ASSOCIATE (&
 
   ! Turbulent particle properties currently not supported to be read directly. Do not associate varnames
 #if USE_MPI
-  IF (ALLOCATED(TurbPartData)) &
-    CALL DistributedWriteArray(FileName                                                      ,&
+  IF (ALLOCATED(TurbPartData) .AND. TurbPartDataSize.GT.0) &
+    CALL DistributedWriteArray(TRIM(FileName)                                                ,&
                                DataSetName  = 'TurbPartData'     , rank = 2                  ,&
                                nValGlobal   = (/TurbPartDataSize , nGlobalNbrOfParticles(3)/),&
                                nVal         = (/TurbPartDataSize , locnPart                /),&
@@ -215,8 +215,8 @@ ASSOCIATE (&
                                collective   = UseCollectiveIO    , offSetDim = 2             ,&
                                communicator = MPI_COMM_FLEXI     , RealArray = TurbPartData)
 #else
-  IF (ALLOCATED(TurbPartData)) THEN
-    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  IF (ALLOCATED(TurbPartData) .AND. TurbPartDataSize.GT.0) THEN
+    CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
     CALL WriteArray(           DataSetName  = 'TurbPartData'     , rank = 2                  ,&
                                nValGlobal   = (/TurbPartDataSize , nGlobalNbrOfParticles(3)/),&
                                nVal         = (/TurbPartDataSize , locnPart                /),&

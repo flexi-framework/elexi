@@ -34,7 +34,11 @@ CONTAINS
 !==================================================================================================================================
 !> Initialization of the computation
 !==================================================================================================================================
-SUBROUTINE InitFlexi(nArgs_In,Args_In,mpi_comm_loc)
+SUBROUTINE InitFlexi(nArgs_In,Args_In &
+#if USE_MPI
+                    ,mpi_comm_loc     &
+#endif /*USE_MPI*/
+                    )
 ! MODULES
 USE MOD_Globals
 USE MOD_Globals_Vars,      ONLY:InitializationWallTime,StartTime
@@ -91,20 +95,28 @@ USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)            :: nArgs_In
+INTEGER,INTENT(IN)                     :: nArgs_In
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(*)
-INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
+#if USE_MPI
+INTEGER,INTENT(IN),OPTIONAL            :: mpi_comm_loc
+#endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                 :: userblockFound
 CHARACTER(LEN=255)      :: RestartFile_loc = ''
 !==================================================================================================================================
 CALL SetStackSizeUnlimited()
+
+#if USE_MPI
 IF(PRESENT(mpi_comm_loc))THEN
   CALL InitMPI(mpi_comm_loc)
 ELSE
+#endif /*USE_MPI*/
   CALL InitMPI()
+#if USE_MPI
 END IF
+#endif /*USE_MPI*/
+
 IF(nArgs_In.EQ.0)THEN
   CALL ParseCommandlineArguments()
 ELSE
@@ -139,6 +151,7 @@ ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
   RestartFile = RestartFile_loc
 #endif
 END IF
+
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()

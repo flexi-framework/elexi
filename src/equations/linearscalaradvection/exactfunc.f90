@@ -143,12 +143,9 @@ REAL                            :: tEval
 REAL                            :: Resu_t(PP_nVar),Resu_tt(PP_nVar) ! temporal state deriv in conservative variables
 REAL                            :: Frequency,Amplitude,Omega
 REAL                            :: Cent(3),x0(3)
-REAL                            :: Pi
 REAL                            :: k
 !==================================================================================================================================
 tEval=MERGE(t,tIn,fullBoundaryOrder) ! prevent temporal order degradation, works only for RK3 time integration
-
-Pi = ACOS(-1.)
 
 Resu   =0.
 Resu_t =0.

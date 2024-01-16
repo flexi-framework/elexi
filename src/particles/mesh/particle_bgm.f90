@@ -110,12 +110,14 @@ USE MOD_TimeDisc_Vars          ,ONLY: dt,t
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_Mesh_Vars              ,ONLY: SideInfo_Shared,ElemInfo_Shared_Win
 USE MOD_Mesh_Vars              ,ONLY: nNonUniqueGlobalSides,nNonUniqueGlobalNodes
+USE MOD_Mesh_Vars              ,ONLY: nComputeNodeElems,offsetComputeNodeElem
+USE MOD_Mesh_Vars              ,ONLY: nComputeNodeSides
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars        ,ONLY: nProcessors_Global,nComputeNodeProcessors,ComputeNodeRootRank,myComputeNodeRank
 USE MOD_MPI_Shared_Vars        ,ONLY: nLeaderGroupProcs
 USE MOD_MPI_Shared_Vars        ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
-USE MOD_MPI_Shared_Vars        ,ONLY: nComputeNodeElems,offsetComputeNodeElem,nComputeNodeTotalElems
-USE MOD_MPI_Shared_Vars        ,ONLY: nComputeNodeSides,nComputeNodeTotalSides
+USE MOD_MPI_Shared_Vars        ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars        ,ONLY: nComputeNodeTotalSides
 USE MOD_MPI_Shared_Vars        ,ONLY: nComputeNodeTotalNodes
 USE MOD_MPI_Vars               ,ONLY: offsetElemMPI
 USE MOD_Particle_Mesh_Vars     ,ONLY: GlobalElem2CNTotalElem
@@ -1742,9 +1744,9 @@ SUBROUTINE CheckPeriodicSides()
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
+USE MOD_Mesh_Vars              ,ONLY: nComputeNodeElems
 USE MOD_Mesh_Vars              ,ONLY: ElemInfo_Shared
 USE MOD_MPI_Shared_Vars        ,ONLY: ComputeNodeRootRank,myComputeNodeRank,nComputeNodeProcessors
-USE MOD_MPI_Shared_Vars        ,ONLY: nComputeNodeElems
 USE MOD_MPI_Shared_Vars        ,ONLY: MPI_COMM_SHARED
 USE MOD_MPI_Vars               ,ONLY: offsetElemMPI
 USE MOD_Particle_Globals       ,ONLY: VECNORM

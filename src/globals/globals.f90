@@ -220,7 +220,11 @@ END SUBROUTINE CollectiveStop
 !> Terminate program correctly if an error has occurred (important in MPI mode!).
 !> Uses a MPI_ABORT which terminates FLEXI if a single proc calls this routine.
 !==================================================================================================================================
-SUBROUTINE Abort(SourceFile,SourceLine,CompDate,CompTime,ErrorMessage,IntInfo,RealInfo,ErrorCode)
+SUBROUTINE Abort(SourceFile,SourceLine,CompDate,CompTime,ErrorMessage,IntInfo,RealInfo &
+#if USE_MPI
+                ,ErrorCode &
+#endif /*USE_MPI*/
+                )
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -232,7 +236,9 @@ CHARACTER(LEN=*)                  :: CompTime        !< Compilation time
 CHARACTER(LEN=*)                  :: ErrorMessage    !< Error message
 INTEGER,OPTIONAL                  :: IntInfo         !< Error info (integer)
 REAL,OPTIONAL                     :: RealInfo        !< Error info (real)
+#if USE_MPI
 INTEGER,OPTIONAL                  :: ErrorCode       !< MPI Error info (integer)
+#endif /*USE_MPI*/
 !   There is no way back!
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -240,7 +246,7 @@ CHARACTER(LEN=50)                 :: IntString,RealString
 #if USE_MPI
 INTEGER                           :: errOut          ! Output of MPI_ABORT
 INTEGER                           :: signalout       ! Output errorcode
-#endif
+#endif /*USE_MPI*/
 !==================================================================================================================================
 IntString = ""
 RealString = ""
@@ -260,8 +266,9 @@ CALL FLUSH(UNIT_stdOut)
 signalout=2 ! MPI_ABORT requires an output error-code /=0
 IF(PRESENT(ErrorCode)) signalout=ErrorCode
 CALL MPI_ABORT(MPI_COMM_FLEXI,signalout,errOut)
-#endif
+#endif /*USE_MPI*/
 ERROR STOP 2
+
 END SUBROUTINE Abort
 
 
@@ -704,12 +711,18 @@ END SUBROUTINE DisplayNumberOfParticles
 !==================================================================================================================================
 !> Calculates current time (own function because of a laterMPI implementation)
 !==================================================================================================================================
-FUNCTION FLEXITIME(Comm)
+FUNCTION FLEXITIME(     &
+#if USE_MPI
+                   Comm &
+#endif /*USE_MPI*/
+                  )
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+#if USE_MPI
 INTEGER, INTENT(IN),OPTIONAL    :: Comm                                       !< global mpi communicator
+#endif /*USE_MPI*/
 REAL                            :: FlexiTime                                  !< output time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -720,7 +733,7 @@ IF(PRESENT(Comm))THEN
 ELSE
   CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 END IF
-#endif
+#endif /*USE_MPI*/
 GETTIME(FlexiTime)
 END FUNCTION FLEXITIME
 

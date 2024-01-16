@@ -110,16 +110,21 @@ END SUBROUTINE DefineParametersMPI
 !> Basic mpi initialization. Calls initialization routine of the mpi library and sets myRank, nProcessors and MPIRoot. If the code
 !> is not compiled with mpi, InitMPI sets standard values for these variables.
 !==================================================================================================================================
-SUBROUTINE InitMPI(mpi_comm_IN)
+SUBROUTINE InitMPI(            &
+#if USE_MPI
+                   mpi_comm_IN &
+#endif /*USE_MPI*/
+                  )
 ! MODULES
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+#if USE_MPI
 INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN !< MPI communicator
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if USE_MPI
 LOGICAL :: initDone
 !==================================================================================================================================
 IF (PRESENT(mpi_comm_IN)) THEN

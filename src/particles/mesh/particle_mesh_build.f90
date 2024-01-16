@@ -344,7 +344,7 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: dXCL_NGeo_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemsJ_Shared,ElemEpsOneCell_Shared
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemsJ_Shared_Win,ElemEpsOneCell_Shared_Win
 #else
-USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems
+USE MOD_Mesh_Vars                ,ONLY: nComputeNodeElems
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -508,7 +508,7 @@ USE MOD_Particle_Timedisc_Vars   ,ONLY: ManualTimeStep
 USE MOD_TimeDisc_Vars            ,ONLY: nRKStages,RKc
 #else
 USE MOD_Mesh_Vars                ,ONLY: nElems
-USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems
+USE MOD_Mesh_Vars                ,ONLY: nComputeNodeElems
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -935,7 +935,7 @@ USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
 #else
 USE MOD_Mesh_Vars               ,ONLY: nElems
-USE MOD_Particle_Mesh_Vars      ,ONLY: nComputeNodeElems
+USE MOD_Mesh_Vars               ,ONLY: nComputeNodeElems
 USE MOD_Particle_Mesh_Vars      ,ONLY: XCL_NGeo
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
@@ -1582,7 +1582,7 @@ USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeTotalElems,nComputeNodeTotal
 USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED
 #else
-USE MOD_Particle_Mesh_Vars       ,ONLY: nComputeNodeElems
+USE MOD_Mesh_Vars                ,ONLY: nComputeNodeElems
 #endif /* USE_MPI */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -2749,10 +2749,10 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: ElemVolume_Shared
 USE MOD_ReadInTools              ,ONLY: PrintOption
 #if USE_MPI
 USE MOD_Mesh_Vars                ,ONLY: offsetElem
+USE MOD_Mesh_Vars                ,ONLY: nComputeNodeElems,offsetComputeNodeElem
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemVolume_Shared_Win
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
-USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeElems,offsetComputeNodeElem
 USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING

@@ -180,6 +180,16 @@ INTEGER             :: nNonUniqueGlobalNodes   !> total nb. of non-unique nodes 
 INTEGER             :: nNonUniqueGlobalTrees   !> total nb. of trees
 INTEGER             :: nUniqueMasterMortarSides!> total nb. of master mortar sides in the mesh
 INTEGER             :: nUniqueBCSides          !> total nb. of BC sides in the mesh
+! !> Counters
+INTEGER            :: nComputeNodeElems        !> Number of elems on current compute-node (w/o MPI: nElems)
+INTEGER            :: nComputeNodeSides        !> Number of sides on current compute-node (w/o MPI: nSides)
+INTEGER            :: nComputeNodeNodes        !> Number of nodes on current compute-node (w/o MPI: nNodes)
+INTEGER            :: nComputeNodeTrees        !> Number of trees on current compute-node (w/o MPI: nTrees)
+
+INTEGER            :: offsetComputeNodeElem    !> elem offset of compute-node root (w/o MPI: 0)
+INTEGER            :: offsetComputeNodeSide    !> side offset of compute-node root (w/o MPI: 0)
+INTEGER            :: offsetComputeNodeNode    !> node offset of compute-node root (w/o MPI: 0)
+INTEGER            :: offsetComputeNodeTree    !> tree offset of compute-node root (w/o MPI: 0)
 #if USE_MPI
 INTEGER             :: nGlobalSides=0          !< number of global sides in mesh
 INTEGER             :: nGlobalMPISides=0       !< number of global MPI sides in mesh

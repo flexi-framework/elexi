@@ -275,6 +275,8 @@ USE MOD_Particle_Tracking_Vars ,ONLY: PartOut,MPIRankOut
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
 USE MOD_Particle_BGM           ,ONLY: WriteHaloInfo
+#else
+USE MOD_Mesh_Vars              ,ONLY: nNonUniqueGlobalSides
 #endif /* USE_MPI */
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance

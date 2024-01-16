@@ -296,7 +296,7 @@ IF((PrecondType.EQ.1).OR.(PrecondType.EQ.3))THEN
 END IF
 #endif
 
-IF(DoDisplayPrecond) Time=FLEXITIME(MPI_COMM_FLEXI)
+IF(DoDisplayPrecond) Time=FLEXITIME()
 
 DO iElem=1,nElems
   Ploc=0.
@@ -355,7 +355,7 @@ DO iElem=1,nElems
 END DO !iElem
 
 IF(DoDisplayPrecond)THEN
-  Time=FLEXITIME(MPI_COMM_FLEXI)-Time
+  Time=FLEXITIME()-Time
 #if USE_MPI
   CALL MPI_REDUCE(Time,TimeMPI,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
   IF(MPIRoot) THEN

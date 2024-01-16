@@ -132,8 +132,8 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSideArea_Shared,SurfSideArea_Shared_W
 USE MOD_Particle_Boundary_Vars  ,ONLY: SampWallState_Shared_Win
 USE MOD_Particle_MPI_Boundary_Sampling,ONLY: InitSurfCommunication
 #else
+USE MOD_Mesh_Vars               ,ONLY: nComputeNodeSides
 USE MOD_Particle_Boundary_Vars  ,ONLY: mySurfRank
-USE MOD_Particle_Mesh_Vars      ,ONLY: nComputeNodeSides
 #endif /*USE_MPI*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars        ,ONLY: PerformLoadBalance

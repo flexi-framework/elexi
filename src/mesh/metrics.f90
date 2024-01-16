@@ -638,7 +638,7 @@ USE MOD_Mesh_Vars          ,ONLY: XCL_N,Vdm_CLN_N
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
 USE MOD_Mappings           ,ONLY: SideToVol2
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D
-USE MOD_ChangeBasisByDim   ,ONLY:  ChangeBasisSurf
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf
 USE MOD_Mortar_Metrics     ,ONLY: Mortar_CalcSurfMetrics
 #if USE_MPI
 USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstMPISide_MINE,firstMPISide_YOUR,lastMPISide_YOUR
@@ -647,9 +647,11 @@ USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExc
 #endif /*USE_MPI*/
 #if FV_ENABLED
 USE MOD_FillMortar1        ,ONLY: U_Mortar1
+USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1
+#if USE_MPI
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave,detJac_N
-USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1
+#endif /*USE_MPI*/
 #endif /*FV_ENABLED*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

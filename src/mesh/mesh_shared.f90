@@ -250,7 +250,7 @@ SUBROUTINE ReadMeshSideNeighbors(ElemID,SideID)
 ! MODULES
 USE MOD_Globals
 #if USE_MPI
-USE MOD_Mesh_Vars
+USE MOD_Mesh_Vars                 ,ONLY: nComputeNodeElems,offsetComputeNodeElem
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
 #endif /*USE_MPI*/
@@ -299,13 +299,16 @@ USE MOD_Interpolation             ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars        ,ONLY: NodeType,NodeTypeVISU
 USE MOD_Mesh_Vars                 ,ONLY: MeshFile,NGeo,NGeoOverride,useCurveds
 USE MOD_Mesh_Vars                 ,ONLY: nElems,offsetElem,nGlobalElems
+USE MOD_Mesh_Vars                 ,ONLY: nComputeNodeElems,nComputeNodeNodes
 USE MOD_Mesh_Vars                 ,ONLY: meshScale
-USE MOD_Mesh_Vars                 ,ONLY: ElemInfo_Shared,ElemInfo_Shared_Win
-USE MOD_Mesh_Vars                 ,ONLY: NodeCoords_Shared,NodeCoords_Shared_Win
+USE MOD_Mesh_Vars                 ,ONLY: ElemInfo_Shared
+USE MOD_Mesh_Vars                 ,ONLY: NodeCoords_Shared
 #if USE_MPI
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
 USE MOD_Mesh_Vars                 ,ONLY: nNonUniqueGlobalNodes
+USE MOD_Mesh_Vars                 ,ONLY: NodeCoords_Shared_Win
+USE MOD_Mesh_Vars                 ,ONLY: ElemInfo_Shared_Win
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
@@ -400,8 +403,10 @@ ELSE IF (NGeoOverride.LE.0 .AND. .NOT.useCurveds .AND. NGeo.GT.1) THEN
   ALLOCATE(NodeCoords_Shared(3,8*nGlobalElems))
 #endif  /*USE_MPI*/
 
+#if USE_MPI
   ! throw away all nodes except the 8 corner nodes of each hexa
   nNonUniqueGlobalNodes = 8*nGlobalElems
+#endif  /*USE_MPI*/
 
   DO iElem = FirstElemInd,LastElemInd
     FirstNodeInd = ElemInfo_Shared(ELEM_FIRSTNODEIND,iElem) - offsetNodeID
@@ -431,7 +436,9 @@ ELSE
   ALLOCATE( NodeCoordsTmp(1:3,0:NGeo        ,0:NGeo        ,0:NGeo)                                                                &
           , NodeCoordsNew(1:3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride))
 
+#if USE_MPI
   nNonUniqueGlobalNodes = (NGeoOverride+1)**3*nGlobalElems
+#endif  /*USE_MPI*/
 
   DO iElem=FirstElemInd,LastElemInd
     LocElemID = iElem - offsetElem
@@ -481,15 +488,20 @@ SUBROUTINE ReadMeshTrees()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Mesh_Vars                 ,ONLY: nElems,offsetElem,nGlobalElems
+USE MOD_Mesh_Vars                 ,ONLY: nElems
 USE MOD_Mesh_Vars                 ,ONLY: nNonUniqueGlobalTrees
-USE MOD_Mesh_Vars                 ,ONLY: nTrees,offsetTree,NGeoTree
-USE MOD_Mesh_Vars                 ,ONLY: xiMinMax,xiMinMax_Shared,xiMinMax_Shared_Win
-USE MOD_Mesh_Vars                 ,ONLY: ElemToTree,ElemToTree_Shared,ElemToTree_Shared_Win
-USE MOD_Mesh_Vars                 ,ONLY: TreeCoords,TreeCoords_Shared,TreeCoords_Shared_Win
+USE MOD_Mesh_Vars                 ,ONLY: nTrees,NGeoTree
+USE MOD_Mesh_Vars                 ,ONLY: xiMinMax,xiMinMax_Shared
+USE MOD_Mesh_Vars                 ,ONLY: ElemToTree,ElemToTree_Shared
+USE MOD_Mesh_Vars                 ,ONLY: TreeCoords,TreeCoords_Shared
 #if USE_MPI
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED
+USE MOD_Mesh_Vars                 ,ONLY: offsetElem,nGlobalElems
+USE MOD_Mesh_Vars                 ,ONLY: offsetTree
+USE MOD_Mesh_Vars                 ,ONLY: xiMinMax_Shared_Win
+USE MOD_Mesh_Vars                 ,ONLY: ElemToTree_Shared_Win
+USE MOD_Mesh_Vars                 ,ONLY: TreeCoords_Shared_Win
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance

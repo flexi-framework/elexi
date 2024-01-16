@@ -46,15 +46,15 @@ INTEGER,ALLOCATABLE:: MPI_COMM_LEADERS_REQUEST(:)           !> Request handle fo
 INTEGER            :: MPI_COMM_LEADERS_REQUEST_SIZE         !> Size of request handle for non-blocking communication
 
 ! Mesh
-!> Counters
-INTEGER            :: nComputeNodeElems                     !> Number of elems on current compute-node
-INTEGER            :: nComputeNodeSides                     !> Number of sides on current compute-node
-INTEGER            :: nComputeNodeNodes                     !> Number of nodes on current compute-node
-INTEGER            :: nComputeNodeTrees                     !> Number of trees on current compute-node
-INTEGER            :: offsetComputeNodeElem                 !> elem offset of compute-node root
-INTEGER            :: offsetComputeNodeSide                 !> side offset of compute-node root
-INTEGER            :: offsetComputeNodeNode                 !> node offset of compute-node root
-INTEGER            :: offsetComputeNodeTree                 !> tree offset of compute-node root
+! !> Counters
+! INTEGER            :: nComputeNodeElems                     !> Number of elems on current compute-node
+! INTEGER            :: nComputeNodeSides                     !> Number of sides on current compute-node
+! INTEGER            :: nComputeNodeNodes                     !> Number of nodes on current compute-node
+! INTEGER            :: nComputeNodeTrees                     !> Number of trees on current compute-node
+! INTEGER            :: offsetComputeNodeElem                 !> elem offset of compute-node root
+! INTEGER            :: offsetComputeNodeSide                 !> side offset of compute-node root
+! INTEGER            :: offsetComputeNodeNode                 !> node offset of compute-node root
+! INTEGER            :: offsetComputeNodeTree                 !> tree offset of compute-node root
 #if USE_PARTICLES
 INTEGER            :: nComputeNodeTotalElems                !> Number of elems on current compute-node (including halo region)
 INTEGER            :: nComputeNodeTotalSides                !> Number of sides on current compute-node (including halo region)

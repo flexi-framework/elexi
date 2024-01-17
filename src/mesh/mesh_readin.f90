@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -420,12 +420,12 @@ DO iElem = FirstElemInd,LastElemInd
 
     ! side is not a big Mortar side
     IF(aSide%MortarType.LE.0)THEN
-      aSide%Elem => aElem
-      oriented   = (   Sideinfo(SIDE_ID,iSide).GT.0)
-      aSide%Ind  = ABS(SideInfo(SIDE_ID,iSide))
+      aSide%Elem=>aElem
+      oriented=(Sideinfo(SIDE_ID,iSide).GT.0)
+      aSide%Ind=ABS(SideInfo(SIDE_ID,iSide))
       ! oriented side
       IF(oriented) THEN
-        aSide%flip = 0
+        aSide%flip=0
       ! not oriented side
       ELSE
         aSide%flip = MOD(Sideinfo(SIDE_FLIP,iSide),10)
@@ -436,11 +436,11 @@ DO iElem = FirstElemInd,LastElemInd
     ELSE
       ! iterate over virtual small mortar sides
       DO iMortar = 1,aSide%nMortars
-        iSide = iSide+1
-        aSide%mortarSide(iMortar)%sp%Elem => aElem ! set element pointer to actual element
+        iSide=iSide+1
+        aSide%mortarSide(iMortar)%sp%Elem=>aElem ! set element pointer to actual element
         IF(SideInfo(SIDE_ID,iSide).LT.0) CALL Abort(__STAMP__,'Problem in Mortar readin,should be flip=0')
-        aSide%mortarSide(iMortar)%sp%flip = 0
-        aSide%mortarSide(iMortar)%sp%Ind  = ABS(SideInfo(SIDE_ID,iSide))
+        aSide%mortarSide(iMortar)%sp%flip=0
+        aSide%mortarSide(iMortar)%sp%Ind =ABS(SideInfo(SIDE_ID,iSide))
       END DO !iMortar
     END IF
   END DO !i=1,locnSides

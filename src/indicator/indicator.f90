@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -131,10 +131,10 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                                  :: nModes_In
 #if FV_ENABLED == 1
 INTEGER                                  :: iBC,nFVBoundaryType
 #endif
-INTEGER                                  :: nModes_In
 !==================================================================================================================================
 IF(IndicatorInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -304,7 +304,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 #if FV_ENABLED
 CASE(INDTYPE_JAMESON)
-    IndValue = JamesonIndicator(U)
+  IndValue = JamesonIndicator(U)
 #endif
 #if PARABOLIC
 CASE(INDTYPE_DUCROS)

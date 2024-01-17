@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -35,14 +35,14 @@ REAL              :: IniAxis(3)        !< parameter used for Shu vortex
 REAL              :: IniHalfwidth      !< parameter used for Shu vortex
 REAL              :: P_Parameter       !< parameter for Couette-Poiseuille flow
 REAL              :: U_Parameter       !< parameter for Couette-Poiseuille flow
-REAL              :: JetRadius         !< parameter for Roundjet
-REAL              :: JetEnd            !< parameter for Roundjet
 REAL              :: Ramping           !< parameter for subsonic mass inflow BC
 REAL              :: xShock            !< parameter for shock tube
-LOGICAL           :: RoundJetInitDone=.FALSE.
 REAL              :: HarmonicFrequency !< frequency of the harmonic gauss pulse
 REAL              :: AmplitudeFactor   !< amplitudefactor of the harmoinic gauss pulse
 REAL              :: SiqmaSqr          !< Sigma squared of the gaussian distribution
+REAL              :: JetRadius         !< parameter for Roundjet
+REAL              :: JetEnd            !< parameter for Roundjet
+LOGICAL           :: RoundJetInitDone=.FALSE.
 #if PARABOLIC
 REAL              :: delta99_in        !< boundary layer thickness for Blasius solution
 REAL              :: x_in(2)           !< inflow position for Blasius solution

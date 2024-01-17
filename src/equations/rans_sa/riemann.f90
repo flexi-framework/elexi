@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021 Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -243,7 +243,7 @@ REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_L        !< conservative solution a
 REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-REAL,DIMENSION(3          ),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
+REAL,DIMENSION(          3),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
 REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: FOut       !< advective flux
 LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
 !----------------------------------------------------------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -150,6 +150,10 @@ SELECT CASE (IniExactFunc)
     AdvVel          = GETREALARRAY('AdvVel',3)
     IniFrequency    = GETREAL('IniFrequency','0.5')
     IniAmplitude    = GETREAL('IniAmplitude','0.3')
+  CASE(3) ! synthetic test cases
+    AdvVel          = GETREALARRAY('AdvVel',3)
+  CASE(31)
+    AdvArray        = GETREALARRAY('AdvArray',9)
   CASE(35) ! sinus x (vel)
     IniFrequency    = GETREAL('IniFrequency','1.0')
     IniAmplitude    = GETREAL('IniAmplitude','1.0')
@@ -160,8 +164,6 @@ SELECT CASE (IniExactFunc)
     AdvVel          = GETREALARRAY('AdvVel',3)
     IniFrequency    = GETREAL('IniFrequency','1.0')
     IniAmplitude    = GETREAL('IniAmplitude','0.1')
-  CASE(3,31)
-    AdvArray         = GETREALARRAY('AdvArray',9)
   CASE(5) ! Roundjet
     JetRadius        = GETREAL('JetRadius','1.0')
     JetEnd           = GETREAL('JetEnd   ','10.0')
@@ -180,7 +182,7 @@ SELECT CASE (IniExactFunc)
     xShock           = GETREAL('xs')
   CASE(11) ! sod
     xShock           = GETREAL('xs')
-CASE(15)
+  CASE(15)
     HarmonicFrequency= GETREAL('HarmonicFrequency')
     AmplitudeFactor  = GETREAL('AmplitudeFactor')
     SiqmaSqr         = GETREAL('SigmaSqr')
@@ -200,6 +202,8 @@ CASE(15)
     JetRadius        = GETREAL('JetRadius','1.0')
     RoundjetInitDone = .TRUE.
 #endif
+  ! CASE DEFAULT
+  !   ! Everything defined, do nothing
 END SELECT ! IniExactFunc
 
 #if PP_dim==2

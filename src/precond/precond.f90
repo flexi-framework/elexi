@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -280,8 +280,8 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                             
 CALL StartReceiveMPIData(UPrim_slave,DataSizeSidePrim,1,nSides,MPIRequest_U(:,SEND),SendID=1) ! Send MINE    / UPrim_slave
 CALL StartSendMPIData(   UPrim_slave,DataSizeSidePrim,1,nSides,MPIRequest_U(:,RECV),SendID=1) ! Receive YOUR / UPrim_slave
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                                           ! UPrim_slave: master -> slave
-#endif /*FV_ENABLED*/
 #endif /*FV_RECONSTRUCT*/
+#endif /*FV_ENABLED*/
 #endif /*USE_MPI*/
 
 #if FV_ENABLED && FV_RECONSTRUCT

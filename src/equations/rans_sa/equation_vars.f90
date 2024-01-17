@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -179,10 +179,8 @@ REAL                           :: g         ! auxiliary function
 
 IF(nuTilde.GE.0.)THEN
   ! Avoid division by zero
-  IF(STilde.NE.0) THEN
-    r = MIN(nuTilde/(STilde*(SAKappa**2)*(d**2)),rLim)
-  ELSE
-    r = rlim
+  IF (STilde.NE.0) THEN; r = MIN(nuTilde/(STilde*(SAKappa**2)*(d**2)),rLim)
+  ELSE                 ; r = rlim
   END IF
   g = r + cw2*((r**6)-r)
 

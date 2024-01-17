@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -495,8 +495,8 @@ CASE(3,4,9,91,23,24,25,27,28,29)
         pb=pt     *(1+0.5*(kappa-1)*MaOut*MaOut)**(-kappa*sKappaM1)
 
         ! use total temperature
-        tt=UPrim_boundary(6,p,q)*(1+0.5*(kappa-1)*Ma   *Ma)  ! adiabatic/isentropic => unstable
-        tb=tt     *(1+0.5*(kappa-1)*MaOut*MaOut)
+        ! tt=UPrim_boundary(6,p,q)*(1+0.5*(kappa-1)*Ma   *Ma)  ! adiabatic/isentropic => unstable
+        ! tb=tt/(1+0.5*(kappa-1)*MaOut*MaOut)
       ELSE
         ! use total pressure for supersonic
         pb=UPrim_boundary(PRES,p,q)+0.5*UPrim_boundary(DENS,p,q)*vmag*vmag

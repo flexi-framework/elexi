@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2024 Prof. Claus-Dieter Munz
 ! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo)
@@ -410,7 +410,7 @@ Fout(MOMV)=nv(:)*F(MOM1)  &
 #if PP_dim==3
           +t2(:)*F(MOM3)
 #else
-          +0.
+          + 0.
 #endif
 Fout(ENER)=F(ENER)
 END SUBROUTINE Riemann_Point

@@ -1216,6 +1216,7 @@ NO_OP(SphericityIC)
 NO_OP(Mp)
 END FUNCTION DF_Ganser
 
+
 !==================================================================================================================================
 !> Compute source terms for particles and add them to the nearest DOF
 ! TODO: global arrays, communication of source term (see piclas)
@@ -1224,19 +1225,20 @@ SUBROUTINE CalcSourcePart(Ut)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Analyze_Vars      ,ONLY: wGPVol
-USE MOD_Particle_Globals  ,ONLY: VECNORM
-USE MOD_Mesh_Vars         ,ONLY: nElems,offsetElem
-USE MOD_Mesh_Vars         ,ONLY: Elem_xGP,sJ
-USE MOD_Particle_Mesh_Vars,ONLY: GEO,FIBGM_nElems,FIBGM_offsetElem,FIBGM_Element
-USE MOD_Particle_Mesh_Vars,ONLY: Elem_xGP_Shared
-USE MOD_Particle_Mesh_Tools,ONLY: GetCNElemID
+USE MOD_Analyze_Vars        ,ONLY: wGPVol
+USE MOD_Particle_Globals    ,ONLY: VECNORM
+USE MOD_Mesh_Vars           ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,sJ
+USE MOD_Particle_Deposition
+USE MOD_Particle_Mesh_Vars  ,ONLY: GEO,FIBGM_nElems,FIBGM_offsetElem,FIBGM_Element
+USE MOD_Particle_Mesh_Vars  ,ONLY: Elem_xGP_Shared
+USE MOD_Particle_Mesh_Tools ,ONLY: GetCNElemID
 #if FV_ENABLED
-USE MOD_FV_Vars           ,ONLY: FV_Elems
-USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
-USE MOD_FV_Vars           ,ONLY: FV_Vdm
+USE MOD_FV_Vars             ,ONLY: FV_Elems
+USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
+USE MOD_FV_Vars             ,ONLY: FV_Vdm
 #endif
-USE MOD_Particle_Vars     ,ONLY: Species,PartSpecies,PartState,Pt,PEM,PDM,DepositionType
+USE MOD_Particle_Vars       ,ONLY: Species,PartSpecies,PartState,Pt,PEM,PDM,DepositionType
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1286,6 +1288,9 @@ DO iPart = 1,PDM%ParticleVecLength
           PartSource(MOMV,i,j,k,iElem) = Fp
           PartSource(ENER,i,j,k,iElem) = Wp + Q
         END DO; END DO; END DO
+
+      CASE ("cell_volweight_mean")
+        CALL DepositionMethod_CVWM()
 
       CASE ("step")
         ! --- get background mesh cell of point

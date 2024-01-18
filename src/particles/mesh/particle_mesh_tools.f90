@@ -482,7 +482,7 @@ END SUBROUTINE GetSideBoundingBoxTria
 END MODULE MOD_Particle_Mesh_Tools
 
 
-SUBROUTINE InitNodeMap(NGeoLoc)
+PPURE FUNCTION GetCornerNodes(NGeoLoc)
 !===================================================================================================================================
 !> Get the corner nodes, depending on the given NGeo, for high-order elements
 !===================================================================================================================================
@@ -500,18 +500,18 @@ INTEGER                        :: GetCornerNodes(8)
 !===================================================================================================================================
 
 GetCornerNodes(1) = 1
-GetCornerNodes(2) = (NgeoLoc+1)
-GetCornerNodes(3) = (NgeoLoc+1)*NgeoLoc+1
-GetCornerNodes(4) = (NgeoLoc+1)**2
-GetCornerNodes(5) = (NgeoLoc+1)**2*NgeoLoc+1
-GetCornerNodes(6) = (NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)
-GetCornerNodes(7) = (NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)*NgeoLoc+1
-GetCornerNodes(8) = (NgeoLoc+1)**3
+GetCornerNodes(2) = (NGeoLoc+1)
+GetCornerNodes(3) = (NGeoLoc+1)*NGeoLoc+1
+GetCornerNodes(4) = (NGeoLoc+1)**2
+GetCornerNodes(5) = (NGeoLoc+1)**2*NGeoLoc+1
+GetCornerNodes(6) = (NGeoLoc+1)**2*NGeoLoc+(NGeoLoc+1)
+GetCornerNodes(7) = (NGeoLoc+1)**2*NGeoLoc+(NGeoLoc+1)*NGeoLoc+1
+GetCornerNodes(8) = (NGeoLoc+1)**3
 
 END FUNCTION GetCornerNodes
 
 
-PPURE SUBROUTINE GetCornerNodeMapCGNS(NgeoLoc,CornerNodesCGNS,NodeMapCGNS)
+PPURE SUBROUTINE GetCornerNodeMapCGNS(NGeoLoc,CornerNodesCGNS,NodeMapCGNS)
 !===================================================================================================================================
 !> Get the corner nodes and node map when converting from CGNS format, depending on the given NGeo.
 !===================================================================================================================================
@@ -520,10 +520,10 @@ PPURE SUBROUTINE GetCornerNodeMapCGNS(NgeoLoc,CornerNodesCGNS,NodeMapCGNS)
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)             :: NgeoLoc
+INTEGER,INTENT(IN)             :: NGeoLoc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-INTEGER,INTENT(OUT),OPTIONAL   :: CornerNodesCGNS(8), NodeMapCGNS(4,6)
+INTEGER,INTENT(OUT),OPTIONAL   :: CornerNodesCGNS(8),NodeMapCGNS(4,6)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: CNS(8)
@@ -532,13 +532,13 @@ INTEGER                        :: CNS(8)
 ! CornerNodeSwitch: a mapping is required for Ngeo > 1 as the corner nodes are not the first 8 entries of NodeInfo array
 ! For NGeo = 1, CNS(3) = 4 and vice versa, and CNS(7) = 8 and vice versa
 CNS(1) = 1
-CNS(2) = (NgeoLoc+1)
-CNS(3) = (NgeoLoc+1)**2
-CNS(4) = (NgeoLoc+1)*NgeoLoc+1
-CNS(5) = (NgeoLoc+1)**2*NgeoLoc+1
-CNS(6) = (NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)
-CNS(7) = (NgeoLoc+1)**3
-CNS(8) = (NgeoLoc+1)**2*NgeoLoc+(NgeoLoc+1)*NgeoLoc+1
+CNS(2) = (NGeoLoc+1)
+CNS(3) = (NGeoLoc+1)**2
+CNS(4) = (NGeoLoc+1)*NGeoLoc+1
+CNS(5) = (NGeoLoc+1)**2*NGeoLoc+1
+CNS(6) = (NGeoLoc+1)**2*NGeoLoc+(NGeoLoc+1)
+CNS(7) = (NGeoLoc+1)**3
+CNS(8) = (NGeoLoc+1)**2*NGeoLoc+(NGeoLoc+1)*NGeoLoc+1
 
 IF(PRESENT(CornerNodesCGNS)) CornerNodesCGNS = CNS
 

@@ -191,6 +191,10 @@
 #define SIDE_NBSIDEID     8
 #define SIDE_NBELEMTYPE   9
 
+! number of entries in each line of FEMInfo
+#define FEMELEMINFOSIZE   4
+#define VERTEXINFOSIZE    3
+
 #if USE_LOADBALANCE
 ! Load Balance (LB) position in array for measuring the time that is spent on specific operations
 #define LB_DG            1

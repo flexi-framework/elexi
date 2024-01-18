@@ -36,7 +36,6 @@ INTEGER(KIND=8), ALLOCATABLE  :: PartIndex(:)                                ! (
 REAL    , ALLOCATABLE         :: Pt(:,:)                                     ! Derivative of PartState (vx,xy,vz) only
 REAL    , ALLOCATABLE         :: Pt_temp(:,:)                                ! LSERK4 additional derivative of PartState
                                                                              ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz
-CHARACTER(LEN=256)            :: DepositionType                              ! Type of Deposition-Method
 
 
 ! Particle information ordered along SFC

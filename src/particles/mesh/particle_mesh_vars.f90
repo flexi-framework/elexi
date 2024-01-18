@@ -93,6 +93,9 @@ INTEGER,ALLOCPOINT,DIMENSION(:)          :: FIBGMProcs
 INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: ElemHaloInfo_Shared
 INTEGER,ALLOCPOINT,DIMENSION(:)          :: ElemHaloInfo_Array
 
+INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: FEMElemInfo_Shared
+INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: VertexInfo_Shared
+
 INTEGER,ALLOCPOINT :: ElemToBCSides_Shared(:,:)                !> Mapping from elem to BC sides within halo eps
 REAL,ALLOCPOINT    :: SideBCMetrics_Shared(:,:)                !> Metrics for BC sides, see piclas.h
                                                                !> 1 - Global SideID
@@ -171,6 +174,8 @@ REAL,ALLOCPOINT    :: ElemVolume_Shared(:)
 ! integers to hold shared memory windows
 LOGICAL           :: CalcHaloInfo                          !> Output halo element information to ElemData
 INTEGER           :: ElemHaloInfo_Shared_Win
+INTEGER           :: FEMElemInfo_Shared_Win
+INTEGER           :: VertexInfo_Shared_Win
 
 INTEGER           :: ElemToBCSides_Shared_Win
 INTEGER           :: SideBCMetrics_Shared_Win

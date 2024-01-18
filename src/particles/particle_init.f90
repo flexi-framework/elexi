@@ -131,13 +131,13 @@ CALL prms%CreateLogicalOption(      'Part-LowVeloRemove'       , 'Flag if low ve
 CALL prms%CreateLogicalOption(      'Part-CalcSource'          , 'Flag to enable two-way coupling'                                 &
                                                                , '.FALSE.')
 CALL prms%CreateStringOption(       'Part-DepositionType'      , 'Deposition method used for two-way coupling .\n'               //&
-                                                      ' - cellvol            : imposed to element the particle resides in \n'    //&
-                                                      ' - cell_volweight_mean: imposed linear continuous distribution \n'        //&
-                                                      ' - step               : step function \n'                                 //&
-                                                      ' - dirac              : dirac impulse \n'                                 //&
-                                                      ' - shapefunc_gauss    : Gaussian shape function \n'                       //&
-                                                      ' - shapefunc_poly     : Polynomial shape function \n'                       &
-                                                    , 'cellvol')
+                                                      ' - cell_vol        : imposed to element the particle resides in \n'       //&
+                                                      ' - cell_vol_linear : imposed linear continuous distribution \n'           //&
+                                                      ' - step            : step function \n'                                    //&
+                                                      ' - dirac           : dirac impulse \n'                                    //&
+                                                      ' - shapefunc_gauss : Gaussian shape function \n'                          //&
+                                                      ' - shapefunc_poly  : Polynomial shape function \n'                          &
+                                                    , 'dirac')
 CALL prms%CreateLogicalOption(      'Part-WritePartDiam'       , 'Flag to enable writeout of particle diameter'                    &
                                                                , '.FALSE.')
 CALL prms%CreateLogicalOption(      'Part-RandomPartDiam'      , 'Flag to enable random particle diameter with a certain variance' &
@@ -742,7 +742,7 @@ USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_Records,RPP_Records_Glob
 USE MOD_Particle_Boundary_Sampling ,ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking ,ONLY: InitParticleBoundaryTracking
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove,doParticleReflectionTrack
-USE MOD_Particle_Deposition_Init   ,ONLY: InitializeDeposition
+USE MOD_Particle_Deposition        ,ONLY: InitializeDeposition
 USE MOD_Particle_Interpolation     ,ONLY: InitParticleInterpolation
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
@@ -775,7 +775,6 @@ IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
 
 ! Fluid-particle coupling
 doCalcSourcePart        = GETLOGICAL('Part-CalcSource'    )
-DepositionType          = GETSTR('Part-DepositionType')
 
 doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' )
 doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam')
@@ -1786,6 +1785,7 @@ USE MOD_Particle_Analyze,           ONLY: FinalizeParticleAnalyze
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Sampling, ONLY: FinalizeParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking, ONLY: FinalizeParticleBoundaryTracking
+USE MOD_Particle_Deposition,        ONLY: FinalizeDeposition
 USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
 USE MOD_Particle_Surfaces,          ONLY: FinalizeParticleSurfaces
@@ -1940,6 +1940,8 @@ CALL FinalizePartExchangeProcs()
 CALL FinalizeParticleAnalyze()
 CALL FinalizeParticleSurfaces()
 CALL FinalizeParticleMesh()
+
+IF (doCalcSourcePart) CALL FinalizeDeposition()
 
 ParticlesInitIsDone = .FALSE.
 

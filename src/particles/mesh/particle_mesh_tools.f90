@@ -106,7 +106,6 @@ PUBLIC :: GetGlobalSideID
 PUBLIC :: GetCNSideID
 PUBLIC :: GetGlobalNonUniqueSideID
 PUBLIC :: GetSideBoundingBoxTria
-PUBLIC :: InitElemNodeIDs
 PUBLIC :: GetCornerNodes
 PUBLIC :: GetCornerNodeMapCGNS
 !===================================================================================================================================
@@ -478,8 +477,6 @@ BoundingBox(1:3,7) = (/xMax,yMax,zMax/)
 BoundingBox(1:3,8) = (/xMin,yMax,zMax/)
 
 END SUBROUTINE GetSideBoundingBoxTria
-
-END MODULE MOD_Particle_Mesh_Tools
 
 
 PPURE FUNCTION GetCornerNodes(NGeoLoc)

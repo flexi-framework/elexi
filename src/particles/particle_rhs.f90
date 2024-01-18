@@ -86,6 +86,7 @@ END SELECT
 
 END SUBROUTINE InitRHS
 
+
 SUBROUTINE CalcPartRHS(&
 #if USE_BASSETFORCE || ANALYZE_RHS
   t,dt,iStage)
@@ -714,6 +715,7 @@ IF (Species(PartSpecies(PartID))%CalcVirtualMass) THEN
 END IF
 #endif /* USE_VIRTUALMASS */
 
+
 !===================================================================================================================================
 ! Calculate the Basset force / history terms following:
 ! van Hinsberg, M.A., ten Thije Boonkkamp, J.H., Clercx, H.J.: An efficient, second or-
@@ -870,6 +872,7 @@ Pt_in(:) = Pt
 END SUBROUTINE ParticlePushExtend
 #endif /* USE_EXTEND_RHS */
 
+
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 SUBROUTINE extRHS(UPrim,Ut,U_RHS)
 !===================================================================================================================================
@@ -1000,7 +1003,9 @@ f  = 1.
 ! Suppress compiler warning
 NO_OP(SphericityIC)
 NO_OP(MP)
+
 END FUNCTION DF_Stokes
+
 
 FUNCTION DF_SchillerAndNaumann(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
@@ -1034,7 +1039,9 @@ f  = 1. + 0.15*Rep**0.687
 ! Suppress compiler warning
 NO_OP(SphericityIC)
 NO_OP(MP)
+
 END FUNCTION DF_SchillerAndNaumann
+
 
 FUNCTION DF_Putnam(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
@@ -1058,7 +1065,9 @@ IF(Rep .GT. 1000) f = 0.0183*Rep
 ! Suppress compiler warning
 NO_OP(SphericityIC)
 NO_OP(MP)
+
 END FUNCTION DF_Putnam
+
 
 FUNCTION DF_Haider(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
@@ -1083,7 +1092,9 @@ f = (1+k1*Rep**(0.0964+0.5565*SphericityIC))+Rep**2*1./24*k2/(Rep+k3)
 
 ! Suppress compiler warning
 NO_OP(MP)
+
 END FUNCTION DF_Haider
+
 
 FUNCTION DF_Hoelzer(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
@@ -1107,7 +1118,9 @@ f =  s13 * 1./SQRT(SphericityIC) + s23 * 1./SQRT(SphericityIC)+&
 
 ! Suppress compiler warning
 NO_OP(MP)
+
 END FUNCTION DF_Hoelzer
+
 
 !FUNCTION DF_Loth(Rep, SphericityIC, Mp) RESULT(f)
 !!===================================================================================================================================
@@ -1143,7 +1156,9 @@ END FUNCTION DF_Hoelzer
 !! Valid up to Rep < 3e5
 !f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Gm*Rep**(-1.16))   ! (eq. 15, divided by Rep/24)
 !NO_OP(SphericityIC)
+
 !END FUNCTION DF_Loth
+
 
 FUNCTION DF_Loth(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
@@ -1184,7 +1199,9 @@ f = (1. + 0.15*Rep**0.687) * Hm + Rep/24*0.42*Cm/(1+42500*Rep**(-1.16*Cm)+Gm*Rep
 
 ! Suppress compiler warning
 NO_OP(SphericityIC)
+
 END FUNCTION DF_Loth
+
 
 FUNCTION DF_Ganser(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
@@ -1214,6 +1231,7 @@ f = 1./K1*(1. + 0.118*(K1*K2*Rep)**0.6567) + Rep/24*0.4305*K2/(1+3305/(Rep*K1*K2
 ! Suppress compiler warning
 NO_OP(SphericityIC)
 NO_OP(Mp)
+
 END FUNCTION DF_Ganser
 
 
@@ -1225,224 +1243,52 @@ SUBROUTINE CalcSourcePart(Ut)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Analyze_Vars        ,ONLY: wGPVol
-USE MOD_Particle_Globals    ,ONLY: VECNORM
-USE MOD_Mesh_Vars           ,ONLY: nElems,offsetElem
-USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,sJ
-USE MOD_Particle_Deposition
-USE MOD_Particle_Mesh_Vars  ,ONLY: GEO,FIBGM_nElems,FIBGM_offsetElem,FIBGM_Element
-USE MOD_Particle_Mesh_Vars  ,ONLY: Elem_xGP_Shared
-USE MOD_Particle_Mesh_Tools ,ONLY: GetCNElemID
+USE MOD_Mesh_Vars                 ,ONLY: nElems
+USE MOD_Mesh_Vars                 ,ONLY: sJ
+! USE MOD_Particle_Deposition_Method
+USE MOD_Particle_Deposition_Vars  ,ONLY: PartSource,DepositionMethod
 #if FV_ENABLED
-USE MOD_FV_Vars             ,ONLY: FV_Elems
-USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
-USE MOD_FV_Vars             ,ONLY: FV_Vdm
+USE MOD_FV_Vars                   ,ONLY: FV_Elems
+USE MOD_ChangeBasisByDim          ,ONLY: ChangeBasisVolume
+USE MOD_FV_Vars                   ,ONLY: FV_Vdm
 #endif
-USE MOD_Particle_Vars       ,ONLY: Species,PartSpecies,PartState,Pt,PEM,PDM,DepositionType
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k,iElem,iPart,ijk(3),iBGM,jBGM,kBGM,imin,imax,jmin,jmax,kmin,kmax,ElemID,CNElemID
-REAL                :: Ut_src(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
-REAL                :: PartSource(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
-REAL                :: Fp(3),Wp,Q,r,Vol,sigma,kernel
-REAL                :: min_distance_glob,min_distance_loc
+INTEGER             :: i,j,k,iElem
+! INTEGER             :: i,j,k,iElem,iPart,ijk(3),iBGM,jBGM,kBGM,imin,imax,jmin,jmax,kmin,kmax,ElemID,CNElemID
+! REAL                :: Ut_src(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
+! REAL                :: Fp(3),Wp,Q,r,Vol,sigma,kernel
+! REAL                :: min_distance_glob,min_distance_loc
 #if FV_ENABLED
 REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 
-Ut_src = 0.
-DO iPart = 1,PDM%ParticleVecLength
-  IF (PDM%ParticleInside(iPart)) THEN
-    IF (Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER        .OR. &
-        Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TCONVERGENCE  .OR. &
-        Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_HPCONVERGENCE .OR. &
-        Species(PartSpecies(iPart))%RHSMethod .EQ. RHS_TRACER) CYCLE
+! Nullify PartSource
+PartSource = 0.
 
-    Vol = 0.
-    PartSource = 0.
-    ! Radius of particle
-    r = PartState(PART_DIAM,iPart)*0.5
-    ! Calculate particle force
-    Fp(1:3) = -Pt(1:3,iPart)*Species(PartSpecies(iPart))%MassIC
-    ! Calculate the work
-    Wp = DOT_PRODUCT(Fp,PartState(PART_VELV,iPart))
+! DepositionMethod is a pointer to the corresponding method
+CALL DepositionMethod()
 
-#if USE_PARTTEMP
-    ! Calculate particle heat exchange (if activated)
-    Q = - Pt(4,iPart) * Species(PartSpecies(iPart))%MassIC * Species(PartSpecies(iPart))%SpecificHeatIC
-#else
-    ! Set particle heat exchange to zero if not activated
-    Q = 0.
-#endif
-
-    SELECT CASE (DepositionType)
-      CASE ("cellvol")
-        iElem = PEM%Element(iPart)-offsetElem
-        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-          Vol = Vol + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
-          PartSource(MOMV,i,j,k,iElem) = Fp
-          PartSource(ENER,i,j,k,iElem) = Wp + Q
-        END DO; END DO; END DO
-
-      CASE ("cell_volweight_mean")
-        CALL DepositionMethod_CVWM()
-
-      CASE ("step")
-        ! --- get background mesh cell of point
-        imin = FLOOR((PartState(1,iPart)-r-GEO%xminglob)/GEO%FIBGMdeltas(1)+1)
-        imin = MAX(GEO%FIBGMimin,imin)
-        imax = CEILING((PartState(1,iPart)+r-GEO%xminglob)/GEO%FIBGMdeltas(1))
-        imax = MIN(GEO%FIBGMimax,imax)
-        jmin = FLOOR((PartState(2,iPart)-r-GEO%yminglob)/GEO%FIBGMdeltas(2)+1)
-        jmin = MAX(GEO%FIBGMjmin,jmin)
-        jmax = CEILING((PartState(2,iPart)+r-GEO%yminglob)/GEO%FIBGMdeltas(2))
-        jmax = MIN(GEO%FIBGMjmax,jmax)
-        kmin = FLOOR((PartState(3,iPart)-r-GEO%zminglob)/GEO%FIBGMdeltas(3)+1)
-        kmin = MAX(GEO%FIBGMkmin,kmin)
-        kmax = CEILING((PartState(3,iPart)+r-GEO%zminglob)/GEO%FIBGMdeltas(3))
-        kmax = MIN(GEO%FIBGMkmax,kmax)
-
-        DO kBGM=kmin,kmax; DO jBGM=jmin,jmax; DO iBGM=imin,imax
-          !--- check all cells associated with this background mesh cell
-          DO iElem = 1, FIBGM_nElems(iBGM,jBGM,kBGM)
-            ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
-            CNElemID = GetCNElemID(ElemID)
-            ElemID = ElemID-offsetElem
-            IF (ElemID.LT.1 .OR. ElemID.GT.nElems) CYCLE
-            DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-              IF (NORM2(Elem_xGP_Shared(1:3,i,j,k,CNElemID)-PartState(PART_POS1:PART_POS3,iPart)) .LE. r) THEN
-                ! TODO: sJ_shared
-                Vol = Vol + wGPVol(i,j,k)/sJ(i,j,k,ElemID,0)
-                PartSource(MOMV,i,j,k,ElemID) = Fp
-                PartSource(ENER,i,j,k,ElemID) = Wp + Q
-              END IF
-            END DO; END DO; END DO
-          END DO
-        END DO; END DO; END DO
-
-      CASE ("dirac")
-        iElem = PEM%Element(iPart)-offsetElem
-        min_distance_glob = VECNORM(Elem_xGP(:,0,0,0,iElem)-PartState(1:3,iPart))
-        ijk(:) = 0
-        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-          min_distance_loc = VECNORM(Elem_xGP(:,i,j,k,iElem)-PartState(1:3,iPart))
-          IF (min_distance_loc .LT. min_distance_glob) THEN; ijk(:) = (/i,j,k/); min_distance_glob = min_distance_loc; END IF
-        END DO; END DO; END DO
-        Vol = Vol + wGPVol(ijk(1),ijk(2),ijk(3))/sJ(ijk(1),ijk(2),ijk(3),iElem,0)
-        PartSource(MOMV,ijk(1),ijk(2),ijk(3),iElem) = Fp
-        PartSource(ENER,ijk(1),ijk(2),ijk(3),iElem) = Wp + Q
-
-      CASE ("shapefunc_gauss")
-        ! --- get background mesh cell of point
-        imin = FLOOR((PartState(1,iPart)-r-GEO%xminglob)/GEO%FIBGMdeltas(1)+1)
-        imin = MAX(GEO%FIBGMimin,imin)
-        imax = CEILING((PartState(1,iPart)+r-GEO%xminglob)/GEO%FIBGMdeltas(1))
-        imax = MIN(GEO%FIBGMimax,imax)
-        jmin = FLOOR((PartState(2,iPart)-r-GEO%yminglob)/GEO%FIBGMdeltas(2)+1)
-        jmin = MAX(GEO%FIBGMjmin,jmin)
-        jmax = CEILING((PartState(2,iPart)+r-GEO%yminglob)/GEO%FIBGMdeltas(2))
-        jmax = MIN(GEO%FIBGMjmax,jmax)
-        kmin = FLOOR((PartState(3,iPart)-r-GEO%zminglob)/GEO%FIBGMdeltas(3)+1)
-        kmin = MAX(GEO%FIBGMkmin,kmin)
-        kmax = CEILING((PartState(3,iPart)+r-GEO%zminglob)/GEO%FIBGMdeltas(3))
-        kmax = MIN(GEO%FIBGMkmax,kmax)
-
-        sigma = 1.0
-        DO kBGM=kmin,kmax; DO jBGM=jmin,jmax; DO iBGM=imin,imax
-          !--- check all cells associated with this background mesh cell
-          DO iElem = 1, FIBGM_nElems(iBGM,jBGM,kBGM)
-            ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
-            CNElemID = GetCNElemID(ElemID)
-            ElemID = ElemID-offsetElem
-            IF (ElemID.LT.1 .OR. ElemID.GT.nElems) CYCLE
-            DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-              min_distance_loc = VECNORM(Elem_xGP_Shared(:,i,j,k,CNElemID)-PartState(1:3,iPart))
-              IF (min_distance_loc .LE. r) THEN
-                ! TODO: sJ_shared
-                kernel = EXP(-0.5*min_distance_loc**2/sigma**2)
-                Vol = Vol + kernel*wGPVol(i,j,k)/sJ(i,j,k,ElemID,0)
-                !kernel = 1./(2*PP_PI*sigma**2) * EXP(-0.5*min_distance_loc**2/sigma**2)
-                PartSource(MOMV,i,j,k,ElemID) = Fp*kernel
-                PartSource(ENER,i,j,k,ElemID) = (Wp+Q)*kernel
-              END IF
-            END DO; END DO; END DO
-          END DO
-        END DO; END DO; END DO
-
-      CASE ("shapefunc_poly")
-        ! --- get background mesh cell of point
-        imin = FLOOR((PartState(1,iPart)-r-GEO%xminglob)/GEO%FIBGMdeltas(1)+1)
-        imin = MAX(GEO%FIBGMimin,imin)
-        imax = CEILING((PartState(1,iPart)+r-GEO%xminglob)/GEO%FIBGMdeltas(1))
-        imax = MIN(GEO%FIBGMimax,imax)
-        jmin = FLOOR((PartState(2,iPart)-r-GEO%yminglob)/GEO%FIBGMdeltas(2)+1)
-        jmin = MAX(GEO%FIBGMjmin,jmin)
-        jmax = CEILING((PartState(2,iPart)+r-GEO%yminglob)/GEO%FIBGMdeltas(2))
-        jmax = MIN(GEO%FIBGMjmax,jmax)
-        kmin = FLOOR((PartState(3,iPart)-r-GEO%zminglob)/GEO%FIBGMdeltas(3)+1)
-        kmin = MAX(GEO%FIBGMkmin,kmin)
-        kmax = CEILING((PartState(3,iPart)+r-GEO%zminglob)/GEO%FIBGMdeltas(3))
-        kmax = MIN(GEO%FIBGMkmax,kmax)
-
-        sigma = (PP_N+1)
-        DO kBGM=kmin,kmax; DO jBGM=jmin,jmax; DO iBGM=imin,imax
-          !--- check all cells associated with this background mesh cell
-          DO iElem = 1, FIBGM_nElems(iBGM,jBGM,kBGM)
-            ElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iElem)
-            CNElemID = GetCNElemID(ElemID)
-            ElemID = ElemID-offsetElem
-            IF (ElemID.LT.1 .OR. ElemID.GT.nElems) CYCLE
-            DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-              min_distance_loc = VECNORM(Elem_xGP_Shared(:,i,j,k,CNElemID)-PartState(1:3,iPart))
-              IF (min_distance_loc .LE. r) THEN
-                ! TODO: sJ_shared
-                kernel = (1-(min_distance_loc/r)**2)**sigma
-                Vol = Vol + kernel*wGPVol(i,j,k)/sJ(i,j,k,ElemID,0)
-                PartSource(MOMV,i,j,k,ElemID) = Fp*kernel
-                PartSource(ENER,i,j,k,ElemID) = Wp*kernel + Q*kernel
-              END IF
-            END DO; END DO; END DO
-          END DO
-        END DO; END DO; END DO
-
-    END SELECT
-
-    IF (Vol .GT. EPSILON(0.)) THEN
-      Ut_src = Ut_src + PartSource / Vol
-    ELSE
-      iElem = PEM%Element(iPart)-offsetElem
-      min_distance_glob = VECNORM(Elem_xGP(:,0,0,0,iElem)-PartState(1:3,iPart))
-      ijk(:) = 0
-      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-        min_distance_loc = VECNORM(Elem_xGP(:,i,j,k,iElem)-PartState(1:3,iPart))
-        IF (min_distance_loc .LT. min_distance_glob) THEN; ijk(:) = (/i,j,k/); min_distance_glob = min_distance_loc; END IF
-      END DO; END DO; END DO
-      ! Add source term
-      Ut_src(MOMV,ijk(1),ijk(2),ijk(3),iElem) = Ut_src(MOMV,ijk(1),ijk(2),ijk(3),iElem)+&
-        Fp*sJ(ijk(1),ijk(2),ijk(3),iElem,0)/wGPVol(ijk(1),ijk(2),ijk(3))
-      Ut_src(ENER,ijk(1),ijk(2),ijk(3),iElem) = Ut_src(ENER,ijk(1),ijk(2),ijk(3),iElem)+&
-        Wp*sJ(ijk(1),ijk(2),ijk(3),iElem,0)/wGPVol(ijk(1),ijk(2),ijk(3))
-    END IF
-  END IF
-
-END DO ! iPart
+! Add source term
 
 DO iElem = 1, nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV elem
-    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:,iElem),Ut_src2(:,:,:,:))
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
+    ! Interpolate deposition to FV DOFs
+    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,PartSource(:,:,:,:,iElem),Ut_src2(:,:,:,:))
+
+    DO k = 0,PP_N; DO j = 0,PP_N; DO i = 0,PP_N
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + Ut_src2   (:,i,j,k      )/sJ(i,j,k,iElem,1)
     END DO; END DO; END DO ! i,j,k
   ELSE
 #endif
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k,iElem)/sJ(i,j,k,iElem,0)
+    DO k = 0,PP_N; DO j = 0,PP_N; DO i = 0,PP_N
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + PartSource(:,i,j,k,iElem)/sJ(i,j,k,iElem,0)
     END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
   END IF

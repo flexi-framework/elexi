@@ -24,14 +24,54 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
+INTERFACE DefineParametersDepositionMethod
+  MODULE PROCEDURE DefineParametersDepositionMethod
+END INTERFACE
+
 INTERFACE InitDepositionMethod
   MODULE PROCEDURE InitDepositionMethod
 END INTERFACE
 
+PUBLIC :: DefineParametersDepositionMethod
 PUBLIC :: InitDepositionMethod
 !==================================================================================================================================
 
 CONTAINS
+
+!==================================================================================================================================
+!> Define parameters
+!==================================================================================================================================
+SUBROUTINE DefineParametersDepositionMethod()
+! MODULES
+USE MOD_Globals
+USE MOD_ReadInTools              ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+CALL prms%SetSection("Particle Deposition")
+
+CALL prms%CreateLogicalOption(      'Part-CalcSource'          , 'Flag to enable two-way coupling'                                 &
+                                                               , '.FALSE.')
+CALL prms%CreateIntFromStringOption('Part-DepositionType'      , 'Deposition method used for two-way coupling .\n'               //&
+                                                      ' - 1) cell_vol        : imposed to element the particle resides in \n'    //&
+                                                      ' - 2) cell_vol_linear : imposed linear continuous distribution \n'        //&
+                                                      ' - 3) step            : step function \n'                                 //&
+                                                      ' - 4) dirac           : dirac impulse \n'                                 //&
+                                                      ' - 5) shapefunc_gauss : Gaussian shape function \n'                       //&
+                                                      ' - 6) shapefunc_poly  : Polynomial shape function \n'                     &
+                                                    , 'dirac')
+CALL addStrListEntry('Part-DepositionType' , 'cell_vol'           , DEPO_CV)
+CALL addStrListEntry('Part-DepositionType' , 'cell_vol_linear'    , DEPO_CVLM)
+CALL addStrListEntry('Part-DepositionType' , 'step'               , DEPO_STEP)
+CALL addStrListEntry('Part-DepositionType' , 'dirac'              , DEPO_DIRAC)
+CALL addStrListEntry('Part-DepositionType' , 'shapefunc_gauss'    , DEPO_SF_GAUSS)
+CALL addStrListEntry('Part-DepositionType' , 'shapefunc_poly'     , DEPO_SF_POLY)
+
+END SUBROUTINE DefineParametersDepositionMethod
 
 !==================================================================================================================================!
 !> Initialize deposition method function pointer
@@ -49,21 +89,21 @@ IMPLICIT NONE
 !==================================================================================================================================
 
 ! Select the deposition method function pointer
-SELECT CASE(TRIM(DepositionType))
-  CASE('cell_vol')
+SELECT CASE(DepositionType)
+  CASE(DEPO_CV)
     DepositionMethod => DepositionMethod_CV
-  CASE('cell_vol_linear')
+  CASE(DEPO_CVLM)
     DepositionMethod => DepositionMethod_CVLM
-  CASE('step')
+  CASE(DEPO_STEP)
     DepositionMethod => DepositionMethod_Step
-  CASE('dirac')
+  CASE(DEPO_DIRAC)
     DepositionMethod => DepositionMethod_Dirac
-  CASE('shapefunc_gauss')
+  CASE(DEPO_SF_GAUSS)
     DepositionMethod => DepositionMethod_SF_Gauss
-  CASE('shapefunc_poly')
+  CASE(DEPO_SF_POLY)
     DepositionMethod => DepositionMethod_SF_Poly
   CASE DEFAULT
-    CALL CollectiveStop(__STAMP__,'Unknown DepositionMethod! '//TRIM(DepositionType))
+    CALL CollectiveStop(__STAMP__,'Unknown DepositionMethod!', IntInfo=DepositionType)
 END SELECT
 
 END SUBROUTINE InitDepositionMethod

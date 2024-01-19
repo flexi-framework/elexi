@@ -37,7 +37,7 @@ END INTERFACE
 
 PROCEDURE(DepositionMethodInterface),POINTER :: DepositionMethod             !< pointer defining the deposition method
 
-CHARACTER(LEN=256)            :: DepositionType                              ! Type of Deposition-Method
+INTEGER                       :: DepositionType                              ! Type of Deposition-Method
 REAL,ALLOCATABLE              :: PartSource(:,:,:,:,:)
 REAL,ALLOCATABLE              :: PartSource_tmp(:,:,:,:)
 REAL,ALLOCATABLE              :: Ut_src(:,:,:,:,:)

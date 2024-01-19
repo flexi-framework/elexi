@@ -51,7 +51,7 @@ USE MOD_Mesh_Vars
 USE MOD_Particle_Deposition_Vars
 USE MOD_Particle_Deposition_Method
 USE MOD_Particle_Mesh_Vars
-USE MOD_ReadInTools               ,ONLY: GETSTR
+USE MOD_ReadInTools               ,ONLY: GETINTFROMSTR
 #if USE_MPI
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
@@ -79,16 +79,16 @@ LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE DEPOSITION...'
 ALLOCATE(PartSource(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(Ut_src(    1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
-DepositionType          = GETSTR('Part-DepositionType')
+DepositionType          = GETINTFROMSTR('Part-DepositionType')
 
 ! Associate the DepositionMethod pointer
 CALL InitDepositionMethod()
 
-SELECT CASE(TRIM(DepositionType))
-  CASE('cell_vol')
+SELECT CASE(DepositionType)
+  CASE(DEPO_CV)
     ALLOCATE(PartSource_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ))
 
-  CASE('cell_vol_linear')
+  CASE(DEPO_CVLM)
     ! Only FEM meshes supported
     CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
     CALL DatasetExists(File_ID,'FEMconnect',exists,attrib=.TRUE.)
@@ -158,13 +158,13 @@ SELECT CASE(TRIM(DepositionType))
 
     ALLOCATE(FEMNodeSource(PP_nVar,nUniqueFEMNodes))
 
-  CASE('step')
+  CASE(DEPO_STEP)
     ALLOCATE(PartSource_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ))
-  CASE('dirac')
+  CASE(DEPO_DIRAC)
     ALLOCATE(PartSource_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ))
-  CASE('shapefunc_gauss')
+  CASE(DEPO_SF_GAUSS)
     ALLOCATE(PartSource_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ))
-  CASE('shapefunc_poly')
+  CASE(DEPO_SF_POLY)
     ALLOCATE(PartSource_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ))
 END SELECT
 
@@ -194,8 +194,8 @@ SDEALLOCATE(PartSource)
 SDEALLOCATE(PartSource_tmp)
 SDEALLOCATE(Ut_src)
 
-SELECT CASE(TRIM(DepositionType))
-  CASE('cell_vol_linear')
+SELECT CASE(DepositionType)
+  CASE(DEPO_CVLM)
     CALL MPI_WIN_UNLOCK_ALL(FEMElemInfo_Shared_Win           ,iError)
     CALL MPI_WIN_FREE(      FEMElemInfo_Shared_Win           ,iError)
     CALL MPI_WIN_UNLOCK_ALL(VertexInfo_Shared_Win            ,iError)

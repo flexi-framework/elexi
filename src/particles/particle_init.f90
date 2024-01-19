@@ -66,7 +66,8 @@ USE MOD_ReadInTools
 USE MOD_Particle_Analyze,           ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling, ONLY:DefineParametersParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking, ONLY:DefineParametersParticleBoundaryTracking
-USE Mod_Particle_Globals
+USE MOD_Particle_Deposition_Method, ONLY:DefineParametersDepositionMethod
+USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation,     ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY:DefineParametersParticleMesh
 USE MOD_Particle_Surface_Flux,      ONLY:DefineParametersParticleSurfaceFlux
@@ -128,16 +129,6 @@ CALL prms%CreateRealOption(         'Part-ManualTimestep'      , 'Manual time st
                                                                , '0.')
 CALL prms%CreateLogicalOption(      'Part-LowVeloRemove'       , 'Flag if low velocity particles should be removed'                &
                                                                , '.FALSE.')
-CALL prms%CreateLogicalOption(      'Part-CalcSource'          , 'Flag to enable two-way coupling'                                 &
-                                                               , '.FALSE.')
-CALL prms%CreateStringOption(       'Part-DepositionType'      , 'Deposition method used for two-way coupling .\n'               //&
-                                                      ' - cell_vol        : imposed to element the particle resides in \n'       //&
-                                                      ' - cell_vol_linear : imposed linear continuous distribution \n'           //&
-                                                      ' - step            : step function \n'                                    //&
-                                                      ' - dirac           : dirac impulse \n'                                    //&
-                                                      ' - shapefunc_gauss : Gaussian shape function \n'                          //&
-                                                      ' - shapefunc_poly  : Polynomial shape function \n'                          &
-                                                    , 'dirac')
 CALL prms%CreateLogicalOption(      'Part-WritePartDiam'       , 'Flag to enable writeout of particle diameter'                    &
                                                                , '.FALSE.')
 CALL prms%CreateLogicalOption(      'Part-RandomPartDiam'      , 'Flag to enable random particle diameter with a certain variance' &
@@ -523,6 +514,7 @@ CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-WallVelo'   , 'Velocity (g
 !#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 ! Call every other DefineParametersParticle routine
+CALL DefineParametersDepositionMethod()
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
 CALL DefineParametersParticleBoundaryTracking()

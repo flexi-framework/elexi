@@ -86,6 +86,14 @@
 #define DF_PART_LOTH      6
 #define DF_PART_GANSER    7
 
+! Deposition method
+#define DEPO_CV           1
+#define DEPO_CVLM         2
+#define DEPO_STEP         3
+#define DEPO_DIRAC        4
+#define DEPO_SF_GAUSS     5
+#define DEPO_SF_POLY      6
+
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 ! Velocity and pressure for extended RHS
 #define RHS_LIFTVARS    (/LIFT_VEL1,LIFT_VEL2,LIFT_VEL3/)

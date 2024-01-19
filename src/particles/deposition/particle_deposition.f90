@@ -69,8 +69,12 @@ LOGICAL             :: exists
 INTEGER             :: FirstElemInd,LastElemInd
 INTEGER             :: FirstNodeInd,LastNodeInd
 INTEGER             :: nNodes,offsetNode
+#if USE_MPI
 INTEGER,ALLOCATABLE :: FEMElemInfo(:,:)
 INTEGER,ALLOCATABLE :: VertexInfo(:,:)
+#else
+INTEGER,PARAMETER   :: myComputeNodeRank = 0
+#endif /*USE_MPI*/
 !===================================================================================================================================
 
 LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE DEPOSITION...'
@@ -145,8 +149,11 @@ SELECT CASE(DepositionType)
     END IF
 #endif /*USE_LOADBALANCE*/
 #else
-    ! TODO
-    CALL Abort(__STAMP__,'Bau doch nen CALL ein!')
+    ! allocate local array for FEM information
+    ALLOCATE(FEMElemInfo_Shared(1:FEMELEMINFOSIZE,FirstElemInd:LastElemInd))
+    ALLOCATE(VertexInfo_Shared (1:VERTEXINFOSIZE ,FirstNodeInd:LastNodeInd))
+    CALL ReadArray('FEMElemInfo',2,(/FEMELEMINFOSIZE,nElems/),offsetElem,2,IntArray=FEMElemInfo_Shared)
+    CALL ReadArray('VertexInfo ',2,(/VERTEXINFOSIZE ,nNodes/),offsetNode,2,IntArray=VertexInfo_Shared)
 #endif  /*USE_MPI*/
 
     CALL CloseDataFile()
@@ -179,9 +186,14 @@ END SUBROUTINE InitializeDeposition
 SUBROUTINE FinalizeDeposition()
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_Mesh_Vars        ,ONLY: FEMElemInfo_Shared,FEMElemInfo_Shared_Win
-USE MOD_Particle_Mesh_Vars        ,ONLY: VertexInfo_Shared,VertexInfo_Shared_Win
+USE MOD_Particle_Mesh_Vars        ,ONLY: FEMElemInfo_Shared
+USE MOD_Particle_Mesh_Vars        ,ONLY: VertexInfo_Shared
 USE MOD_Particle_Deposition_Vars
+#if USE_MPI
+USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED
+USE MOD_Particle_Mesh_Vars        ,ONLY: FEMElemInfo_Shared_Win
+USE MOD_Particle_Mesh_Vars        ,ONLY: VertexInfo_Shared_Win
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -196,11 +208,19 @@ SDEALLOCATE(Ut_src)
 
 SELECT CASE(DepositionType)
   CASE(DEPO_CVLM)
+    ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+#if USE_MPI
+    CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+
     CALL MPI_WIN_UNLOCK_ALL(FEMElemInfo_Shared_Win           ,iError)
     CALL MPI_WIN_FREE(      FEMElemInfo_Shared_Win           ,iError)
     CALL MPI_WIN_UNLOCK_ALL(VertexInfo_Shared_Win            ,iError)
     CALL MPI_WIN_FREE(      VertexInfo_Shared_Win            ,iError)
 
+    CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+#endif /*USE_MPI*/
+
+    ! Then, free the pointers or arrays
     MDEALLOCATE(FEMElemInfo_Shared)
     MDEALLOCATE(VertexInfo_Shared)
 END SELECT

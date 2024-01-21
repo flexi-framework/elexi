@@ -11,7 +11,6 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-#if PART_TWO_WAY
 #include "flexi.h"
 #include "eos.h"
 #include "particle.h"
@@ -675,4 +674,3 @@ Source(ENER) = Source(ENER) - Pt(4,PartID) * Species(PartSpecies(PartID))%MassIC
 END SUBROUTINE CalcPartSourceTerm
 
 END MODULE MOD_Particle_Deposition_Method
-#endif /*PART_TWO_WAY*/

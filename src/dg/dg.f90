@@ -284,7 +284,6 @@ USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif /*USE_LOADBALANCE*/
 #if USE_PARTICLES
-USE MOD_Part_RHS            ,ONLY: CalcSourcePart
 USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart
 USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeStep,ParticleTimeStepRK
@@ -294,6 +293,9 @@ USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt
 USE MOD_Particle_MPI        ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
 #endif /* USE_MPI */
 #endif /* USE_PARTICLES */
+#if PART_TWO_WAY
+USE MOD_Part_RHS            ,ONLY: CalcSourcePart
+#endif /*PART_TWO_WAY*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

@@ -66,7 +66,9 @@ USE MOD_ReadInTools
 USE MOD_Particle_Analyze,           ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling, ONLY:DefineParametersParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking, ONLY:DefineParametersParticleBoundaryTracking
+#if PART_TWO_WAY
 USE MOD_Particle_Deposition_Method, ONLY:DefineParametersDepositionMethod
+#endif /*PART_TWO_WAY*/
 USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation,     ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY:DefineParametersParticleMesh
@@ -514,7 +516,9 @@ CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-WallVelo'   , 'Velocity (g
 !#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 ! Call every other DefineParametersParticle routine
+#if PART_TWO_WAY
 CALL DefineParametersDepositionMethod()
+#endif /*PART_TWO_WAY*/
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
 CALL DefineParametersParticleBoundaryTracking()
@@ -734,7 +738,9 @@ USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_Records,RPP_Records_Glob
 USE MOD_Particle_Boundary_Sampling ,ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking ,ONLY: InitParticleBoundaryTracking
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove,doParticleReflectionTrack
+#if PART_TWO_WAY
 USE MOD_Particle_Deposition        ,ONLY: InitializeDeposition
+#endif /*PART_TWO_WAY*/
 USE MOD_Particle_Interpolation     ,ONLY: InitParticleInterpolation
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
@@ -1781,7 +1787,9 @@ USE MOD_Particle_Analyze,           ONLY: FinalizeParticleAnalyze
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Sampling, ONLY: FinalizeParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking, ONLY: FinalizeParticleBoundaryTracking
+#if PART_TWO_WAY
 USE MOD_Particle_Deposition,        ONLY: FinalizeDeposition
+#endif /*PART_TWO_WAY*/
 USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
 USE MOD_Particle_Surfaces,          ONLY: FinalizeParticleSurfaces

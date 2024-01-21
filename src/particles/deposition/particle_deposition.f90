@@ -11,7 +11,6 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-#if PART_TWO_WAY
 #include "flexi.h"
 #include "particle.h"
 
@@ -223,4 +222,3 @@ END SELECT
 END SUBROUTINE FinalizeDeposition
 
 END MODULE MOD_Particle_Deposition
-#endif /*PART_TWO_WAY*/

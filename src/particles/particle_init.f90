@@ -766,7 +766,9 @@ doPartIndex             = GETLOGICAL('Part-PartIndex'     )
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
 
 ! Fluid-particle coupling
+#if PART_TWO_WAY
 doCalcSourcePart        = GETLOGICAL('Part-CalcSource'    )
+#endif /*PART_TWO_WAY*/
 
 doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' )
 doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam')
@@ -872,7 +874,9 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,IERROR)
 !END IF
 !#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
+#if PART_TWO_WAY
 IF (doCalcSourcePart) CALL InitializeDeposition()
+#endif /*PART_TWO_WAY*/
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 
@@ -1933,7 +1937,9 @@ CALL FinalizeParticleAnalyze()
 CALL FinalizeParticleSurfaces()
 CALL FinalizeParticleMesh()
 
+#if PART_TWO_WAY
 IF (doCalcSourcePart) CALL FinalizeDeposition()
+#endif /*PART_TWO_WAY*/
 
 ParticlesInitIsDone = .FALSE.
 

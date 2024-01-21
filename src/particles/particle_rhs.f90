@@ -37,15 +37,19 @@ INTERFACE extRHS
 END INTERFACE
 #endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 
+#if PART_TWO_WAY
 INTERFACE CalcSourcePart
   MODULE PROCEDURE CalcSourcePart
 END INTERFACE
+#endif /*PART_TWO_WAY*/
 
 PUBLIC :: CalcPartRHS, InitRHS
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 PUBLIC :: extRHS
 #endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
+#if PART_TWO_WAY
 PUBLIC :: CalcSourcePart
+#endif /*PART_TWO_WAY*/
 !==================================================================================================================================
 
 CONTAINS
@@ -1234,10 +1238,9 @@ NO_OP(Mp)
 
 END FUNCTION DF_Ganser
 
-
+#if PART_TWO_WAY
 !==================================================================================================================================
 !> Compute source terms for particles and add them to the nearest DOF
-! TODO: global arrays, communication of source term (see piclas)
 !==================================================================================================================================
 SUBROUTINE CalcSourcePart(Ut)
 ! MODULES
@@ -1294,6 +1297,7 @@ DO iElem = 1, nElems
   END IF
 #endif
 END DO
+#endif /*PART_TWO_WAY*/
 
 END SUBROUTINE CalcSourcePart
 

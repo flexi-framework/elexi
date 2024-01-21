@@ -272,8 +272,14 @@ CMAKE_DEPENDENT_OPTION(PARTICLES_EXTEND_RHS   "Use extended RHS for particles"  
                                               "PARTICLES;FLEXI_PARABOLIC"            OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_FAXEN_CORR   "Enable Faxen correctio for particles" OFF
                                               "PARTICLES;FLEXI_PARABOLIC"            OFF)
+
+IF(PARTICLES)
+  SET(PARTICLES_COUPLING "ONE" CACHE STRING "Choose coupling method")
+  SET_PROPERTY(CACHE PARTICLES_COUPLING PROPERTY STRINGS ONE TWO FOUR)
+ENDIF()
+
 CMAKE_DEPENDENT_OPTION(PARTICLES_TEMPERATURE  "Use thermal model for particles"      OFF
-                                              "PARTICLES"                            OFF)
+                                "PARTICLES;NOT PARTICLES_COUPLING STREQUAL ONE"      OFF)
 CMAKE_DEPENDENT_OPTION(PARTICLES_SPHERICITY   "Enable sphericity for particles"      OFF
                                               "PARTICLES"                            OFF)
 # Extend RHS options
@@ -331,15 +337,27 @@ IF(PARTICLES)
     ADD_DEFINITIONS(-DUSE_FAXEN_CORR=0)
   ENDIF()
 
+  IF (PARTICLES_COUPLING STREQUAL "TWO")
+    ADD_DEFINITIONS(-DPART_TWO_WAY=1)
+  ELSEIF (PARTICLES_COUPLING STREQUAL "FOUR")
+    ADD_DEFINITIONS(-DPART_TWO_WAY=1)
+    ADD_DEFINITIONS(-DPART_FOUR_WAY=1)
+  ELSE()
+    ADD_DEFINITIONS(-DPART_TWO_WAY=0)
+    ADD_DEFINITIONS(-DPART_FOUR_WAY=0)
+  ENDIF()
+
   SET(nVarPart    "7")
   SET(nVarPartRHS "3")
   # Define USE_TEMPERATURE
-  IF (PARTICLES_TEMPERATURE)
-    ADD_DEFINITIONS(-DUSE_PARTTEMP=1)
-    MATH(EXPR nVarPart       "${nVarPart}    + 1")
-    MATH(EXPR nVarPartRHS    "${nVarPartRHS} + 1")
-  ELSE()
-    ADD_DEFINITIONS(-DUSE_PARTTEMP=0)
+  IF (NOT(PARTICLES_COUPLING STREQUAL "ONE"))
+    IF (PARTICLES_TEMPERATURE)
+      ADD_DEFINITIONS(-DUSE_PARTTEMP=1)
+      MATH(EXPR nVarPart       "${nVarPart}    + 1")
+      MATH(EXPR nVarPartRHS    "${nVarPartRHS} + 1")
+    ELSE()
+      ADD_DEFINITIONS(-DUSE_PARTTEMP=0)
+    ENDIF()
   ENDIF()
 
   IF (PARTICLES_SPHERICITY)

@@ -11,6 +11,7 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#if PART_TWO_WAY
 #include "flexi.h"
 #include "particle.h"
 
@@ -89,10 +90,10 @@ DepositionType          = GETINTFROMSTR('Part-DepositionType')
 CALL InitDepositionMethod()
 
 SELECT CASE(DepositionType)
-  CASE(DEPO_CV)
+  CASE(DEPO_CV,DEPO_STEP)
     ALLOCATE(PartSource_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ))
 
-  CASE(DEPO_CVLM)
+  CASE(DEPO_CVLM,DEPO_SF_GAUSS,DEPO_SF_POLY)
     ! Only FEM meshes supported
     CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
     CALL DatasetExists(File_ID,'FEMconnect',exists,attrib=.TRUE.)
@@ -165,14 +166,6 @@ SELECT CASE(DepositionType)
 
     ALLOCATE(FEMNodeSource(PP_nVar,nUniqueFEMNodes))
 
-  CASE(DEPO_STEP)
-    ALLOCATE(PartSource_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ))
-  CASE(DEPO_DIRAC)
-    ALLOCATE(PartSource_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ))
-  CASE(DEPO_SF_GAUSS)
-    ALLOCATE(PartSource_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ))
-  CASE(DEPO_SF_POLY)
-    ALLOCATE(PartSource_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ))
 END SELECT
 
 LBWRITE(UNIT_stdOut,'(A)')' INIT PARTICLE DEPOSITION DONE!'
@@ -230,3 +223,4 @@ END SELECT
 END SUBROUTINE FinalizeDeposition
 
 END MODULE MOD_Particle_Deposition
+#endif /*PART_TWO_WAY*/

@@ -664,9 +664,9 @@ Ut=-Ut
 
 ! 13. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
 IF(doCalcSource) CALL CalcSource(Ut,t)
-#if USE_PARTICLES
+#if PART_TWO_WAY
 IF(doCalcSourcePart) CALL CalcSourcePart(Ut)
-#endif /*USE_PARTICLES*/
+#endif /*PART_TWO_WAY*/
 IF(doSponge)     CALL Sponge(Ut)
 IF(doTCSource)   CALL TestcaseSource(Ut)
 

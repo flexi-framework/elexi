@@ -1297,9 +1297,9 @@ DO iElem = 1, nElems
   END IF
 #endif
 END DO
-#endif /*PART_TWO_WAY*/
 
 END SUBROUTINE CalcSourcePart
+#endif /*PART_TWO_WAY*/
 
 
 END MODULE MOD_part_RHS

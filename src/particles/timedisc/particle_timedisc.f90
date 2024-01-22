@@ -189,9 +189,7 @@ LastPartPos(1:3,1:PDM%ParticleVecLength) = PartState(PART_POSV,1:PDM%ParticleVec
 PEM%lastElement(1:PDM%ParticleVecLength) = PEM%Element(        1:PDM%ParticleVecLength)
 
 CALL ParticleSurfaceflux()
-#if USE_LOADBALANCE
-CALL LBStartTime(tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureStartTime()          !  LoadBalance
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 ! Calculate tau
 CALL extRHS(UPrim,Ut,U_RHS)
@@ -216,9 +214,7 @@ t,dt,iStage)
 #if PARABOLIC
 IF (SGSinUse) CALL ParticleSGS(dt,iStage)
 #endif
-#if USE_LOADBALANCE
-CALL LBPauseTime(LB_INTERPOLATION,tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasurePauseTime_INTERPOLATION() ! LoadBalance
 
 ! Suppress compiler warning
 NO_OP(t)
@@ -302,10 +298,7 @@ REAL                          :: tLBStart
 !===================================================================================================================================
 
 CALL ParticleTimeRHS(t,dt)
-
-#if USE_LOADBALANCE
-CALL LBStartTime(tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureStartTime()               ! LoadBalance
 
 ! particle push using Euler
 DO iPart=1,PDM%ParticleVecLength
@@ -324,24 +317,18 @@ END DO
 
 ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath
-
-#if USE_LOADBALANCE
-  CALL LBSplitTime(LB_PUSH,tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureSplitTime_PUSH()          ! LoadBalance
 
 ! Locate and communicate particles (only if particle have changed)
 #if USE_MPI
 ! open receive buffer for number of particles
 CALL IRecvNbofParticles()
-#if USE_LOADBALANCE
-CALL LBSplitTime(LB_PARTCOMM,tLBStart)
-#endif /*USE_LOADBALANCE*/
-#endif
+MeasureSplitTime_PARTCOMM()      ! LoadBalance
+#endif /*USE_MPI*/
+
 ! track new particle position
 CALL PerformTracking()
-#if USE_LOADBALANCE
-CALL LBSplitTime(LB_TRACK,tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureSplitTime_TRACK()         ! LoadBalance
 ! emitt particles inserted in current time step
 CALL ParticleInserting()
 
@@ -421,10 +408,7 @@ REAL                          :: tLBStart
 !===================================================================================================================================
 
 CALL ParticleTimeRHS(t,dt,1)
-
-#if USE_LOADBALANCE
-CALL LBStartTime(tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureStartTime()               ! LoadBalance
 
 ! particle push for first RK stage
 DO iPart=1,PDM%ParticleVecLength
@@ -451,23 +435,17 @@ END DO
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath
 
 IF (RecordPart.GT.0) CALL ParticleRecordPath()
-
-#if USE_LOADBALANCE
-CALL LBSplitTime(LB_PUSH,tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureSplitTime_PUSH()          ! LoadBalance
 
 #if USE_MPI
 ! open receive buffer for number of particles
 CALL IRecvNbofParticles()
-#if USE_LOADBALANCE
-CALL LBSplitTime(LB_PARTCOMM,tLBStart)
-#endif /*USE_LOADBALANCE*/
-#endif
+MeasureSplitTime_PARTCOMM()      ! LoadBalance
+#endif /*USE_MPI*/
+
 ! track new particle position
 CALL PerformTracking()
-#if USE_LOADBALANCE
-CALL LBSplitTime(LB_TRACK,tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureSplitTime_TRACK()         ! LoadBalance
 ! emitt particles inserted in current time step
 CALL ParticleInserting()
 
@@ -521,10 +499,7 @@ REAL                          :: tLBStart
 !===================================================================================================================================
 
 CALL ParticleTimeRHS(t,dt,iStage)
-
-#if USE_LOADBALANCE
-CALL LBStartTime(tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureStartTime()               ! LoadBalance
 
 ! particle push for nth RK stage
 DO iPart=1,PDM%ParticleVecLength
@@ -580,23 +555,18 @@ END DO
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath()
 
 IF (RecordPart.GT.0) CALL ParticleRecordPath()
-
-#if USE_LOADBALANCE
-CALL LBSplitTime(LB_PUSH,tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureSplitTime_PUSH()          ! LoadBalance
 
 ! particle tracking
 #if USE_MPI
 ! open receive buffer for number of particles
 CALL IRecvNbofParticles()
-#if USE_LOADBALANCE
-CALL LBSplitTime(LB_PARTCOMM,tLBStart)
-#endif /*USE_LOADBALANCE*/
-#endif
+MeasureSplitTime_PARTCOMM()      ! LoadBalance
+#endif /*USE_MPI*/
+
 CALL PerformTracking()
-#if USE_LOADBALANCE
-CALL LBSplitTime(LB_TRACK,tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureSplitTime_TRACK()         ! LoadBalance
+
 ! emitt particles inserted in current time step
 CALL ParticleInserting()
 
@@ -658,18 +628,14 @@ tStage       = t
 CALL ParticleTimeStep(tStage,dt)
 
 #if USE_MPI
-#if USE_LOADBALANCE
-CALL LBStartTime(tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasureStartTime()               ! LoadBalance
 ! send number of particles
 CALL SendNbOfParticles()
 ! finish communication of number of particles and send particles
 CALL MPIParticleSend()
 ! receive particles, locate and finish communication
 CALL MPIParticleRecv()
-#if USE_LOADBALANCE
-CALL LBPauseTime(LB_PARTCOMM,tLBStart)
-#endif /*USE_LOADBALANCE*/
+MeasurePauseTime_PARTCOMM()      ! LoadBalance
 #endif /*USE_MPI*/
 
 ! find next free position in particle array
@@ -683,18 +649,14 @@ DO iStage = 2,nRKStages
   CALL ParticleTimeStepRK(tStage,dt,iStage)
 
 #if USE_MPI
-#if USE_LOADBALANCE
-  CALL LBStartTime(tLBStart)
-#endif /*USE_LOADBALANCE*/
+  MeasureStartTime()               ! LoadBalance
   ! send number of particles
   CALL SendNbOfParticles()
   ! finish communication of number of particles and send particles
   CALL MPIParticleSend()
   ! receive particles, locate and finish communication
   CALL MPIParticleRecv()
-#if USE_LOADBALANCE
-  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
-#endif /*USE_LOADBALANCE*/
+  MeasurePauseTime_PARTCOMM()      ! LoadBalance
 #endif /*USE_MPI*/
 
   ! find next free position in particle array
@@ -715,6 +677,7 @@ END IF
 
 END SUBROUTINE TimeStepSteadyState
 #endif
+
 
 !===================================================================================================================================
 !> Finalize particle time stepping and free variables

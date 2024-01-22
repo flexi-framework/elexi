@@ -399,7 +399,7 @@ IF(PerformLBSample .AND. LoadBalanceSample.GT.0) THEN
   DO iElem = 1,nElems
     ! Add particle LB times to elements with respective weightings
     ! ElemTimeFieldElem = (tCurrent(LB_DG) + tCurrent(LB_DGANALYZE))/REAL(nElems)
-    ElemTimeFieldElem = tCurrent(LB_DG)/REAL(nElems)
+    ElemTimeFieldElem = (tCurrent(LB_DG) + tCurrent(LB_FV))/REAL(nElems)
     ElemTime(iElem) = ElemTime(iElem)  + ElemTimeFieldElem
     ElemTimeField   = ElemTimeField    + ElemTimeFieldElem
 

@@ -26,6 +26,7 @@ USE mpi
 USE MOD_LoadBalance_Vars      ,ONLY: PerformLoadBalance
 #endif /*USE_LOADBALANCE*/
 USE ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
@@ -132,6 +133,14 @@ END INTERFACE CreateErrFile
 INTERFACE
   SUBROUTINE setstacksizeunlimited() BIND(C)
   END SUBROUTINE setstacksizeunlimited
+END INTERFACE
+
+INTERFACE
+  SUBROUTINE NOP_INLINE(N) BIND(C, name="noop")
+    USE ISO_C_BINDING, ONLY: C_INT
+    IMPLICIT NONE
+    INTEGER (C_INT), VALUE :: N
+  END SUBROUTINE NOP_INLINE
 END INTERFACE
 
 INTERFACE str2real

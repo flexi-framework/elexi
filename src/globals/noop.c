@@ -11,14 +11,12 @@
 //
 // You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 //=================================================================================================================================
-#include <sys/resource.h>
 
-void setstacksizeunlimited(void)
+void noop(long n)
+// Originally posted by Karthik Nishanth
+// under CC BY-SA 3.0 licence, June 11, 2017
+// > https://stackoverflow.com/a/44482471
 {
-   struct rlimit limit;
-   getrlimit(RLIMIT_STACK, &limit);
-
-   limit.rlim_cur=limit.rlim_max;
-
-   setrlimit(RLIMIT_STACK, &limit);
+  while (--n > 0)
+    __asm__("nop");
 }

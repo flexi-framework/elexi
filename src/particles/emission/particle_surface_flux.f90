@@ -1319,9 +1319,7 @@ DO iSpec = 1,nSpecies
     IF (BCdata_auxSF(currentBC)%SideNumber.EQ.-1) &
       CALL Abort(__STAMP__,'ERROR in ParticleSurfaceflux: Someting is wrong with SideNumber of BC ',currentBC)
 
-#if USE_LOADBALANCE
-    CALL LBStartTime(tLBStart)
-#endif /*USE_LOADBALANCE*/
+    MeasureStartTime()          !  LoadBalance
 
     DO iSide = 1,BCdata_auxSF(currentBC)%SideNumber
       !
@@ -1535,9 +1533,7 @@ DO iSpec = 1,nSpecies
 #endif /*USE_LOADBALANCE*/
 
       END DO; END DO !jSample=1,SurfFluxSideSize(2); iSample=1,SurfFluxSideSize(1)
-#if USE_LOADBALANCE
-      CALL LBElemSplitTime(ElemID,tLBStart)
-#endif /*USE_LOADBALANCE*/
+    MeasureElemSplitTime()      !  LoadBalance
     END DO ! iSide
 
     IF (NbrOfParticle.NE.iPartTotal) CALL Abort(__STAMP__, 'Error 2 in ParticleSurfaceflux!')
@@ -1558,9 +1554,7 @@ DO iSpec = 1,nSpecies
     PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
     PDM%ParticleVecLength       = PDM%ParticleVecLength       + NbrOfParticle
 
-#if USE_LOADBALANCE
-    CALL LBPauseTime(LB_SURFFLUX,tLBStart)
-#endif /*USE_LOADBALANCE*/
+    MeasurePauseTime_SURFFLUX() !  LoadBalance
 
     IF (NbrOfParticle.NE.PartsEmitted) THEN
       ! should be equal for including the following lines in tSurfaceFlux

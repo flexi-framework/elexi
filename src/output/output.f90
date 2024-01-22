@@ -463,12 +463,15 @@ USE MOD_Analyze_Vars        ,ONLY: PID
 USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
 USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType,ViscousTimeStep
 USE MOD_TimeDisc_Vars       ,ONLY: iter!,t,iter_analyze,nRKStages
-#if USE_PARTICLES && USE_LOADBALANCE
-USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeFieldTot,ElemTimePartTot
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeFieldTot
 USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample
 USE MOD_Mesh_Vars           ,ONLY: nGlobalElems
 USE MOD_TimeDisc_Vars       ,ONLY: nRKStages
-#endif
+#if USE_PARTICLES
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartTot
+#endif /*USE_PARTICLES*/
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -477,9 +480,12 @@ REAL,INTENT(IN) :: dt     !< current time step
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: timeArray(8)              !> Array for system time
-#if USE_PARTICLES && USE_LOADBALANCE
-REAL    :: PID_cont,PID_disc
-#endif
+#if USE_LOADBALANCE
+REAL    :: PID_cont
+#if USE_PARTICLES
+REAL    :: PID_disc
+#endif /*USE_PARTICLES*/
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
 
 ! ! Get calculation time per DOF
@@ -497,15 +503,19 @@ WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
   ' Sys date   :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
 WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF:            [',PID                 ,' sec ]'
-#if USE_PARTICLES && USE_LOADBALANCE
-IF (ElemTimeFieldTot.GT.0 .AND. ElemTimePartTot.GT.0) THEN
+#if USE_LOADBALANCE
+IF (ElemTimeFieldTot.GT.0) THEN
   PID_cont =       ElemTimeFieldTot/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*LoadBalanceSample*nRKStages)
+  WRITE(UNIT_stdOut,'(A,ES12.5,A)')' > Continuous Phase (last time step)        [',PID_cont          ,' sec/DOF  ]'
+END IF ! ElemTimeFieldTot.GT.0
+#if USE_PARTICLES
+IF (ElemTimePartTot.GT.0) THEN
   IF (nGlobalNbrOfParticles(3).GT.0) THEN; PID_disc = ElemTimePartTot/(REAL(nGlobalNbrOfParticles(3)))
   ELSE                                   ; PID_disc = 0.; END IF
-  WRITE(UNIT_stdOut,'(A,ES12.5,A)')' > Continuous Phase (last time step)        [',PID_cont          ,' sec/DOF  ]'
   WRITE(UNIT_stdOut,'(A,ES12.5,A)')' > Discrete   Phase (last time step)        [',PID_disc          ,' sec/Part ]'
-END IF
-#endif
+END IF ! ElemTimePartTot.GT.0
+#endif /*USE_PARTICLES*/
+#endif /*USE_LOADBALANCE*/
 ! WRITE(UNIT_stdOut,'(A,ES12.5,A)')' EFFICIENCY: SIMULATION TIME PER CALCULATION in [s]/[Core-h]: [',SimulationEfficiency,' sec/h ]'
 WRITE(UNIT_stdOut,'(A,ES12.5,A)')' EFFICIENCY: CALCULATION TIME [s]/[Core-h]: [',SimulationEfficiency,' sec/h ]'
 WRITE(UNIT_stdOut,'(A,ES16.7)')  ' Timestep   : ',dt

@@ -479,7 +479,7 @@ ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)
   ADD_LIBRARY(          ${target} SHARED ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} libflexistatic userblocklib stacksizelib ${linkedlibs} ${particlelibs})
+  TARGET_LINK_LIBRARIES(${target} libflexistatic userblocklib stacksizelib nooplib ${linkedlibs} ${particlelibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
                                              COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
                                              LINKER_LANGUAGE Fortran)
@@ -641,12 +641,16 @@ ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
 SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C LINKER_LANGUAGE C
                                                            COMPILE_FLAGS "-fPIC")
 
+ADD_LIBRARY(nooplib      STATIC ./src/globals/noop.c)
+SET_TARGET_PROPERTIES(nooplib      userblocklib PROPERTIES LANGUAGE C LINKER_LANGUAGE C
+                                                           COMPILE_FLAGS "-fPIC")
+
 # we link the statically built libs
 ADD_LIB_SHARED(       libflexishared ./src/flexilib.f90)
 SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
-ADD_DEPENDENCIES(     libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
+ADD_DEPENDENCIES(     libflexishared libflexistatic userblocklib stacksizelib nooplib ${INTERNALLIBS})
 ADD_EXEC(        flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
+ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib nooplib ${INTERNALLIBS})
 # Make sure that the script is executed even though cmake is not explicitly executed after the commit is changed in git
 ADD_DEPENDENCIES(flexi UpdateGitCommitHash)
 

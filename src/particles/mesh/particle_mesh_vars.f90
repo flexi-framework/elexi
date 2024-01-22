@@ -95,6 +95,7 @@ INTEGER,ALLOCPOINT,DIMENSION(:)          :: ElemHaloInfo_Array
 
 INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: FEMElemInfo_Shared
 INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: VertexInfo_Shared
+REAL,ALLOCPOINT,DIMENSION(:)             :: VertexVol_Shared
 
 INTEGER,ALLOCPOINT :: ElemToBCSides_Shared(:,:)                !> Mapping from elem to BC sides within halo eps
 REAL,ALLOCPOINT    :: SideBCMetrics_Shared(:,:)                !> Metrics for BC sides, see piclas.h
@@ -176,6 +177,7 @@ LOGICAL           :: CalcHaloInfo                          !> Output halo elemen
 INTEGER           :: ElemHaloInfo_Shared_Win
 INTEGER           :: FEMElemInfo_Shared_Win
 INTEGER           :: VertexInfo_Shared_Win
+INTEGER           :: VertexVol_Shared_Win
 
 INTEGER           :: ElemToBCSides_Shared_Win
 INTEGER           :: SideBCMetrics_Shared_Win

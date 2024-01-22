@@ -37,13 +37,21 @@ END INTERFACE
 
 PROCEDURE(DepositionMethodInterface),POINTER :: DepositionMethod             !< pointer defining the deposition method
 
-INTEGER                       :: DepositionType                              ! Type of Deposition-Method
-REAL,ALLOCATABLE              :: PartSource(:,:,:,:,:)
-REAL,ALLOCATABLE              :: PartSource_tmp(:,:,:,:)
-REAL,ALLOCATABLE              :: Ut_src(:,:,:,:,:)
+INTEGER                           :: DepositionType                          ! Type of Deposition-Method
+REAL,ALLOCATABLE                  :: PartSource(:,:,:,:,:)
+REAL,ALLOCATABLE                  :: PartSource_tmp(:,:,:,:)
+REAL,ALLOCATABLE                  :: Ut_src(:,:,:,:,:)
 
-INTEGER                       :: nUniqueFEMNodes
-REAL,ALLOCATABLE              :: FEMNodeSource(:,:)
-REAL,ALLOCATABLE              :: CellVolWeightFac(:)
+INTEGER                           :: nUniqueFEMNodes
+REAL,ALLOCATABLE                  :: FEMNodeSource(:,:)
+REAL,ALLOCATABLE                  :: CellVolWeightFac(:)
+REAL,ALLOCATABLE                  :: NodeSource_tmp(:,:)
+
+! MPI-SHM arrays
+REAL,ALLOCPOINT,DIMENSION(:,:)    :: FEMNodeSource_Shared
+#if USE_MPI
+! integers to hold shared memory windows
+INTEGER                           :: FEMNodeSource_Shared_Win
+#endif /*USE_MPI*/
 
 END MODULE MOD_Particle_Deposition_Vars

@@ -1278,7 +1278,6 @@ PartSource = 0.
 CALL DepositionMethod()
 
 ! Add source term
-
 DO iElem = 1, nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV elem

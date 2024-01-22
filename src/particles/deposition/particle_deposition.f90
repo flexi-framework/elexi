@@ -44,15 +44,20 @@ SUBROUTINE InitializeDeposition()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_ChangeBasisByDim          ,ONLY: ChangeBasisVolume
 USE MOD_HDF5_Input                ,ONLY: OpenDataFile,DatasetExists,ReadArray,CloseDataFile
-USE MOD_Interpolation_Vars        ,ONLY: xGP
+USE MOD_Interpolation             ,ONLY: GetVandermonde,GetNodesAndWeights
+USE MOD_Interpolation_Vars        ,ONLY: xGP,NodeType
 USE MOD_IO_HDF5                   ,ONLY: File_ID
-USE MOD_Mesh_Vars
+USE MOD_Mesh_Vars                 ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars                 ,ONLY: MeshFile
+USE MOD_Mesh_Vars                 ,ONLY: NGeoRef,detJac_Ref
 USE MOD_Particle_Deposition_Vars
 USE MOD_Particle_Deposition_Method
 USE MOD_Particle_Mesh_Vars
 USE MOD_ReadInTools               ,ONLY: GETINTFROMSTR
 #if USE_MPI
+USE MOD_Mesh_Vars                 ,ONLY: nGlobalElems
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars
 #endif /*USE_MPI*/
@@ -66,10 +71,19 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL             :: exists
+INTEGER             :: iElem,iNode
+INTEGER             :: i,j,k
 INTEGER             :: FirstElemInd,LastElemInd
 INTEGER             :: FirstNodeInd,LastNodeInd
 INTEGER             :: nNodes,offsetNode
+REAL                :: Vol(8)
+REAL                :: FEM_xGP(0:1),FEM_wGP(0:1)
+REAL                :: FEM_wGPVol(    0:1,0:1,0:1)
+REAL                :: FEM_sJ     (   0:1,0:1,0:1)
+REAL                :: FEM_DetJac_1(1,0:1,0:1,0:1)
+REAL                :: Vdm_NGeoRef_1( 0:1,0:NGeoRef)
 #if USE_MPI
+REAL                :: dummyReal
 INTEGER,ALLOCATABLE :: FEMElemInfo(:,:)
 INTEGER,ALLOCATABLE :: VertexInfo(:,:)
 #else
@@ -145,25 +159,109 @@ SELECT CASE(DepositionType)
       CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)
       CALL BARRIER_AND_SYNC(FEMElemInfo_Shared_Win,MPI_COMM_SHARED)
       CALL BARRIER_AND_SYNC(VertexInfo_Shared_Win ,MPI_COMM_SHARED)
+
+      ! Count number of FEM nodes
+      IF (myComputeNodeRank.EQ.0) nUniqueFEMNodes = MAXVAL(VertexInfo_Shared(1,:))
+      CALL MPI_BCAST(nUniqueFEMNodes,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
+
+      ! Add the vertex volume
+      CALL Allocate_Shared((/nUniqueFEMNodes/),VertexVol_Shared_Win,VertexVol_Shared)
+      IF (myComputeNodeRank.EQ.0) VertexVol_Shared = 0.
+      CALL BARRIER_AND_SYNC(VertexVol_Shared_Win  ,MPI_COMM_SHARED)
+
+      CALL GetNodesAndWeights(1,NodeType,FEM_xGP,FEM_wGP)
+      DO k=0,1; DO j=0,1; DO i=0,1
+        FEM_wGPVol(i,j,k) = FEM_wGP(i)*FEM_wGP(j)*FEM_wGP(k)
+      END DO; END DO; END DO
+
+      ! project detJac_ref onto the solution basis
+      CALL GetVandermonde(NGeoRef,NodeType,1,NodeType,Vdm_NGeoRef_1,modal=.TRUE.)
+
+      DO iElem = 1,nElems
+        CALL ChangeBasisVolume(1,NGeoRef,1,Vdm_NGeoRef_1,DetJac_Ref(:,:,:,:,iElem),FEM_DetJac_1(:,:,:,:))
+        DO k=0,1; DO j=0,1; DO i=0,1
+          FEM_sJ(i,j,k) = 1./FEM_DetJac_1(1,i,j,k)
+        END DO; END DO; END DO !i,j,k=0,PP_N
+
+        Vol(1) = FEM_wGPVol(0,0,0)/FEM_sJ(0,0,0)
+        Vol(2) = FEM_wGPVol(1,0,0)/FEM_sJ(1,0,0)
+        Vol(3) = FEM_wGPVol(0,1,0)/FEM_sJ(0,1,0)
+        Vol(4) = FEM_wGPVol(1,1,0)/FEM_sJ(1,1,0)
+        Vol(5) = FEM_wGPVol(0,0,1)/FEM_sJ(0,0,1)
+        Vol(6) = FEM_wGPVol(1,0,1)/FEM_sJ(1,0,1)
+        Vol(7) = FEM_wGPVol(0,1,1)/FEM_sJ(0,1,1)
+        Vol(8) = FEM_wGPVol(1,1,1)/FEM_sJ(1,1,1)
+
+        DO iNode = 1,8
+          ASSOCIATE(NodeID => VertexInfo_Shared(1,(offsetElem+iElem-1)*8 + iNode))
+          CALL MPI_FETCH_AND_OP(Vol(iNode),dummyReal,MPI_DOUBLE_PRECISION,0,INT((NodeID-1)*SIZE_REAL,MPI_ADDRESS_KIND),MPI_SUM,VertexVol_Shared_Win,iError)
+          END ASSOCIATE
+        END DO ! iNode = 1,8
+      END DO ! iElem = 1,nElems
+
+      ! Finish all RMA operation, flush the buffers and synchronize between compute nodes
+      CALL MPI_WIN_FLUSH(0,VertexVol_Shared_Win,iError)
+      CALL BARRIER_AND_SYNC(VertexVol_Shared_Win  ,MPI_COMM_SHARED)
+      IF (myComputeNodeRank.EQ.0) THEN
+        CALL MPI_ALLREDUCE(MPI_IN_PLACE,VertexVol_Shared,nUniqueFEMNodes,MPI_REAL,MPI_SUM,MPI_COMM_LEADERS_SHARED,iError)
+      END IF ! myComputeNodeRank.EQ.0
+      CALL BARRIER_AND_SYNC(VertexVol_Shared_Win  ,MPI_COMM_SHARED)
+
+      ! Results array
+      CALL Allocate_Shared((/PP_nVar,nUniqueFEMNodes/),FEMNodeSource_Shared_Win,FEMNodeSource_Shared)
 #if USE_LOADBALANCE
     END IF
 #endif /*USE_LOADBALANCE*/
-#else
+#else  /*USE_MPI*/
     ! allocate local array for FEM information
     ALLOCATE(FEMElemInfo_Shared(1:FEMELEMINFOSIZE,FirstElemInd:LastElemInd))
     ALLOCATE(VertexInfo_Shared (1:VERTEXINFOSIZE ,FirstNodeInd:LastNodeInd))
     CALL ReadArray('FEMElemInfo',2,(/FEMELEMINFOSIZE,nElems/),offsetElem,2,IntArray=FEMElemInfo_Shared)
     CALL ReadArray('VertexInfo ',2,(/VERTEXINFOSIZE ,nNodes/),offsetNode,2,IntArray=VertexInfo_Shared)
+
+    ! Count number of FEM nodes
+    nUniqueFEMNodes = MAXVAL(VertexInfo_Shared(1,:))
+
+    ! Add the vertex volume
+    ALLOCATE(VertexVol_Shared(nUniqueFEMNodes))
+
+    CALL GetNodesAndWeights(1,NodeType,FEM_xGP,FEM_wGP)
+    DO k=0,1; DO j=0,1; DO i=0,1
+      FEM_wGPVol(i,j,k) = FEM_wGP(i)*FEM_wGP(j)*FEM_wGP(k)
+    END DO; END DO; END DO
+
+    ! project detJac_ref onto the solution basis
+    CALL GetVandermonde(NGeoRef,NodeType,1,NodeType,Vdm_NGeoRef_1,modal=.TRUE.)
+
+    DO iElem = 1,nElems
+      CALL ChangeBasisVolume(1,NGeoRef,1,Vdm_NGeoRef_1,DetJac_Ref(:,:,:,:,iElem),FEM_DetJac_1(:,:,:,:))
+      DO k=0,1; DO j=0,1; DO i=0,1
+        FEM_sJ(i,j,k) = 1./FEM_DetJac_1(1,i,j,k)
+      END DO; END DO; END DO !i,j,k=0,PP_N
+
+      Vol(1) = FEM_wGPVol(0,0,0)/FEM_sJ(0,0,0)
+      Vol(2) = FEM_wGPVol(1,0,0)/FEM_sJ(1,0,0)
+      Vol(3) = FEM_wGPVol(0,1,0)/FEM_sJ(0,1,0)
+      Vol(4) = FEM_wGPVol(1,1,0)/FEM_sJ(1,1,0)
+      Vol(5) = FEM_wGPVol(0,0,1)/FEM_sJ(0,0,1)
+      Vol(6) = FEM_wGPVol(1,0,1)/FEM_sJ(1,0,1)
+      Vol(7) = FEM_wGPVol(0,1,1)/FEM_sJ(0,1,1)
+      Vol(8) = FEM_wGPVol(1,1,1)/FEM_sJ(1,1,1)
+
+      DO iNode = 1,8
+        ASSOCIATE(NodeID => VertexInfo_Shared(1,(offsetElem+iElem-1)*8 + iNode))
+        VertexVol_Shared(NodeID) = VertexVol_Shared(NodeID) + Vol(iNode)
+        END ASSOCIATE
+      END DO ! iNode = 1,8
+    END DO ! iElem = 1,nElems
+
+    ! Results array
+    ALLOCATE(FEMNodeSource_Shared(PP_nVar,nUniqueFEMNodes))
 #endif  /*USE_MPI*/
 
     CALL CloseDataFile()
 
-    IF (myComputeNodeRank.EQ.0) nUniqueFEMNodes = MAXVAL(VertexInfo_Shared(1,:))
-#if USE_MPI
-    CALL MPI_BCAST(nUniqueFEMNodes,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
-#endif /*USE_MPI*/
-
-    ALLOCATE(FEMNodeSource(PP_nVar,nUniqueFEMNodes))
+    ALLOCATE(NodeSource_tmp(PP_nVar,8))
 
 END SELECT
 
@@ -196,10 +294,11 @@ IMPLICIT NONE
 
 SDEALLOCATE(PartSource)
 SDEALLOCATE(PartSource_tmp)
+SDEALLOCATE(NodeSource_tmp)
 SDEALLOCATE(Ut_src)
 
 SELECT CASE(DepositionType)
-  CASE(DEPO_CVLM)
+  CASE(DEPO_CVLM,DEPO_SF_GAUSS,DEPO_SF_POLY)
     ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 #if USE_MPI
     CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
@@ -208,6 +307,8 @@ SELECT CASE(DepositionType)
     CALL MPI_WIN_FREE(      FEMElemInfo_Shared_Win           ,iError)
     CALL MPI_WIN_UNLOCK_ALL(VertexInfo_Shared_Win            ,iError)
     CALL MPI_WIN_FREE(      VertexInfo_Shared_Win            ,iError)
+    CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win         ,iError)
+    CALL MPI_WIN_FREE(      FEMNodeSource_Shared_Win         ,iError)
 
     CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /*USE_MPI*/
@@ -215,9 +316,8 @@ SELECT CASE(DepositionType)
     ! Then, free the pointers or arrays
     MDEALLOCATE(FEMElemInfo_Shared)
     MDEALLOCATE(VertexInfo_Shared)
+    MDEALLOCATE(FEMNodeSource_Shared)
 END SELECT
-
-! CALL Abort(__STAMP__,'TODO!')
 
 END SUBROUTINE FinalizeDeposition
 

@@ -129,9 +129,9 @@ SUBROUTINE ParticleTimeRHS(t,dt,iStage)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars,                     ONLY: U
-USE MOD_Part_RHS,                    ONLY: CalcPartRHS
 USE MOD_Particle_Interpolation,      ONLY: InterpolateFieldToParticle
 USE MOD_Particle_Interpolation_Vars, ONLY: FieldAtParticle
+USE MOD_Particle_RHS,                ONLY: CalcPartRHS
 USE MOD_Particle_Vars,               ONLY: PartState,LastPartPos,PDM,PEM
 #if PARABOLIC
 USE MOD_Particle_SGS,                ONLY: ParticleSGS
@@ -154,9 +154,9 @@ USE MOD_Particle_Localization,       ONLY: CountPartsPerElem
 #endif
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 USE MOD_DG_Vars,                     ONLY: Ut,UPrim
-USE MOD_Particle_Interpolation_Vars, ONLY: GradAtParticle
 USE MOD_Lifting_Vars,                ONLY: gradUx,gradUy,gradUz
-USE MOD_Part_RHS,                    ONLY: extRHS
+USE MOD_Particle_Interpolation_Vars, ONLY: GradAtParticle
+USE MOD_Particle_RHS,                ONLY: extRHS
 USE MOD_Mesh_Vars,                   ONLY: nElems
 #endif
 ! IMPLICIT VARIABLE HANDLING

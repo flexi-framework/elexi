@@ -21,7 +21,7 @@
 ! Subroutine to compute the particle right hand side, therefore the acceleration due to the Lorentz-force with
 ! respect to the Lorentz factor
 !===================================================================================================================================
-MODULE MOD_part_RHS
+MODULE MOD_Particle_RHS
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -37,19 +37,24 @@ INTERFACE extRHS
 END INTERFACE
 #endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 
-#if PART_TWO_WAY
+#if PARTICLES_COUPLING >= 2
 INTERFACE CalcSourcePart
   MODULE PROCEDURE CalcSourcePart
 END INTERFACE
-#endif /*PART_TWO_WAY*/
+
+INTERFACE SourcePart
+  MODULE PROCEDURE SourcePart
+END INTERFACE
+#endif /*PARTICLES_COUPLING >= 2*/
 
 PUBLIC :: CalcPartRHS, InitRHS
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 PUBLIC :: extRHS
 #endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
-#if PART_TWO_WAY
+#if PARTICLES_COUPLING >= 2
 PUBLIC :: CalcSourcePart
-#endif /*PART_TWO_WAY*/
+PUBLIC :: SourcePart
+#endif /*PARTICLES_COUPLING >= 2*/
 !==================================================================================================================================
 
 CONTAINS
@@ -1238,17 +1243,15 @@ NO_OP(Mp)
 
 END FUNCTION DF_Ganser
 
-#if PART_TWO_WAY
+
+#if PARTICLES_COUPLING >= 2
 !==================================================================================================================================
-!> Compute source terms for particles and add them to the nearest DOF
+!> Compute source terms for particles
 !==================================================================================================================================
-SUBROUTINE CalcSourcePart(Ut)
+SUBROUTINE CalcSourcePart()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars                 ,ONLY: nElems
-USE MOD_Mesh_Vars                 ,ONLY: sJ
-! USE MOD_Particle_Deposition_Method
 USE MOD_Particle_Deposition_Vars  ,ONLY: PartSource,DepositionMethod
 #if FV_ENABLED
 USE MOD_FV_Vars                   ,ONLY: FV_Elems
@@ -1258,17 +1261,8 @@ USE MOD_FV_Vars                   ,ONLY: FV_Vdm
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k,iElem
-! INTEGER             :: i,j,k,iElem,iPart,ijk(3),iBGM,jBGM,kBGM,imin,imax,jmin,jmax,kmin,kmax,ElemID,CNElemID
-! REAL                :: Ut_src(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
-! REAL                :: Fp(3),Wp,Q,r,Vol,sigma,kernel
-! REAL                :: min_distance_glob,min_distance_loc
-#if FV_ENABLED
-REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
-#endif
 !==================================================================================================================================
 
 ! Nullify PartSource
@@ -1276,6 +1270,87 @@ PartSource = 0.
 
 ! DepositionMethod is a pointer to the corresponding method
 CALL DepositionMethod()
+
+END SUBROUTINE CalcSourcePart
+
+
+!==================================================================================================================================
+!> Add source terms for particles to the nearest DOF
+!==================================================================================================================================
+SUBROUTINE SourcePart(Ut)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mesh_Vars                 ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars                 ,ONLY: sJ
+USE MOD_Particle_Mesh_Vars        ,ONLY: VertexInfo_Shared
+USE MOD_Particle_Deposition_Vars  ,ONLY: DepositionType
+USE MOD_Particle_Deposition_Vars  ,ONLY: CellVolWeightFac
+USE MOD_Particle_Deposition_Vars  ,ONLY: PartSource
+USE MOD_Particle_Deposition_Vars  ,ONLY: FEMNodeSource_Shared
+#if USE_MPI
+USE MOD_MPI_Shared                ,ONLY: BARRIER_AND_SYNC
+USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED
+USE MOD_Particle_Deposition_Vars  ,ONLY: FEMNodeSource_Shared_Win
+USE MOD_Particle_Deposition_Vars  ,ONLY: MPI_DEPO_REQUEST
+#endif /*USE_MPI*/
+#if FV_ENABLED
+USE MOD_FV_Vars                   ,ONLY: FV_Elems
+USE MOD_ChangeBasisByDim          ,ONLY: ChangeBasisVolume
+USE MOD_FV_Vars                   ,ONLY: FV_Vdm
+#endif /*FV_ENABLED*/
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time derivative
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iElem,iNode
+INTEGER             :: FEMNodeID(1:8)
+INTEGER             :: i,j,k
+REAL                :: alpha1,alpha2,alpha3
+#if FV_ENABLED
+REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+#endif
+!==================================================================================================================================
+
+SELECT CASE(DepositionType)
+  ! CASE(DEPO_CV,DEPO_DIRAC,DEPO_STEP)
+  ! PartSource already filled, we are done
+
+  CASE(DEPO_CVLM,DEPO_SF_GAUSS,DEPO_SF_POLY)
+
+#if USE_MPI
+    ! Wait for communication to finish
+    CALL MPI_WAIT(MPI_DEPO_REQUEST,MPI_STATUS_IGNORE,iError)
+
+    ! Update SHM array on CN
+    CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
+#endif /*USE_MPI*/
+
+    ! Interpolate node source values to volume polynomial
+    DO iElem = 1,nElems
+
+      ! Fill the NodeID array
+      DO iNode = 1,8
+        FEMNodeID(iNode) = VertexInfo_Shared(1,(offsetElem+iElem-1)*8 + iNode)
+      END DO
+
+      DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
+        alpha1 = CellVolWeightFac(i)
+        alpha2 = CellVolWeightFac(j)
+        alpha3 = CellVolWeightFac(k)
+        PartSource(1:PP_nVar,i,j,k,iElem) = FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(1)) * (1-alpha1)*(1-alpha2)*(1-alpha3) + &
+                                            FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(2)) * (  alpha1)*(1-alpha2)*(1-alpha3) + &
+                                            FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(4)) * (1-alpha1)*  (alpha2)*(1-alpha3) + &
+                                            FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(3)) * (  alpha1)*  (alpha2)*(1-alpha3) + &
+                                            FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(5)) * (1-alpha1)*(1-alpha2)*  (alpha3) + &
+                                            FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(6)) * (  alpha1)*(1-alpha2)*  (alpha3) + &
+                                            FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(8)) * (1-alpha1)*  (alpha2)*  (alpha3) + &
+                                            FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(7)) * (  alpha1)*  (alpha2)*  (alpha3)
+      END DO; END DO; END DO
+    END DO ! iElem
+END SELECT
 
 ! Add source term
 DO iElem = 1, nElems
@@ -1297,8 +1372,7 @@ DO iElem = 1, nElems
 #endif
 END DO
 
-END SUBROUTINE CalcSourcePart
-#endif /*PART_TWO_WAY*/
+END SUBROUTINE SourcePart
+#endif /*PARTICLES_COUPLING >= 2*/
 
-
-END MODULE MOD_part_RHS
+END MODULE MOD_Particle_RHS

@@ -285,7 +285,6 @@ USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif /*USE_LOADBALANCE*/
 #if USE_PARTICLES
 USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
-USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart
 USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeStep,ParticleTimeStepRK
 USE MOD_Particle_Timedisc_Vars,ONLY: PreviousTime
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt
@@ -293,9 +292,10 @@ USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt
 USE MOD_Particle_MPI        ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
 #endif /* USE_MPI */
 #endif /* USE_PARTICLES */
-#if PART_TWO_WAY
-USE MOD_Part_RHS            ,ONLY: CalcSourcePart
-#endif /*PART_TWO_WAY*/
+#if PARTICLES_COUPLING >= 2
+USE MOD_Particle_RHS        ,ONLY: CalcSourcePart,SourcePart
+USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart
+#endif /*PARTICLES_COUPLING >= 2*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -664,13 +664,39 @@ CALL LBSplitTime(LB_DG,tLBStart)
 ! 12. Swap to right sign :)
 Ut=-Ut
 
+#if USE_PARTICLES
+IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN
+#if USE_MPI
+#if USE_LOADBALANCE
+  CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
+  ! Receive particles, locate and finish communication
+  CALL MPIParticleRecv()
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
+#endif /*USE_LOADBALANCE*/
+#endif /*USE_MPI*/
+  ! Find next free position in particle array
+  CALL UpdateNextFreePosition()
+  ! Increment previous time
+  PreviousTime = t
+END IF
+#endif /*USE_PARTICLES*/
+
+#if USE_PARTICLES && PARTICLES_COUPLING >= 2
+! Calculate particle source and start communication
+IF(doCalcSourcePart) CALL CalcSourcePart()
+#endif /*USE_PARTICLES && PARTICLES_COUPLING >= 2*/
 ! 13. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
 IF(doCalcSource) CALL CalcSource(Ut,t)
-#if PART_TWO_WAY
-IF(doCalcSourcePart) CALL CalcSourcePart(Ut)
-#endif /*PART_TWO_WAY*/
 IF(doSponge)     CALL Sponge(Ut)
 IF(doTCSource)   CALL TestcaseSource(Ut)
+! TODO: This should have better latency hiding
+!       > Issue: Particle communication must be finished before CalcSourcePart
+#if USE_PARTICLES && PARTICLES_COUPLING >= 2
+! Receive particle source and add to time integral
+IF(doCalcSourcePart) CALL SourcePart(Ut)
+#endif /*USE_PARTICLES && PARTICLES_COUPLING >= 2*/
 
 ! 14. Perform overintegration and apply Jacobian
 ! Perform overintegration (projection filtering type overintegration)
@@ -687,25 +713,6 @@ SELECT CASE (OverintegrationType)
   CASE DEFAULT
     CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
 END SELECT
-
-#if USE_PARTICLES
-IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN
-#if USE_MPI
-#if USE_LOADBALANCE
-  CALL LBStartTime(tLBStart)
-#endif /*USE_LOADBALANCE*/
-  ! receive particles, locate and finish communication
-  CALL MPIParticleRecv()
-#if USE_LOADBALANCE
-  CALL LBPauseTime(LB_PARTCOMM,tLBStart)
-#endif /*USE_LOADBALANCE*/
-#endif /*USE_MPI*/
-  ! find next free position in particle array
-  CALL UpdateNextFreePosition()
-  ! Increment previous time
-  PreviousTime = t
-END IF
-#endif /*USE_PARTICLES*/
 
 END SUBROUTINE DGTimeDerivative_weakForm
 

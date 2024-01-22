@@ -66,9 +66,9 @@ USE MOD_ReadInTools
 USE MOD_Particle_Analyze,           ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling, ONLY:DefineParametersParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking, ONLY:DefineParametersParticleBoundaryTracking
-#if PART_TWO_WAY
+#if PARTICLES_COUPLING >= 2
 USE MOD_Particle_Deposition_Method, ONLY:DefineParametersDepositionMethod
-#endif /*PART_TWO_WAY*/
+#endif /*PARTICLES_COUPLING >= 2*/
 USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation,     ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY:DefineParametersParticleMesh
@@ -516,9 +516,9 @@ CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-WallVelo'   , 'Velocity (g
 !#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 ! Call every other DefineParametersParticle routine
-#if PART_TWO_WAY
+#if PARTICLES_COUPLING >= 2
 CALL DefineParametersDepositionMethod()
-#endif /*PART_TWO_WAY*/
+#endif /*PARTICLES_COUPLING >= 2*/
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
 CALL DefineParametersParticleBoundaryTracking()
@@ -738,9 +738,9 @@ USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_Records,RPP_Records_Glob
 USE MOD_Particle_Boundary_Sampling ,ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking ,ONLY: InitParticleBoundaryTracking
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove,doParticleReflectionTrack
-#if PART_TWO_WAY
+#if PARTICLES_COUPLING >= 2
 USE MOD_Particle_Deposition        ,ONLY: InitializeDeposition
-#endif /*PART_TWO_WAY*/
+#endif /*PARTICLES_COUPLING >= 2*/
 USE MOD_Particle_Interpolation     ,ONLY: InitParticleInterpolation
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
@@ -772,9 +772,9 @@ doPartIndex             = GETLOGICAL('Part-PartIndex'     )
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
 
 ! Fluid-particle coupling
-#if PART_TWO_WAY
+#if PARTICLES_COUPLING >= 2
 doCalcSourcePart        = GETLOGICAL('Part-CalcSource'    )
-#endif /*PART_TWO_WAY*/
+#endif /*PARTICLES_COUPLING >= 2*/
 
 doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' )
 doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam')
@@ -880,9 +880,9 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,IERROR)
 !END IF
 !#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
-#if PART_TWO_WAY
+#if PARTICLES_COUPLING >= 2
 IF (doCalcSourcePart) CALL InitializeDeposition()
-#endif /*PART_TWO_WAY*/
+#endif /*PARTICLES_COUPLING >= 2*/
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 
@@ -1110,8 +1110,8 @@ SUBROUTINE InitializeVariablesSpeciesInits()
 USE MOD_ISO_VARYING_STRING
 USE MOD_Globals
 USE MOD_Equation_Vars         ,ONLY: RefStatePrim
-USE MOD_Part_RHS              ,ONLY: InitRHS
 USE MOD_Particle_Globals
+USE MOD_Particle_RHS          ,ONLY: InitRHS
 USE MOD_Particle_Vars
 USE MOD_ReadInTools
 USE MOD_Utils                 ,ONLY: ALMOSTEQUAL
@@ -1787,9 +1787,9 @@ USE MOD_Particle_Analyze,           ONLY: FinalizeParticleAnalyze
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Sampling, ONLY: FinalizeParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking, ONLY: FinalizeParticleBoundaryTracking
-#if PART_TWO_WAY
+#if PARTICLES_COUPLING >= 2
 USE MOD_Particle_Deposition,        ONLY: FinalizeDeposition
-#endif /*PART_TWO_WAY*/
+#endif /*PARTICLES_COUPLING >= 2*/
 USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
 USE MOD_Particle_Surfaces,          ONLY: FinalizeParticleSurfaces
@@ -1945,9 +1945,9 @@ CALL FinalizeParticleAnalyze()
 CALL FinalizeParticleSurfaces()
 CALL FinalizeParticleMesh()
 
-#if PART_TWO_WAY
+#if PARTICLES_COUPLING >= 2
 IF (doCalcSourcePart) CALL FinalizeDeposition()
-#endif /*PART_TWO_WAY*/
+#endif /*PARTICLES_COUPLING >= 2*/
 
 ParticlesInitIsDone = .FALSE.
 

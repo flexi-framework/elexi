@@ -177,7 +177,6 @@ SUBROUTINE DepositionMethod_CVLM()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars                ,ONLY: nElems,offsetElem
 USE MOD_Eval_xyz                 ,ONLY: GetPositionInRefElem
 USE MOD_Particle_Deposition_Vars
 USE MOD_Particle_Mesh_Vars       ,ONLY: VertexInfo_Shared,VertexVol_Shared
@@ -195,7 +194,6 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iElem,iPart,iNode
-INTEGER             :: i,j,k
 INTEGER             :: FEMNodeID(   1:8)
 REAL                :: PartDistDepo(1:8)
 REAL                :: alpha1,alpha2,alpha3
@@ -267,37 +265,13 @@ END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
 ! Finalize all RMA operation
-CALL MPI_WIN_FLUSH(0,FEMNodeSource_Shared_Win,iError)
+CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
+CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 ! Communicate results between CN roots
 IF (myComputeNodeRank.EQ.0) THEN
-  CALL MPI_ALLREDUCE(MPI_IN_PLACE,FEMNodeSource_Shared,PP_nVar*nUniqueFEMNodes,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,iError)
+  CALL MPI_IALLREDUCE(MPI_IN_PLACE,FEMNodeSource_Shared,PP_nVar*nUniqueFEMNodes,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,MPI_DEPO_REQUEST,iError)
 END IF ! myComputeNodeRank.EQ.0
-! Update SHM array on CN
-CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
-
-! Interpolate node source values to volume polynomial
-DO iElem = 1,nElems
-
-  ! Fill the NodeID array
-  DO iNode = 1,8
-    FEMNodeID(iNode) = VertexInfo_Shared(1,(offsetElem+iElem-1)*8 + iNode)
-  END DO
-
-  DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
-    alpha1 = CellVolWeightFac(i)
-    alpha2 = CellVolWeightFac(j)
-    alpha3 = CellVolWeightFac(k)
-    PartSource(1:PP_nVar,i,j,k,iElem) = FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(1)) * (1-alpha1)*(1-alpha2)*(1-alpha3) + &
-                                        FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(2)) * (  alpha1)*(1-alpha2)*(1-alpha3) + &
-                                        FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(4)) * (1-alpha1)*  (alpha2)*(1-alpha3) + &
-                                        FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(3)) * (  alpha1)*  (alpha2)*(1-alpha3) + &
-                                        FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(5)) * (1-alpha1)*(1-alpha2)*  (alpha3) + &
-                                        FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(6)) * (  alpha1)*(1-alpha2)*  (alpha3) + &
-                                        FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(8)) * (1-alpha1)*  (alpha2)*  (alpha3) + &
-                                        FEMNodeSource_Shared(1:PP_nVar,FEMNodeID(7)) * (  alpha1)*  (alpha2)*  (alpha3)
-  END DO; END DO; END DO
-END DO ! iElem
 
 END SUBROUTINE DepositionMethod_CVLM
 
@@ -474,13 +448,17 @@ SUBROUTINE DepositionMethod_SF_Gauss()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars                ,ONLY: nElems,offsetElem
 USE MOD_Eval_xyz                 ,ONLY: GetPositionInRefElem
 USE MOD_Particle_Deposition_Vars
 USE MOD_Particle_Globals         ,ONLY: VECNORM
-USE MOD_Particle_Mesh_Vars       ,ONLY: VertexInfo_Shared
+USE MOD_Particle_Mesh_Vars       ,ONLY: VertexInfo_Shared,VertexVol_Shared
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 USE MOD_Particle_Vars            ,ONLY: PDM,PEM,PartPosRef,PartState,Species,PartSpecies
+#if USE_MPI
+USE MOD_MPI_Shared               ,ONLY: BARRIER_AND_SYNC
+USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -492,10 +470,9 @@ REAL                :: kernel
 REAL                :: Vol
 
 INTEGER             :: iElem,iPart,iNode
-INTEGER             :: i,j,k
 INTEGER             :: FEMNodeID(   1:8)
 REAL                :: PartDistDepo(1:8)
-REAL                :: alpha(3),alpha1,alpha2,alpha3
+REAL                :: alpha(3)
 REAL                :: Source(PP_nVar)
 !==================================================================================================================================
 
@@ -528,11 +505,28 @@ DO iPart = 1,PDM%ParticleVecLength
   PartDistDepo(8) = VECNORM((/0.,1.,1./)-alpha) ! (0,1,1)
 
   DO iNode = 1,8
-    FEMNodeID(iNode) = VertexInfo_Shared(1,(PEM%Element(iPart)-1)*8 + iNode)
+    FEMNodeID(iNode) = VertexInfo_Shared(1,(iElem-1)*8 + iNode)
+    ! FEMNodeSource(MOMV,FEMNodeID(iNode)) = FEMNodeSource(MOMV,FEMNodeID(iNode)) + Source(MOMV)*PartDistDepo(iNode)
+    ! FEMNodeSource(ENER,FEMNodeID(iNode)) = FEMNodeSource(ENER,FEMNodeID(iNode)) + Source(ENER)*PartDistDepo(iNode)
     kernel = EXP(-0.5*PartDistDepo(iNode)**2/sigma**2)
-    FEMNodeSource(MOMV,FEMNodeID(iNode)) = FEMNodeSource(MOMV,FEMNodeID(iNode)) + Source(MOMV)*PartDistDepo(iNode)
-    FEMNodeSource(ENER,FEMNodeID(iNode)) = FEMNodeSource(ENER,FEMNodeID(iNode)) + Source(ENER)*PartDistDepo(iNode)
+    Vol    = Vol + kernel*VertexVol_Shared(FEMNodeID(iNode))
+    NodeSource_tmp(MOMV,iNode) = NodeSource_tmp(MOMV,iNode) + Source(MOMV)*PartDistDepo(iNode)
+    NodeSource_tmp(ENER,iNode) = NodeSource_tmp(ENER,iNode) + Source(ENER)*PartDistDepo(iNode)
   END DO ! iNode = 1,8
+
+  ! Normalize deposition with volume
+  NodeSource_tmp(:,:) = NodeSource_tmp(:,:) / Vol
+
+  ! Loop over all nodes and add normalized deposition to shared array
+  DO iNode = 1,8
+    ! FEMNodeID(iNode) = VertexInfo_Shared(1,(iElem-1)*8 + iNode)
+#if USE_MPI
+    CALL MPI_ACCUMULATE(NodeSource_tmp(:,iNode),PP_nVar,MPI_DOUBLE_PRECISION,0,INT(PP_nVar*(FEMNodeID(iNode)-1)*SIZE_REAL,MPI_ADDRESS_KIND) , &
+                                                PP_nVar,MPI_DOUBLE_PRECISION,MPI_SUM,FEMNodeSource_Shared_Win,iError)
+#else
+    FEMNodeSource_Shared(:,FEMNodeID(iNode)) = FEMNodeSource_Shared(:,FEMNodeID(iNode)) + NodeSource_tmp(:,iNode)
+#endif /*USE_MPI*/
+  END DO
 
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
@@ -540,34 +534,14 @@ DO iPart = 1,PDM%ParticleVecLength
 END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,FEMNodeSource,nUniqueFEMNodes,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+! Finalize all RMA operation
+CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
+CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
+! Communicate results between CN roots
+IF (myComputeNodeRank.EQ.0) THEN
+  CALL MPI_IALLREDUCE(MPI_IN_PLACE,FEMNodeSource_Shared,PP_nVar*nUniqueFEMNodes,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,MPI_DEPO_REQUEST,iError)
+END IF ! myComputeNodeRank.EQ.0
 #endif /*USE_MPI*/
-
-! Interpolate node source values to volume polynomial
-DO iElem = 1,nElems
-
-  ! Fill the NodeID array
-  DO iNode = 1,8
-    FEMNodeID(iNode) = VertexInfo_Shared(1,(offsetElem+iElem-1)*8 + iNode)
-  END DO
-
-  DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
-    alpha1 = CellVolWeightFac(i)
-    alpha2 = CellVolWeightFac(j)
-    alpha3 = CellVolWeightFac(k)
-    PartSource(1:PP_nVar,i,j,k,iElem) = FEMNodeSource(1:PP_nVar,FEMNodeID(1)) * (1-alpha1)*(1-alpha2)*(1-alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(2)) * (  alpha1)*(1-alpha2)*(1-alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(4)) * (1-alpha1)*  (alpha2)*(1-alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(3)) * (  alpha1)*  (alpha2)*(1-alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(5)) * (1-alpha1)*(1-alpha2)*  (alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(6)) * (  alpha1)*(1-alpha2)*  (alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(8)) * (1-alpha1)*  (alpha2)*  (alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(7)) * (  alpha1)*  (alpha2)*  (alpha3)
-
-  END DO; END DO; END DO
-END DO ! iElem
-
-! Vol    = Vol + kernel*wGPVol(i,j,k)/sJ(i,j,k,ElemID,0)
 
 END SUBROUTINE DepositionMethod_SF_Gauss
 
@@ -580,13 +554,17 @@ SUBROUTINE DepositionMethod_SF_Poly()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars                ,ONLY: nElems,offsetElem
 USE MOD_Eval_xyz                 ,ONLY: GetPositionInRefElem
 USE MOD_Particle_Deposition_Vars
 USE MOD_Particle_Globals         ,ONLY: VECNORM
-USE MOD_Particle_Mesh_Vars       ,ONLY: VertexInfo_Shared
+USE MOD_Particle_Mesh_Vars       ,ONLY: VertexInfo_Shared,VertexVol_Shared
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 USE MOD_Particle_Vars            ,ONLY: PDM,PEM,PartPosRef,PartState,Species,PartSpecies
+#if USE_MPI
+USE MOD_MPI_Shared               ,ONLY: BARRIER_AND_SYNC
+USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
+USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -597,10 +575,9 @@ REAL                :: kernel,sigma
 REAL                :: Vol
 
 INTEGER             :: iElem,iPart,iNode
-INTEGER             :: i,j,k
 INTEGER             :: FEMNodeID(   1:8)
 REAL                :: PartDistDepo(1:8)
-REAL                :: alpha(3),alpha1,alpha2,alpha3
+REAL                :: alpha(3)
 REAL                :: Source(PP_nVar)
 !==================================================================================================================================
 
@@ -635,11 +612,29 @@ DO iPart = 1,PDM%ParticleVecLength
   PartDistDepo(8) = VECNORM((/0.,1.,1./)-alpha) ! (0,1,1)
 
   DO iNode = 1,8
-    FEMNodeID(iNode) = VertexInfo_Shared(1,(PEM%Element(iPart)-1)*8 + iNode)
+    FEMNodeID(iNode) = VertexInfo_Shared(1,(iElem-1)*8 + iNode)
+    ! FEMNodeSource(MOMV,FEMNodeID(iNode)) = FEMNodeSource(MOMV,FEMNodeID(iNode)) + Source(MOMV)*PartDistDepo(iNode)
+    ! FEMNodeSource(ENER,FEMNodeID(iNode)) = FEMNodeSource(ENER,FEMNodeID(iNode)) + Source(ENER)*PartDistDepo(iNode)
     kernel = EXP(-0.5*PartDistDepo(iNode)**2/sigma**2)
-    FEMNodeSource(MOMV,FEMNodeID(iNode)) = FEMNodeSource(MOMV,FEMNodeID(iNode)) + Source(MOMV)*PartDistDepo(iNode)
-    FEMNodeSource(ENER,FEMNodeID(iNode)) = FEMNodeSource(ENER,FEMNodeID(iNode)) + Source(ENER)*PartDistDepo(iNode)
+    Vol    = Vol + kernel*VertexVol_Shared(FEMNodeID(iNode))
+    Vol = Vol + VertexVol_Shared(FEMNodeID(iNode))
+    NodeSource_tmp(MOMV,iNode) = NodeSource_tmp(MOMV,iNode) + Source(MOMV)*PartDistDepo(iNode)
+    NodeSource_tmp(ENER,iNode) = NodeSource_tmp(ENER,iNode) + Source(ENER)*PartDistDepo(iNode)
   END DO ! iNode = 1,8
+
+  ! Normalize deposition with volume
+  NodeSource_tmp(:,:) = NodeSource_tmp(:,:) / Vol
+
+  ! Loop over all nodes and add normalized deposition to shared array
+  DO iNode = 1,8
+    ! FEMNodeID(iNode) = VertexInfo_Shared(1,(iElem-1)*8 + iNode)
+#if USE_MPI
+    CALL MPI_ACCUMULATE(NodeSource_tmp(:,iNode),PP_nVar,MPI_DOUBLE_PRECISION,0,INT(PP_nVar*(FEMNodeID(iNode)-1)*SIZE_REAL,MPI_ADDRESS_KIND) , &
+                                                PP_nVar,MPI_DOUBLE_PRECISION,MPI_SUM,FEMNodeSource_Shared_Win,iError)
+#else
+    FEMNodeSource_Shared(:,FEMNodeID(iNode)) = FEMNodeSource_Shared(:,FEMNodeID(iNode)) + NodeSource_tmp(:,iNode)
+#endif /*USE_MPI*/
+  END DO
 
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
@@ -647,32 +642,14 @@ DO iPart = 1,PDM%ParticleVecLength
 END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,FEMNodeSource,nUniqueFEMNodes,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+! Finalize all RMA operation
+CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
+CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
+! Communicate results between CN roots
+IF (myComputeNodeRank.EQ.0) THEN
+  CALL MPI_IALLREDUCE(MPI_IN_PLACE,FEMNodeSource_Shared,PP_nVar*nUniqueFEMNodes,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,MPI_DEPO_REQUEST,iError)
+END IF ! myComputeNodeRank.EQ.0
 #endif /*USE_MPI*/
-
-! Interpolate node source values to volume polynomial
-DO iElem = 1,nElems
-
-  ! Fill the NodeID array
-  DO iNode = 1,8
-    FEMNodeID(iNode) = VertexInfo_Shared(1,(offsetElem+iElem-1)*8 + iNode)
-  END DO
-
-  DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
-    alpha1 = CellVolWeightFac(i)
-    alpha2 = CellVolWeightFac(j)
-    alpha3 = CellVolWeightFac(k)
-    PartSource(1:PP_nVar,i,j,k,iElem) = FEMNodeSource(1:PP_nVar,FEMNodeID(1)) * (1-alpha1)*(1-alpha2)*(1-alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(2)) * (  alpha1)*(1-alpha2)*(1-alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(4)) * (1-alpha1)*  (alpha2)*(1-alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(3)) * (  alpha1)*  (alpha2)*(1-alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(5)) * (1-alpha1)*(1-alpha2)*  (alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(6)) * (  alpha1)*(1-alpha2)*  (alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(8)) * (1-alpha1)*  (alpha2)*  (alpha3) + &
-                                        FEMNodeSource(1:PP_nVar,FEMNodeID(7)) * (  alpha1)*  (alpha2)*  (alpha3)
-
-  END DO; END DO; END DO
-END DO ! iElem
 
 END SUBROUTINE DepositionMethod_SF_Poly
 

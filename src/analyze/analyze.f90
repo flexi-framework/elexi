@@ -410,8 +410,6 @@ PID        = (PIDTimeEnd-PIDTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REA
 IF (PID.GT.PID_kill) &
   CALL CollectiveStop(__STAMP__,'Aborting due to low performance, PID',RealInfo=PID)
 
-PIDTimeStart = PIDTimeStart
-
 END SUBROUTINE AnalyzePerformance
 
 

@@ -477,7 +477,16 @@ IF(iter.EQ.maxIter) THEN
 END IF
 
 ! Call DG operator to fill face data, fluxes, gradients for analyze
-IF(doAnalyze) THEN
+IF (doAnalyze) THEN
+  CALL PrintAnalyze(dt_Min(DT_MIN))
+  CALL TimeDisc_Info(iter_analyze+1)
+#if FV_ENABLED
+  ! Summation has one more iter step
+  CALL FV_Info(iter_analyze+1)
+#endif
+#if PP_LIMITER
+  CALL PPLimiter_Info(iter_analyze+1)
+#endif
 #if USE_PARTICLES
   ! Skip the call, otherwise particles get incremented twice
   IF (.NOT.UseManualTimeStep) THEN
@@ -541,15 +550,6 @@ IF(doAnalyze .OR. PerformLoadBalance) THEN
 #else
 IF(doAnalyze)THEN
 #endif /*USE_LOADBALANCE*/
-  CALL PrintAnalyze(dt_Min(DT_MIN))
-  CALL TimeDisc_Info(iter_analyze+1)
-#if FV_ENABLED
-  ! Summation has one more iter step
-  CALL FV_Info(iter_analyze+1)
-#endif
-#if PP_LIMITER
-  CALL PPLimiter_Info(iter_analyze+1)
-#endif
 
   writeCounter = writeCounter+1
 #if USE_PARTICLES

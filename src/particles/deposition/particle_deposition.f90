@@ -23,6 +23,8 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
+#if PARTICLES_COUPLING >= 2
+
 INTERFACE InitializeDeposition
   MODULE PROCEDURE InitializeDeposition
 END INTERFACE
@@ -320,5 +322,7 @@ SELECT CASE(DepositionType)
 END SELECT
 
 END SUBROUTINE FinalizeDeposition
+
+#endif /*PARTICLES_COUPLING >= 2*/
 
 END MODULE MOD_Particle_Deposition

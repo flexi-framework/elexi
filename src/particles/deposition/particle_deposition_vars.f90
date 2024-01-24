@@ -23,6 +23,8 @@ MODULE MOD_Particle_Deposition_Vars
 IMPLICIT NONE
 PUBLIC
 SAVE
+
+#if PARTICLES_COUPLING >= 2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -55,5 +57,7 @@ INTEGER                           :: MPI_DEPO_REQUEST                        !< 
 ! integers to hold shared memory windows
 INTEGER                           :: FEMNodeSource_Shared_Win                !< Array for the cummulative source on each FEM node
 #endif /*USE_MPI*/
+
+#endif /*PARTICLES_COUPLING >= 2*/
 
 END MODULE MOD_Particle_Deposition_Vars

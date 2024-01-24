@@ -24,6 +24,8 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
+#if PARTICLES_COUPLING >= 2
+
 INTERFACE DefineParametersDepositionMethod
   MODULE PROCEDURE DefineParametersDepositionMethod
 END INTERFACE
@@ -683,5 +685,7 @@ Source(ENER) = Source(ENER) - Pt(4,PartID) * Species(PartSpecies(PartID))%MassIC
 #endif
 
 END SUBROUTINE CalcPartSourceTerm
+
+#endif /*PARTICLES_COUPLING >= 2*/
 
 END MODULE MOD_Particle_Deposition_Method

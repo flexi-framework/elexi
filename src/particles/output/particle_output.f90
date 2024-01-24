@@ -43,16 +43,11 @@ INTERFACE Visualize_Particles
   MODULE PROCEDURE Visualize_Particles
 END INTERFACE
 
-INTERFACE GetOffsetAndGlobalNumberOfParts
-  MODULE PROCEDURE GetOffsetAndGlobalNumberOfParts
-END INTERFACE
-
 !PUBLIC :: InitParticleOutput
 PUBLIC :: FillParticleData
 PUBLIC :: WriteInfoStdOut
 PUBLIC :: WriteParticleAnalyze
 PUBLIC :: Visualize_Particles
-PUBLIC :: GetOffsetAndGlobalNumberOfParts
 !===================================================================================================================================
 
 CONTAINS
@@ -65,10 +60,10 @@ SUBROUTINE FillParticleData()
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem
-USE MOD_Part_Tools              ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Vars   ,ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleReflectionTrack
 USE MOD_Particle_Output_Vars
+USE MOD_Particle_Tools          ,ONLY: UpdateNextFreePosition,GetOffsetAndGlobalNumberOfParts
 USE MOD_Particle_Vars           ,ONLY: PartDataSize,TurbPartDataSize
 USE MOD_Particle_Vars           ,ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex,nSpecies
 USE MOD_Particle_Vars           ,ONLY: PartInt,PartData,TurbPartData
@@ -482,93 +477,5 @@ CLOSE(index_unit)
 SWRITE(UNIT_stdOut,'(A)')"DONE!"
 
 END SUBROUTINE Visualize_Particles
-
-
-!===================================================================================================================================
-!> Calculate the particle offset and global number of particles across all processors
-!> In this routine the number are calculated using integer KIND=8, but are returned with integer KIND=ICC in order to test if using
-!> integer KIND=8 is required for total number of particles, particle boundary state, lost particles or clones
-!===================================================================================================================================
-SUBROUTINE GetOffsetAndGlobalNumberOfParts(CallingRoutine,offsetnPart,globnPart,locnPart,GetMinMaxNbrOfParticles)
-! MODULES
-USE MOD_Globals
-USE MOD_PreProc
-USE MOD_Particle_Globals
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)  :: CallingRoutine
-INTEGER(KIND=IK),INTENT(IN)  :: locnPart
-LOGICAL,INTENT(IN)           :: GetMinMaxNbrOfParticles
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-INTEGER(KIND=IK),INTENT(OUT) :: offsetnPart
-INTEGER(KIND=IK),INTENT(OUT) :: globnPart(6)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-#if USE_MPI
-INTEGER(KIND=8)              :: globnPart8                         ! always integer KIND=8
-INTEGER(KIND=8)              :: locnPart8,locnPart8Recv            ! always integer KIND=8
-INTEGER(KIND=IK)             :: SimNumSpecMin,SimNumSpecMax
-#endif
-!===================================================================================================================================
-#if USE_MPI
-locnPart8     = INT(locnPart,8)
-locnPart8Recv = 0_IK
-CALL MPI_EXSCAN(locnPart8,locnPart8Recv,1,MPI_INTEGER8,MPI_SUM,MPI_COMM_FLEXI,iError)
-offsetnPart   = INT(locnPart8Recv,KIND=IK)
-
-! Last proc calculates the global number and broadcasts it
-IF(myRank.EQ.nProcessors-1) locnPart8=locnPart8Recv+locnPart8
-CALL MPI_BCAST(locnPart8,1,MPI_INTEGER8,nProcessors-1,MPI_COMM_FLEXI,iError)
-
-! Global numbers
-globnPart8   = locnPart8
-LOGWRITE(*,*) TRIM(CallingRoutine)//'offsetnPart,locnPart,globnPart8',offsetnPart,locnPart,globnPart8
-
-! Sanity check: Add up all particles with integer KIND=8 and compare
-IF (MPIRoot) THEN
-  ! Check if offsetnPart is kind=8 is the number of particles is larger than integer KIND=4
-  IF (globnPart8.GT.INT(HUGE(offsetnPart),8)) THEN
-    WRITE(UNIT_stdOut,'(A,I0)') '\n\n\nTotal number of particles  : ',globnPart8
-    WRITE(UNIT_stdOut,'(A,I0)')       'Maximum number of particles: ',HUGE(offsetnPart)
-    CALL Abort(__STAMP__,TRIM(CallingRoutine)//' has encountered more than integer KIND=4 particles!')
-  END IF
-END IF ! MPIRoot
-
-! Get min/max number of particles
-SimNumSpecMin = 0
-SimNumSpecMax = 0
-IF(GetMinMaxNbrOfParticles)THEN
-  IF (MPIRoot) THEN
-    CALL MPI_REDUCE(locnPart,SimNumSpecMin,1,MPI_INTEGER_INT_KIND,MPI_MIN,0,MPI_COMM_FLEXI,IERROR)
-    CALL MPI_REDUCE(locnPart,SimNumSpecMax,1,MPI_INTEGER_INT_KIND,MPI_MAX,0,MPI_COMM_FLEXI,IERROR)
-  ELSE
-    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER_INT_KIND,MPI_MIN,0,MPI_COMM_FLEXI,IERROR)
-    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER_INT_KIND,MPI_MAX,0,MPI_COMM_FLEXI,IERROR)
-  END IF
-END IF ! GetMinMaxNbrOfParticles
-
-! Cast to Kind=IK before returning the number
-globnPart(1) = INT(SimNumSpecMin , KIND = IK)
-globnPart(2) = INT(SimNumSpecMax , KIND = IK)
-globnPart(3) = INT(globnPart8    , KIND = IK)
-#else
-offsetnPart=0_IK
-globnPart(1:3)=INT(locnPart,KIND=IK)
-
-! Suppress compiler warning
-NO_OP(CallingRoutine)
-#endif
-
-! Get extrema over the complete simulation only during WriteParticleToHDF5
-IF(GetMinMaxNbrOfParticles)THEN
-  globnPart(4) = MIN(globnPart(1),globnPart(4))
-  globnPart(5) = MAX(globnPart(2),globnPart(5))
-  globnPart(6) = MAX(globnPart(3),globnPart(6))
-END IF ! GetMinMaxNbrOfParticles
-
-END SUBROUTINE GetOffsetAndGlobalNumberOfParts
 
 END MODULE MOD_Particle_Output

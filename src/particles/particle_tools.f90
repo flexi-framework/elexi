@@ -16,7 +16,7 @@
 !===================================================================================================================================
 ! Contains tools for particles
 !===================================================================================================================================
-MODULE MOD_Part_Tools
+MODULE MOD_Particle_Tools
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -34,9 +34,14 @@ END INTERFACE
 !   MODULE PROCEDURE StoreLostParticleProperties
 ! END INTERFACE
 
+INTERFACE GetOffsetAndGlobalNumberOfParts
+  MODULE PROCEDURE GetOffsetAndGlobalNumberOfParts
+END INTERFACE
+
 PUBLIC :: UpdateNextFreePosition
 PUBLIC :: DiceUnitVector
 ! PUBLIC :: StoreLostParticleProperties
+PUBLIC :: GetOffsetAndGlobalNumberOfParts
 !===================================================================================================================================
 
 CONTAINS
@@ -119,6 +124,38 @@ PDM%nextFreePosition(counter+1:PDM%maxParticleNumber) = 0
 IF (counter+1.GT.PDM%MaxParticleNumber) PDM%nextFreePosition(PDM%MaxParticleNumber) = 0
 
 END SUBROUTINE UpdateNextFreePosition
+
+
+FUNCTION DiceUnitVector()
+!===================================================================================================================================
+!> Calculates random unit vector
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+USE MOD_Particle_Globals ,ONLY: Pi
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                     :: DiceUnitVector(3)
+REAL                     :: rRan, cos_scatAngle, sin_scatAngle, rotAngle
+!===================================================================================================================================
+CALL RANDOM_NUMBER(rRan)
+
+cos_scatAngle     = 2.*rRan-1.
+sin_scatAngle     = SQRT(1. - cos_scatAngle ** 2.)
+DiceUnitVector(1) = cos_scatAngle
+
+CALL RANDOM_NUMBER(rRan)
+rotAngle          = 2. * Pi * rRan
+
+DiceUnitVector(2) = sin_scatAngle * COS(rotAngle)
+DiceUnitVector(3) = sin_scatAngle * SIN(rotAngle)
+
+END FUNCTION DiceUnitVector
 
 
 !SUBROUTINE StoreLostParticleProperties(iPart,ElemID,UsePartState_opt,PartMissingType_opt)
@@ -214,35 +251,91 @@ END SUBROUTINE UpdateNextFreePosition
 !END SUBROUTINE StoreLostParticleProperties
 
 
-FUNCTION DiceUnitVector()
 !===================================================================================================================================
-!> Calculates random unit vector
+!> Calculate the particle offset and global number of particles across all processors
+!> In this routine the number are calculated using integer KIND=8, but are returned with integer KIND=ICC in order to test if using
+!> integer KIND=8 is required for total number of particles, particle boundary state, lost particles or clones
 !===================================================================================================================================
+SUBROUTINE GetOffsetAndGlobalNumberOfParts(CallingRoutine,offsetnPart,globnPart,locnPart,GetMinMaxNbrOfParticles)
 ! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Particle_Globals
 ! IMPLICIT VARIABLE HANDLING
-USE MOD_Particle_Globals ,ONLY: Pi
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)  :: CallingRoutine
+INTEGER(KIND=IK),INTENT(IN)  :: locnPart
+LOGICAL,INTENT(IN)           :: GetMinMaxNbrOfParticles
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
+INTEGER(KIND=IK),INTENT(OUT) :: offsetnPart
+INTEGER(KIND=IK),INTENT(OUT) :: globnPart(6)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: DiceUnitVector(3)
-REAL                     :: rRan, cos_scatAngle, sin_scatAngle, rotAngle
+#if USE_MPI
+INTEGER(KIND=8)              :: globnPart8                         ! always integer KIND=8
+INTEGER(KIND=8)              :: locnPart8,locnPart8Recv            ! always integer KIND=8
+INTEGER(KIND=IK)             :: SimNumSpecMin,SimNumSpecMax
+#endif
 !===================================================================================================================================
-CALL RANDOM_NUMBER(rRan)
+#if USE_MPI
+locnPart8     = INT(locnPart,8)
+locnPart8Recv = 0_IK
+CALL MPI_EXSCAN(locnPart8,locnPart8Recv,1,MPI_INTEGER8,MPI_SUM,MPI_COMM_FLEXI,iError)
+offsetnPart   = INT(locnPart8Recv,KIND=IK)
 
-cos_scatAngle     = 2.*rRan-1.
-sin_scatAngle     = SQRT(1. - cos_scatAngle ** 2.)
-DiceUnitVector(1) = cos_scatAngle
+! Last proc calculates the global number and broadcasts it
+IF(myRank.EQ.nProcessors-1) locnPart8=locnPart8Recv+locnPart8
+CALL MPI_BCAST(locnPart8,1,MPI_INTEGER8,nProcessors-1,MPI_COMM_FLEXI,iError)
 
-CALL RANDOM_NUMBER(rRan)
-rotAngle          = 2. * Pi * rRan
+! Global numbers
+globnPart8   = locnPart8
+LOGWRITE(*,*) TRIM(CallingRoutine)//'offsetnPart,locnPart,globnPart8',offsetnPart,locnPart,globnPart8
 
-DiceUnitVector(2) = sin_scatAngle * COS(rotAngle)
-DiceUnitVector(3) = sin_scatAngle * SIN(rotAngle)
+! Sanity check: Add up all particles with integer KIND=8 and compare
+IF (MPIRoot) THEN
+  ! Check if offsetnPart is kind=8 is the number of particles is larger than integer KIND=4
+  IF (globnPart8.GT.INT(HUGE(offsetnPart),8)) THEN
+    WRITE(UNIT_stdOut,'(A,I0)') '\n\n\nTotal number of particles  : ',globnPart8
+    WRITE(UNIT_stdOut,'(A,I0)')       'Maximum number of particles: ',HUGE(offsetnPart)
+    CALL Abort(__STAMP__,TRIM(CallingRoutine)//' has encountered more than integer KIND=4 particles!')
+  END IF
+END IF ! MPIRoot
 
-END FUNCTION DiceUnitVector
+! Get min/max number of particles
+SimNumSpecMin = 0
+SimNumSpecMax = 0
+IF(GetMinMaxNbrOfParticles)THEN
+  IF (MPIRoot) THEN
+    CALL MPI_REDUCE(locnPart,SimNumSpecMin,1,MPI_INTEGER_INT_KIND,MPI_MIN,0,MPI_COMM_FLEXI,IERROR)
+    CALL MPI_REDUCE(locnPart,SimNumSpecMax,1,MPI_INTEGER_INT_KIND,MPI_MAX,0,MPI_COMM_FLEXI,IERROR)
+  ELSE
+    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER_INT_KIND,MPI_MIN,0,MPI_COMM_FLEXI,IERROR)
+    CALL MPI_REDUCE(locnPart,0            ,1,MPI_INTEGER_INT_KIND,MPI_MAX,0,MPI_COMM_FLEXI,IERROR)
+  END IF
+END IF ! GetMinMaxNbrOfParticles
 
-END MODULE MOD_Part_Tools
+! Cast to Kind=IK before returning the number
+globnPart(1) = INT(SimNumSpecMin , KIND = IK)
+globnPart(2) = INT(SimNumSpecMax , KIND = IK)
+globnPart(3) = INT(globnPart8    , KIND = IK)
+#else
+offsetnPart=0_IK
+globnPart(1:3)=INT(locnPart,KIND=IK)
+
+! Suppress compiler warning
+NO_OP(CallingRoutine)
+#endif
+
+! Get extrema over the complete simulation only during WriteParticleToHDF5
+IF(GetMinMaxNbrOfParticles)THEN
+  globnPart(4) = MIN(globnPart(1),globnPart(4))
+  globnPart(5) = MAX(globnPart(2),globnPart(5))
+  globnPart(6) = MAX(globnPart(3),globnPart(6))
+END IF ! GetMinMaxNbrOfParticles
+
+END SUBROUTINE GetOffsetAndGlobalNumberOfParts
+
+END MODULE MOD_Particle_Tools

@@ -51,7 +51,7 @@ USE MOD_Globals
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Particle_Vars          ,ONLY: doPartIndex,PartIndex
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,sumOfMatchedParticlesSpecies,PartSpecies,PartReflCount
-USE MOD_Part_Tools             ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition
 #if USE_MPI
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*USE_MPI*/

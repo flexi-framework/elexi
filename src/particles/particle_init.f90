@@ -588,7 +588,7 @@ USE Mod_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_IO_HDF5,                    ONLY: AddToElemData
 USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
-USE MOD_Part_Tools,                 ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools,             ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze,           ONLY: InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling, ONLY: RestartParticleBoundarySampling
 USE MOD_Particle_Boundary_Vars

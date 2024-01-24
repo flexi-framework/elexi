@@ -61,8 +61,7 @@ USE MOD_Particle_Mesh_Vars,         ONLY: ElemEpsOneCell
 USE MOD_Mesh_Vars,                  ONLY: nElems,offsetElem
 USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
 ! Particles
-USE MOD_Particle_Output,            ONLY: GetOffsetAndGlobalNumberOfParts
-USE MOD_Part_Tools,                 ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools,             ONLY: UpdateNextFreePosition,GetOffsetAndGlobalNumberOfParts
 USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies
 USE MOD_Particle_Vars,              ONLY: PartInt,PartData,TurbPartData
 USE MOD_Particle_Vars,              ONLY: PartDataSize,TurbPartDataSize

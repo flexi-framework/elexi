@@ -50,7 +50,7 @@ USE MOD_Part_Emission_Tools    ,ONLY: SetParticleMass
 USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticleTemperature
 #endif
 USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
-USE MOD_Part_Tools             ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition
 USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
 #if USE_MPI
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
@@ -196,7 +196,7 @@ USE MOD_Restart_Vars           ,ONLY: RestartTime
 USE MOD_Part_Emission_Tools    ,ONLY: SamplePoissonDistri
 USE MOD_Part_Emission_Tools    ,ONLY: SetParticleMass
 USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
-USE MOD_Part_Tools             ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Tools ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
 USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists,EmissionTime

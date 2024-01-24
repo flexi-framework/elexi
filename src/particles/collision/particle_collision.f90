@@ -33,12 +33,17 @@ INTERFACE InitializeCollision
   MODULE PROCEDURE InitializeCollision
 END INTERFACE
 
+INTERFACE UpdateParticleShared
+  MODULE PROCEDURE UpdateParticleShared
+END INTERFACE
+
 ! INTERFACE FinalizeCollision
 !   MODULE PROCEDURE FinalizeCollision
 ! END INTERFACE
 
 PUBLIC :: DefineParametersCollission
 PUBLIC :: InitializeCollision
+PUBLIC :: UpdateParticleShared
 ! PUBLIC :: FinalizeCollision
 !==================================================================================================================================
 
@@ -90,7 +95,7 @@ IMPLICIT NONE
 REAL                         :: StartT,EndT
 !===================================================================================================================================
 
-LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE COLLISSIONS...'
+LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE COLLISIONS...'
 GETTIME(StartT)
 
 ! initialize the parameters of the model particle collision
@@ -103,8 +108,7 @@ PartCollisionModel%f        = GETREAL   ('Part-Collisions-FricCoeff')
 CALL IdentifyNeighboringElements()
 
 GETTIME(EndT)
-LBWRITE(UNIT_stdOut,'(A,F0.3,A)') ' INIT PARTICLE COLLISIONS DONE! [',EndT-StartT,'s]'
-LBWRITE(UNIT_stdOut,'(132("-"))')
+CALL DisplayMessageAndTime(EndT-StartT, ' INIT PARTICLE COLLISIONS DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 END SUBROUTINE InitializeCollision
 
@@ -329,7 +333,7 @@ CALL BARRIER_AND_SYNC(Neigh_nElems_Shared_Win    ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(Neigh_offsetElem_Shared_Win,MPI_COMM_SHARED)
 
 CALL Allocate_Shared((/nComputeNodeNeighElems/),CNElem2CNNeighElem_Win,CNElem2CNNeighElem)
-CALL MPI_WIN_LOCK_ALL(0,CNElem2CNNeighElem_Win,IERROR)
+CALL MPI_WIN_LOCK_ALL(0,CNElem2CNNeighElem_Win,iError)
 
 currentNeighElem = .FALSE.
 
@@ -428,6 +432,7 @@ DO iElem = firstElem,lastElem
 
   currentNeighElem = .FALSE.
 END DO ! iElem = firstElem,lastElem
+CALL BARRIER_AND_SYNC(CNElem2CNNeighElem_Win,MPI_COMM_SHARED)
 
 ! Sort each neighbor element in an cell with ascending index
 IF (myComputeNodeRank.EQ.0) THEN
@@ -442,8 +447,119 @@ IF (myComputeNodeRank.EQ.0) THEN
     END IF
   END DO ! iElem
 END IF
+CALL BARRIER_AND_SYNC(CNElem2CNNeighElem_Win,MPI_COMM_SHARED)
 
 END SUBROUTINE IdentifyNeighboringElements
+
+
+SUBROUTINE UpdateParticleShared()
+!===================================================================================================================================
+!> Update particle arrays in shared array
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars               ,ONLY: nGlobalElems,nElems,offsetElem
+USE MOD_MPI_Shared              ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_MPI_Shared_Vars         ,ONLY: displsElem,recvcountElem
+USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank
+USE MOD_MPI_Shared_Vars         ,ONLY: myLeaderGroupRank,nLeaderGroupProcs
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
+USE MOD_Particle_Output_Vars    ,ONLY: offsetnPart,locnPart
+USE MOD_Particle_Tools          ,ONLY: GetOffsetAndGlobalNumberOfParts,UpdateNextFreePosition
+USE MOD_Particle_Vars           ,ONLY: PDM,PEM,PartState
+USE MOD_Particle_Vars           ,ONLY: useLinkedList
+USE MOD_Particle_Collision_Vars
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER,PARAMETER              :: PartIntSize=2
+INTEGER                        :: pcount
+INTEGER                        :: iPart,iElem
+INTEGER                        :: iProc
+! Offsets for MPI_ALLGATHERV
+INTEGER,ALLOCATABLE            :: MPI_COMM_LEADERS_REQUEST(:)           !> Request handle for non-blocking communication
+INTEGER,ALLOCATABLE            :: displsPartInt(:),recvcountPartInt(:)
+!===================================================================================================================================
+
+! Communicate the total number and offset
+CALL GetOffsetAndGlobalNumberOfParts('UpdateParticleShared',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
+
+! Allocate data arrays for mean particle quantities
+CALL Allocate_Shared((/PartIntSize,nGlobalElems         /),PartInt_Shared_Win ,PartInt_Shared)
+CALL Allocate_Shared((/PP_nVarPart,nGlobalNbrOfParticles/),PartData_Shared_Win,PartData_Shared)
+CALL MPI_WIN_LOCK_ALL(0,PartInt_Shared_Win,iError)
+CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
+
+! Order the particles along the SFC using a linked list
+ALLOCATE(PEM%pStart (offsetElem+1:offsetElem+nElems)    , &
+         PEM%pNumber(offsetElem+1:offsetElem+nElems)    , &
+         PEM%pNext  (1           :PDM%maxParticleNumber), &
+         PEM%pEnd   (offsetElem+1:offsetElem+nElems))
+useLinkedList = .TRUE.
+CALL UpdateNextFreePosition()
+
+! Walk along the linked list and fill the data arrays
+iPart = offsetnPart
+! Walk over all elements on local proc
+DO iElem = offsetElem+1,offsetElem+nElems
+  ! Set start of particle numbers in current element
+  PartInt_Shared(1,iElem) = iPart
+  ! Find all particles in current element
+  PartInt_Shared(2,iElem) = PartInt_Shared(1,iElem) + PEM%pNumber(iElem)
+  ! Sum up particles and add properties to output array
+  pcount = PEM%pStart(iElem)
+  DO iPart = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
+    PartData_Shared(:,iPart) = PartState(:,pcount)
+
+    ! Set the index to the next particle
+    pcount = PEM%pNext(pcount)
+  END DO
+  ! Set counter to the end of particle number in the current element
+  iPart = PartInt_Shared(2,iElem)
+  PartInt_Shared(2,iElem) = iPart
+END DO ! iElem = offsetElem+1,offsetElem+nElems
+
+! De-allocate linked list and return to normal particle array mode
+useLinkedList=.FALSE.
+DEALLOCATE( PEM%pStart   &
+          , PEM%pNumber  &
+          , PEM%pNext    &
+          , PEM%pEnd)
+
+CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(PartData_Shared_Win,MPI_COMM_SHARED)
+
+IF (myComputeNodeRank.EQ.0) THEN
+  ! Arrays for the compute node to hold the part offsets
+  ALLOCATE(displsPartInt(   0:nLeaderGroupProcs-1),&
+           recvcountPartInt(0:nLeaderGroupProcs-1))
+
+  displsPartInt(myLeaderGroupRank) = offsetnPart
+  CALL MPI_ALLGATHER(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsPartInt,1,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
+  DO iProc=1,nLeaderGroupProcs-1
+    recvcountPartInt(iProc-1) = displsPartInt(iProc)-displsPartInt(iProc-1)
+  END DO
+  recvcountPartInt(nLeaderGroupProcs-1) = nGlobalNbrOfParticles(3) - displsPartInt(nLeaderGroupProcs-1)
+
+  ALLOCATE(MPI_COMM_LEADERS_REQUEST(1:2))
+  CALL MPI_IALLGATHERV(MPI_IN_PLACE   ,0                                                      ,MPI_DATATYPE_NULL   &
+                      ,PartInt_Shared ,PartIntSize*recvcountElem   ,PartIntSize*displsElem    ,MPI_INTEGER         &
+                      ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(1),iError)
+  CALL MPI_IALLGATHERV(MPI_IN_PLACE   ,0                                                      ,MPI_DATATYPE_NULL   &
+                      ,PartData_Shared,PP_nVarPart*recvcountPartInt,PP_nVarPart*displsPartInt,MPI_DOUBLE_PRECISION &
+                      ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(2),iError)
+  ! Non-blocking but actually blocking
+  CALL MPI_WAITALL(1,MPI_COMM_LEADERS_REQUEST,MPI_STATUSES_IGNORE,iError)
+  DEALLOCATE(MPI_COMM_LEADERS_REQUEST)
+END IF ! myComputeNodeRank.EQ.0
+
+CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(PartData_Shared_Win,MPI_COMM_SHARED)
+
+END SUBROUTINE UpdateParticleShared
 
 
 ! SUBROUTINE IdentifyPeriodicNeighboringElements(BoundsOfElemCenter,LocalBoundsOfElemCenter,dist)

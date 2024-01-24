@@ -284,7 +284,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif /*USE_LOADBALANCE*/
 #if USE_PARTICLES
-USE MOD_Part_Tools          ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools      ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeStep,ParticleTimeStepRK
 USE MOD_Particle_Timedisc_Vars,ONLY: PreviousTime
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt

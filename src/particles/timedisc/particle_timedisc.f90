@@ -277,6 +277,10 @@ USE MOD_Particle_Analyze_Tools,  ONLY: TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: Species,PartSpecies,PartState,Pt,PDM
+#if PARTICLES_COUPLING == 4
+USE MOD_Particle_Collision,      ONLY: UpdateParticleShared
+USE MOD_Particle_Collision_Method,ONLY: ComputeParticleCollisions
+#endif /*PARTICLES_COUPLING == 4*/
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticleRecv,SendNbOfParticles
 #endif /*MPI*/
@@ -299,6 +303,10 @@ REAL                          :: tLBStart
 
 CALL ParticleTimeRHS(t,dt)
 MeasureStartTime()               ! LoadBalance
+
+#if PARTICLES_COUPLING == 4
+CALL UpdateParticleShared()
+#endif /*PARTICLES_COUPLING == 4*/
 
 ! particle push using Euler
 DO iPart=1,PDM%ParticleVecLength
@@ -325,6 +333,10 @@ MeasureSplitTime_PUSH()          ! LoadBalance
 CALL IRecvNbofParticles()
 MeasureSplitTime_PARTCOMM()      ! LoadBalance
 #endif /*USE_MPI*/
+
+#if PARTICLES_COUPLING == 4
+CALL ComputeParticleCollisions()
+#endif /*PARTICLES_COUPLING == 4*/
 
 ! track new particle position
 CALL PerformTracking()
@@ -587,7 +599,7 @@ SUBROUTINE TimeStepSteadyState(t)
 USE MOD_Globals               ,ONLY: CollectiveStop
 USE MOD_PreProc
 USE MOD_TimeDisc_Vars         ,ONLY: dt,b_dt,RKb,RKc,nRKStages,CurrentStage
-USE MOD_Part_Tools            ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools        ,ONLY: UpdateNextFreePosition
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Timers    ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 USE MOD_LoadBalance_Vars      ,ONLY: PerformLBSample

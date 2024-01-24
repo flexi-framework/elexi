@@ -45,11 +45,21 @@ INTEGER,ALLOCPOINT,DIMENSION(:)          :: CNElem2CNNeighElem          !> Compu
 INTEGER,ALLOCPOINT,DIMENSION(:)          :: CNNeighElem2CNElem          !> Reverse Mapping
 ! #endif /*USE_MPI*/
 
+! Shared particle arrays
+REAL   ,ALLOCPOINT,DIMENSION(:,:)        :: PartData_Shared             !>
+INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: PartInt_Shared              !>
+! REAL   ,ALLOCPOINT,DIMENSION(:)          :: PartData_Shared_Flat        !>
+! INTEGER,ALLOCPOINT,DIMENSION(:)          :: PartInt_Shared_Flat         !>
+
 #if USE_MPI
 INTEGER           :: Neigh_nElems_Shared_Win
 INTEGER           :: Neigh_offsetElem_Shared_Win
 INTEGER           :: CNElem2CNNeighElem_Win
 INTEGER           :: CNNeighElem2CNElem_Win
+
+! Shared particle arrays
+INTEGER           :: PartData_Shared_Win
+INTEGER           :: PartInt_Shared_Win
 #endif /*USE_MPI*/
 
 #endif /*PARTICLES_COUPLING == 4*/

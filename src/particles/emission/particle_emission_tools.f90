@@ -722,7 +722,7 @@ SUBROUTINE SetParticlePositionSphere(FractNbr,iInit,chunkSize,particle_positions
 !===================================================================================================================================
 ! modules
 USE MOD_Particle_Vars          ,ONLY: Species
-USE MOD_Part_Tools             ,ONLY: DICEUNITVECTOR
+USE MOD_Particle_Tools         ,ONLY: DICEUNITVECTOR
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

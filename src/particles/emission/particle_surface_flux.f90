@@ -1244,7 +1244,7 @@ USE MOD_Mesh_Vars               ,ONLY: BC,BoundaryType,SideToElem,offsetElem
 USE MOD_Mesh_Vars               ,ONLY: Face_xGP,SurfElem
 USE MOD_Part_Emission_Tools     ,ONLY: IntegerDivide,SetParticleMass,SamplePoissonDistri
 USE MOD_Part_Pos_and_Velo       ,ONLY: SetParticleVelocity
-USE MOD_Part_Tools              ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools          ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Tools  ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars   ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalNonUniqueSideID

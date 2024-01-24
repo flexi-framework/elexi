@@ -63,7 +63,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Particle_Globals
 USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem,nGlobalElems
-USE MOD_Part_Tools              ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools          ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Vars   ,ONLY: doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleReflectionTrack
 USE MOD_Particle_Output_Vars

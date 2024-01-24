@@ -66,14 +66,17 @@ USE MOD_ReadInTools
 USE MOD_Particle_Analyze,           ONLY:DefineParametersParticleAnalyze,InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling, ONLY:DefineParametersParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking, ONLY:DefineParametersParticleBoundaryTracking
-#if PARTICLES_COUPLING >= 2
-USE MOD_Particle_Deposition_Method, ONLY:DefineParametersDepositionMethod
-#endif /*PARTICLES_COUPLING >= 2*/
 USE MOD_Particle_Globals
 USE MOD_Particle_Interpolation,     ONLY:DefineParametersParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY:DefineParametersParticleMesh
 USE MOD_Particle_Surface_Flux,      ONLY:DefineParametersParticleSurfaceFlux
 USE MOD_Particle_Vars
+#if PARTICLES_COUPLING >= 2
+USE MOD_Particle_Deposition_Method, ONLY:DefineParametersDepositionMethod
+#endif /*PARTICLES_COUPLING >= 2*/
+#if PARTICLES_COUPLING == 4
+USE MOD_Particle_Collision,         ONLY:DefineParametersCollission
+#endif /*PARTICLES_COUPLING == 4*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -519,6 +522,9 @@ CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-WallVelo'   , 'Velocity (g
 #if PARTICLES_COUPLING >= 2
 CALL DefineParametersDepositionMethod()
 #endif /*PARTICLES_COUPLING >= 2*/
+#if PARTICLES_COUPLING >= 2
+CALL DefineParametersCollission()
+#endif /*PARTICLES_COUPLING >= 2*/
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
 CALL DefineParametersParticleBoundaryTracking()
@@ -721,6 +727,7 @@ ParticlesInitIsDone=.TRUE.
 
 SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLES DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitParticles
 
 
@@ -738,13 +745,16 @@ USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_Records,RPP_Records_Glob
 USE MOD_Particle_Boundary_Sampling ,ONLY: InitParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking ,ONLY: InitParticleBoundaryTracking
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove,doParticleReflectionTrack
-#if PARTICLES_COUPLING >= 2
-USE MOD_Particle_Deposition        ,ONLY: InitializeDeposition
-#endif /*PARTICLES_COUPLING >= 2*/
 USE MOD_Particle_Interpolation     ,ONLY: InitParticleInterpolation
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
 USE MOD_ReadInTools
+#if PARTICLES_COUPLING >= 2
+USE MOD_Particle_Deposition        ,ONLY: InitializeDeposition
+#endif /*PARTICLES_COUPLING >= 2*/
+#if PARTICLES_COUPLING == 4
+USE MOD_Particle_Collision         ,ONLY: InitializeCollision
+#endif /*PARTICLES_COUPLING == 4*/
 #if USE_MPI
 USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MPI_Request
 USE MOD_Particle_MPI_Emission      ,ONLY: InitEmissionComm
@@ -773,8 +783,12 @@ IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
 
 ! Fluid-particle coupling
 #if PARTICLES_COUPLING >= 2
-doCalcSourcePart        = GETLOGICAL('Part-CalcSource'    )
+doCalcPartSource        = GETLOGICAL('Part-CalcSource'    )
 #endif /*PARTICLES_COUPLING >= 2*/
+! Particle-particle coupling
+#if PARTICLES_COUPLING == 4
+doCalcPartCollision     = GETLOGICAL('Part-CalcCollision'    )
+#endif /*PARTICLES_COUPLING == 4*/
 
 doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' )
 doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam')
@@ -881,8 +895,12 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,IERROR)
 !#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 #if PARTICLES_COUPLING >= 2
-IF (doCalcSourcePart) CALL InitializeDeposition()
+IF (doCalcPartSource)    CALL InitializeDeposition()
 #endif /*PARTICLES_COUPLING >= 2*/
+
+#if PARTICLES_COUPLING == 4
+IF (doCalcPartCollision) CALL InitializeCollision()
+#endif /*PARTICLES_COUPLING == 4*/
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 
@@ -1946,7 +1964,7 @@ CALL FinalizeParticleSurfaces()
 CALL FinalizeParticleMesh()
 
 #if PARTICLES_COUPLING >= 2
-IF (doCalcSourcePart) CALL FinalizeDeposition()
+IF (doCalcPartSource) CALL FinalizeDeposition()
 #endif /*PARTICLES_COUPLING >= 2*/
 
 ParticlesInitIsDone = .FALSE.

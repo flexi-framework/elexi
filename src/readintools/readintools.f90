@@ -1958,7 +1958,7 @@ FUNCTION GETINTFROMSTR(name) result(value)
 USE MOD_StringTools ,ONLY: ISINT, STRICMP
 #if USE_PARTICLES && USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
-#endif /USE_PARTICLES && *USE_LOADBALANCE*/
+#endif /*USE_PARTICLES && *USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

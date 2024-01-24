@@ -294,7 +294,7 @@ USE MOD_Particle_MPI        ,ONLY: IRecvNbOfParticles,MPIParticleSend,MPIParticl
 #endif /* USE_PARTICLES */
 #if PARTICLES_COUPLING >= 2
 USE MOD_Particle_RHS        ,ONLY: CalcSourcePart,SourcePart
-USE MOD_Particle_Vars       ,ONLY: doCalcSourcePart
+USE MOD_Particle_Vars       ,ONLY: doCalcPartSource
 #endif /*PARTICLES_COUPLING >= 2*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -640,7 +640,7 @@ END IF
 
 #if USE_PARTICLES && PARTICLES_COUPLING >= 2
 ! Calculate particle source and start communication
-IF(doCalcSourcePart) CALL CalcSourcePart()
+IF(doCalcPartSource) CALL CalcSourcePart()
 #endif /*USE_PARTICLES && PARTICLES_COUPLING >= 2*/
 MeasureStartTime()          ! LoadBalance
 ! 13. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
@@ -652,7 +652,7 @@ MeasureSplitTime_DG()       ! LoadBalance
 !       > Issue: Particle communication must be finished before CalcSourcePart
 #if USE_PARTICLES && PARTICLES_COUPLING >= 2
 ! Receive particle source and add to time integral
-IF(doCalcSourcePart) CALL SourcePart(Ut)
+IF(doCalcPartSource) CALL SourcePart(Ut)
 #endif /*USE_PARTICLES && PARTICLES_COUPLING >= 2*/
 
 ! 14. Perform overintegration and apply Jacobian

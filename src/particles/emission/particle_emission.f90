@@ -484,7 +484,7 @@ DO iSpec=1,nSpecies
         CASE('cell_local')
           ! Only calculate the particle number if the velocity is known
           SELECT CASE(TRIM(Species(iSpec)%Init(iInit)%velocityDistribution))
-            CASE('constant')
+            CASE('constant', 'random')
               ! Volume of the mesh region on this proc
               IF (LocalVolume.GT.0.) THEN
                 Species(iSpec)%Init(iInit)%initialParticleNumber = NINT(Species(iSpec)%Init(iInit)%PartDensity * LocalVolume)

@@ -54,7 +54,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-CALL prms%SetSection("Particle Deposition")
+CALL prms%SetSection('Particle Deposition')
 
 CALL prms%CreateLogicalOption(      'Part-CalcSource'          , 'Flag to enable two-way coupling'                                 &
                                                                , '.FALSE.')

@@ -54,7 +54,8 @@ REAL                          :: PartGravity(3)
 INTEGER , ALLOCATABLE         :: seeds(:)                                    ! =>NULL()   ! Seeds for Random Number Generator
 
 LOGICAL                       :: doPartIndex                                 ! Flag to give particles an unique (or not) index
-LOGICAL                       :: doCalcSourcePart                            ! Flag to enable two-way coupling (NN)
+LOGICAL                       :: doCalcPartSource                            ! Flag to enable two-way coupling (NN)
+LOGICAL                       :: doCalcPartCollision                         ! Flag to enable four-way coupling (NN)
 LOGICAL                       :: doWritePartDiam                             ! Flag to enable writeout of particle diameter
 LOGICAL                       :: doRandomPartDiam                            ! Flag to enable random particle diameter
 #if USE_SPHERICITY

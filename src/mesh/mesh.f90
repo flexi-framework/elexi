@@ -601,9 +601,9 @@ CALL FinalizeParticleMeshBasis()
 MeshInitIsDone = .FALSE.
 
 ! Shared mesh readin happens during mesh readin, finalize with gathered routine here
-#if USE_LOADBALANCE || USE_PARTICLES
+#if USE_PARTICLES || USE_LOADBALANCE
 CALL FinalizeMeshShared()
-#endif /*USE_LOADBALANCE || USE_PARTICLES*/
+#endif /*USE_PARTICLES || USE_LOADBALANCE*/
 
 #if USE_LOADBALANCE
 IF (PerformLoadBalance) RETURN

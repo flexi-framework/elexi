@@ -148,11 +148,11 @@ REAL                           :: dist
 INTEGER                        :: iDir,jDir,kDir
 INTEGER                        :: iPeriodic,jPeriodic,kPeriodic
 ! Mappings
-LOGICAL,ALLOCATABLE            :: currentNeighElem(:)
+LOGICAL,ALLOCATABLE            :: currentNeighElem(:,:)             ! Elem: 1) tested, 2)
 INTEGER                        :: NeighElemID
 INTEGER,ALLOCATABLE            :: nNeighElems(:)
 INTEGER                        :: offsetNeighElem
-INTEGER                        :: currentOffset
+INTEGER                        :: currentOffset,currentCounter
 ! BGM
 INTEGER                        :: iBGM,jBGM,kBGM
 INTEGER                        :: iBGMmin,jBGMmin,kBGMmin
@@ -186,8 +186,8 @@ lastElem  = nElems
 
 ! allocate arrays to store detected neighboring elements for the currently considered element only
 ! i.e. these lists are reset when we consider a new element
-ALLOCATE(currentNeighElem(nComputeNodeElems))
-ALLOCATE(nNeighElems(     nComputeNodeElems))
+ALLOCATE(currentNeighElem(2,nComputeNodeElems))
+ALLOCATE(nNeighElems(       nComputeNodeElems))
 currentNeighElem = .FALSE.
 nNeighElems      = 0
 
@@ -244,10 +244,15 @@ DO iElem = firstElem,lastElem
 
           ! loop over cells of the BGM that are in the radius of ElemID
           DO kBGM=kBGMmin,kBGMmax ; DO jBGM=jBGMmin,jBGMmax ; DO iBGM=iBGMmin,iBGMmax
-        ElemLoop: DO iLocElem = 1,FIBGM_nElems(iBGM,jBGM,kBGM)
+  ElemLoop: DO iLocElem = 1,FIBGM_nElems(iBGM,jBGM,kBGM)
 
               ! retrieve the (global ID) of the tested element
-              NeighElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iLocElem)
+              NeighElemID   = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iLocElem)
+              CNNeighElemID = GetCNElemID(NeighElemID)
+
+              ! check if tested element NeighElemID was previously tested/found
+              IF (ANY(currentNeighElem(:,CNNeighElemID),1)) CYCLE
+              currentNeighElem(1,CNNeighElemID) = .TRUE.
 
               ! ignore myself
               IF (ElemID.EQ.NeighElemID) CYCLE
@@ -268,23 +273,21 @@ DO iElem = firstElem,lastElem
 
               ! the current tested element is discared if it is not close enough to the current element
               IF (dist .GT. halo_eps + BoundsOfElemCenter(4) + LocalBoundsOfElemCenter(4)) CYCLE ElemLoop
+              currentNeighElem(2,CNNeighElemID) = .TRUE.
 
-              CNNeighElemID = GetCNElemID(NeighElemID)
-
-              ! check if tested element NeighElemID is not already a detected neighbor of ElemID (to avoid duplicates)
-              IF (currentNeighElem(CNNeighElemID)) CYCLE
-              currentNeighElem(CNNeighElemID) = .TRUE.
             END DO ElemLoop
 
             ! Count the number of total neighbor elements
-            nNeighElems(iElem) =  COUNT(currentNeighElem)
+            nNeighElems(iElem) =  COUNT(currentNeighElem(2,:))
           END DO; END DO; END DO
+          ! Reset the tested counter as periodic sides must be checked in all directions
+          currentNeighElem(1,:) = .FALSE.
         END DO; END DO; END DO
       END DO ! kPeriodic
     END DO ! jPeriodic
   END DO ! iPeriodic
 
-  currentNeighElem   = .FALSE.
+  currentNeighElem(2,:) = .FALSE.
 END DO ! iElem = firstElem,lastElem
 
 sendint = SUM(nNeighElems)
@@ -307,6 +310,8 @@ END DO
 recvcountNeighElem(nComputeNodeProcessors-1) = nComputeNodeNeighElems - displsNeighElem(nComputeNodeProcessors-1)
 CALL MPI_ALLGATHERV(MPI_IN_PLACE,0                                 ,MPI_DATATYPE_NULL &
                    ,nNeighElems ,recvcountNeighElem,displsNeighElem,MPI_INTEGER      ,MPI_COMM_SHARED,iError)
+DEALLOCATE(displsNeighElem   ,&
+           recvcountNeighElem)
 
 ! allocated shared memory for nElems per BGM cell
 ! MPI shared memory is continuous, beginning from 1. All shared arrays have to
@@ -329,6 +334,8 @@ IF (myComputeNodeRank.EQ.nComputeNodeProcessors-1) THEN
     currentOffset           = currentoffset + nNeighElems(iElem)
   END DO ! iElem
 END IF
+DEALLOCATE(nNeighElems)
+
 CALL BARRIER_AND_SYNC(Neigh_nElems_Shared_Win    ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(Neigh_offsetElem_Shared_Win,MPI_COMM_SHARED)
 
@@ -336,12 +343,10 @@ CALL Allocate_Shared((/nComputeNodeNeighElems/),CNElem2CNNeighElem_Win,CNElem2CN
 CALL MPI_WIN_LOCK_ALL(0,CNElem2CNNeighElem_Win,iError)
 
 currentNeighElem = .FALSE.
-
-! reset the total number of detected neighboring elements
-nNeighElems = 0
+currentCounter   = 0.      !< All neighbor elements on current proc
 
 DO iElem = firstElem,lastElem
-  ElemID  = GetGlobalElemID(iElem)
+  ElemID = GetGlobalElemID(iElem)
 
   OrigBoundsOfElemCenter(1:3) = (/    SUM(BoundsOfElem_Shared(1:2,1,iElem)),                                                   &
                                       SUM(BoundsOfElem_Shared(1:2,2,iElem)),                                                   &
@@ -393,10 +398,15 @@ DO iElem = firstElem,lastElem
 
           ! loop over cells of the BGM that are in the radius of ElemID
           DO kBGM=kBGMmin,kBGMmax ; DO jBGM=jBGMmin,jBGMmax ; DO iBGM=iBGMmin,iBGMmax
-        ElemLoop2: DO iLocElem = 1,FIBGM_nElems(iBGM,jBGM,kBGM)
+ ElemLoop2: DO iLocElem = 1,FIBGM_nElems(iBGM,jBGM,kBGM)
 
               ! retrieve the (global ID) of the tested element
-              NeighElemID = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iLocElem)
+              NeighElemID   = FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+iLocElem)
+              CNNeighElemID = GetCNElemID(NeighElemID)
+
+              ! check if tested element NeighElemID was previously tested/found
+              IF (ANY(currentNeighElem(:,CNNeighElemID),1)) CYCLE
+              currentNeighElem(1,CNNeighElemID) = .TRUE.
 
               ! ignore myself
               IF (ElemID.EQ.NeighElemID) CYCLE
@@ -413,26 +423,24 @@ DO iElem = firstElem,lastElem
 
               ! the current tested element is discared if it is not close enough to the current element
               IF (dist .GT. halo_eps + BoundsOfElemCenter(4) + LocalBoundsOfElemCenter(4)) CYCLE ElemLoop2
-
-              CNNeighElemID = GetCNElemID(NeighElemID)
-
-              ! check if tested element NeighElemID is not already a detected neighbor of ElemID (to avoid duplicates)
-              IF (currentNeighElem(CNNeighElemID)) CYCLE
-              currentNeighElem(CNNeighElemID) = .TRUE.
-              nNeighElems                     = nNeighElems + 1
+              currentNeighElem(2,CNNeighElemID) = .TRUE.
+              currentCounter                    = currentCounter + 1
 
               ! Save the mapping
-              CNElem2CNNeighElem(offsetNeighElem + nNeighElems) = CNNeighElemID
+              CNElem2CNNeighElem(offsetNeighElem + currentCounter) = CNNeighElemID
             END DO ElemLoop2
           END DO; END DO; END DO
+          ! Reset the tested counter as periodic sides must be checked in all directions
+          currentNeighElem(1,:) = .FALSE.
         END DO; END DO; END DO
       END DO ! kPeriodic
     END DO ! jPeriodic
   END DO ! iPeriodic
 
-  currentNeighElem = .FALSE.
+  currentNeighElem(2,:) = .FALSE.
 END DO ! iElem = firstElem,lastElem
 CALL BARRIER_AND_SYNC(CNElem2CNNeighElem_Win,MPI_COMM_SHARED)
+DEALLOCATE(currentNeighElem)
 
 ! Sort each neighbor element in an cell with ascending index
 IF (myComputeNodeRank.EQ.0) THEN
@@ -446,6 +454,8 @@ IF (myComputeNodeRank.EQ.0) THEN
       CNElem2CNNeighElem(Neigh_offsetElem(iElem)+1:Neigh_offsetElem(iElem)+Neigh_nElems(iElem)) = Neigh_Sort
     END IF
   END DO ! iElem
+
+  DEALLOCATE(Neigh_Sort)
 END IF
 CALL BARRIER_AND_SYNC(CNElem2CNNeighElem_Win,MPI_COMM_SHARED)
 

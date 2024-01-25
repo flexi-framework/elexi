@@ -304,10 +304,6 @@ REAL                          :: tLBStart
 CALL ParticleTimeRHS(t,dt)
 MeasureStartTime()               ! LoadBalance
 
-#if PARTICLES_COUPLING == 4
-CALL UpdateParticleShared()
-#endif /*PARTICLES_COUPLING == 4*/
-
 ! particle push using Euler
 DO iPart=1,PDM%ParticleVecLength
   IF (PDM%ParticleInside(iPart)) THEN
@@ -323,6 +319,10 @@ DO iPart=1,PDM%ParticleVecLength
   ENDIF !< ParticleInside
 END DO
 
+#if PARTICLES_COUPLING == 4
+CALL UpdateParticleShared()
+#endif /*PARTICLES_COUPLING == 4*/
+
 ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath
 MeasureSplitTime_PUSH()          ! LoadBalance
@@ -335,11 +335,10 @@ MeasureSplitTime_PARTCOMM()      ! LoadBalance
 #endif /*USE_MPI*/
 
 #if PARTICLES_COUPLING == 4
-CALL ComputeParticleCollisions()
+CALL ComputeParticleCollisions(dt)
 #endif /*PARTICLES_COUPLING == 4*/
-
-! track new particle position
 CALL PerformTracking()
+
 MeasureSplitTime_TRACK()         ! LoadBalance
 ! emitt particles inserted in current time step
 CALL ParticleInserting()

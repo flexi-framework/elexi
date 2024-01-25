@@ -426,15 +426,15 @@ DO iPart = 1,PDM%ParticleVecLength
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
 
+        ! TODO
+
 ! -- 6. Update particle position and decide if double check might be necessary
 ! check what happened with particle (crossedBC or switched element) and set partisdone or double check
 #if USE_LOADBALANCE
           IF (OldElemID.GE.offsetElem+1 .AND.OldElemID.LE.offsetElem+nElems) &
             CALL LBElemSplitTime(OldElemID-offsetElem,tLBStart)
 #endif /*USE_LOADBALANCE*/
-          IF(crossedBC) THEN
-            firstElem = ElemID
-          END IF
+          IF (crossedBC) firstElem = ElemID
 
           IF (crossedBC .OR. SwitchedElement) THEN
             IF (PartDoubleCheck) THEN

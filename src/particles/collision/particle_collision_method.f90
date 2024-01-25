@@ -36,33 +36,436 @@ PUBLIC :: ComputeParticleCollisions
 
 CONTAINS
 
+
+SUBROUTINE ComputeParticleBCIntersection(PartID,CNElemID,firstSide,lastSide,nLocSides,dtLoc,dtBC)
+!===================================================================================================================================
+!> Compute particle tracing path until first BC intersection
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
+USE MOD_Particle_Collision_Vars
+USE MOD_Particle_Globals         ,ONLY: VECNORM
+USE MOD_Particle_Localization    ,ONLY: PARTHASMOVED
+USE MOD_Particle_Mesh_Vars       ,ONLY: SideBCMetrics,ElemToBCSides
+USE MOD_Particle_Mesh_Vars       ,ONLY: GEO,ElemRadiusNGeo
+USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID,GetCNSideID
+USE MOD_Particle_Intersection    ,ONLY: ComputeCurvedIntersection
+USE MOD_Particle_Intersection    ,ONLY: ComputePlanarRectIntersection
+USE MOD_Particle_Intersection    ,ONLY: ComputePlanarCurvedIntersection
+USE MOD_Particle_Intersection    ,ONLY: ComputeBiLinearIntersection
+USE MOD_Particle_Surfaces_Vars   ,ONLY: SideType
+USE MOD_Particle_Tracking_Vars   ,ONLY: CartesianPeriodic
+USE MOD_Particle_Vars            ,ONLY: PEM,PDM
+USE MOD_Particle_Vars            ,ONLY: PartState,LastPartPos
+USE MOD_Utils                    ,ONLY: InsertionSort
+! LOCAL VARIABLES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)            :: PartID
+INTEGER,INTENT(IN)            :: CNElemID
+INTEGER,INTENT(IN)            :: firstSide
+INTEGER,INTENT(IN)            :: lastSide
+INTEGER,INTENT(IN)            :: nlocSides
+REAL,INTENT(IN)               :: dtLoc
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)              :: dtBC
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Counters
+INTEGER                       :: ilocSide
+! Sides
+INTEGER                       :: SideID,CNSideID,flip
+! Particles
+REAL                          :: PartTrajectory(1:3),lengthPartTrajectory
+! Tracking
+REAL                          :: localpha(firstSide:lastSide),xi(firstSide:lastSide),eta(firstSide:lastSide)
+REAL                          :: alphaOld
+LOGICAL                       :: isHit,doubleCheck
+!-----------------------------------------------------------------------------------------------------------------------------------
+
+dtBC = -1.
+
+! check if element is a BC element
+IF (nLocSides.EQ.0) RETURN
+
+! Calculate particle trajectory
+PartTrajectory       = PartData_Shared(PART_VELV,PartID) * dtLoc
+lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
+
+! Check if the particle moved at all. If not, tracking is done
+IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID))) RETURN
+
+PartTrajectory       = PartTrajectory/lengthPartTrajectory
+locAlpha             = HUGE(1.)
+
+DO iLocSide = firstSide,LastSide
+
+  ! SideBCMetrics is sorted by distance. stop if the first side is out of range
+  IF (SideBCMetrics(BCSIDE_DISTANCE,ilocSide).GT.lengthPartTrajectory) CYCLE
+
+  ! side potentially in range (halo_eps)
+  SideID   = INT(SideBCMetrics(BCSIDE_SIDEID,ilocSide))
+  CNSideID = GetCNSideID(SideID)
+
+  ! BezierControlPoints are now built in cell local system. Hence, sides have always the flip from the shared SideInfo
+  flip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
+
+  SELECT CASE(SideType(CNSideID))
+    CASE(PLANAR_RECT)
+      CALL ComputePlanarRectIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
+                                        ,  xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
+    CASE(BILINEAR,PLANAR_NONRECT)
+      CALL ComputeBiLinearIntersection(    isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
+                                      ,    xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
+    CASE(PLANAR_CURVED)
+      CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
+                                          ,xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
+    CASE(CURVED)
+      CALL ComputeCurvedIntersection(      isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
+                                    ,      xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
+  END SELECT
+END DO ! iLocSide = firstSide,LastSide
+
+IF (MAXVAL(locAlpha).GT.0) dtBC = MINVAL(locAlpha,locAlpha.GT.0)
+
+END SUBROUTINE ComputeParticleBCIntersection
+
+
 !----------------------------------------------------------------------------------------------------------------------------------
 
-SUBROUTINE ComputeParticleCollisions()
+SUBROUTINE ComputeParticleCollisions(dtLoc)
 !===================================================================================================================================
 !> Compute particle collisions
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Mesh_Vars                ,ONLY: nElems,offsetElem
 USE MOD_Particle_Collision_Vars
-USE MOD_Particle_Vars,            ONLY: PDM
+USE MOD_Particle_Globals         ,ONLY: VECNORM
+USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides
+USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID,GetGlobalElemID
+USE MOD_Particle_Vars            ,ONLY: PEM
+USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 #if USE_MPI
-USE MOD_MPI_Shared_Vars,          ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared,               ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_MPI_Shared_Vars,          ONLY: myComputeNodeRank
+USE MOD_MPI_Shared_Vars,          ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)               :: dtLoc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL                          :: PartBCdt
+INTEGER                       :: iElem,ElemID
+INTEGER                       :: iPart,iPart1,iPart2
+INTEGER                       :: CNElemID,CNNeighElemID
+INTEGER                       :: NeighElemID,iCNNeighElem
+! Trajectories and position
+REAL                          :: P1(3),P2(3)
+! Collisions
+REAL                          :: a,b,c,delta,dtColl
+! Neighbor particles
+INTEGER                       :: nProcParts
+LOGICAL,ALLOCATABLE           :: PartColl(:)
 !===================================================================================================================================
 
-! ElemID = PDM%Element(PartID)
-! DO iElem = Neigh_offsetElem(ElemID)+1:Neigh_offsetElem(ElemID)+Neigh_nElems(ElemID)
-!   CNNeighElemID = CNElem2CNNeighElem(iElem)
-! END DO
-! CALL ComputeHardSphereCollision(iPart1,iPart2,dtColl)
+CALL Allocate_Shared((/nGlobalNbrOfParticles(3)/),PartBC_Shared_Win,PartBC_Shared)
+CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win,iError)
+IF (myComputeNodeRank.EQ.0) PartBC_Shared = -1.
+CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
+
+! dtColl,dtBC,PartID
+
+! loop over internal elements
+DO iElem = offsetElem+1,offsetElem+nElems
+  ! skip if there is no particles inside the current element
+  IF (PartInt_Shared(2,iElem).EQ.PartInt_Shared(1,iElem)) CYCLE
+
+  SELECT CASE(TrackingMethod)
+    CASE (TRIATRACKING)
+      ! FIXME
+    CASE (TRACING)
+      ! FIXME
+    CASE (REFMAPPING)
+      ! loop over all particles in the element
+      DO iPart = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
+        CNElemID = GetCNElemID(iElem)
+
+        CALL ComputeParticleBCIntersection(PartID    = iPart                                                                               , &
+                                           CNElemID  = CNElemID                                                                            , &
+                                           firstSide = ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + 1                                       , &
+                                           lastSide  = ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID), &
+                                           nLocSides = ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID)                                            , &
+                                           dtLoc     = dtLoc                                                                               , &
+                                           dtBC      = PartBCdt)
+
+        ! Scale intersection dt with time step
+        PartBC_Shared(iPart) = PartBCdt * dtLoc
+      END DO ! iPart
+    END SELECT
+END DO ! iElem
+CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
+
+IF (myComputeNodeRank.EQ.0) THEN
+  ! ALLOCATE(MPI_COMM_LEADERS_REQUEST(1:2))
+  CALL MPI_ALLGATHERV(MPI_IN_PLACE   ,0                           ,MPI_DATATYPE_NULL    &
+                     ,PartBC_Shared,recvcountPartInt,displsPartInt,MPI_DOUBLE_PRECISION &
+                     ,MPI_COMM_LEADERS_SHARED,iError)
+  ! DEALLOCATE(MPI_COMM_LEADERS_REQUEST)
+  DEALLOCATE(displsPartInt)
+  DEALLOCATE(recvcountPartInt)
+END IF ! myComputeNodeRank.EQ.0
+CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
+
+! Build a mapping from global particle IDs to neighbor particle IDs
+! > Count number of particles in own and neighbor elements
+nProcParts = 0
+DO iElem = 1,nProcNeighElems
+  ElemID = NeighElemsProc(iElem)
+
+  ! > Map global offset to neighbor offset
+  offsetNeighElemPart(ElemID) = PartInt_Shared(1,iElem) - nProcParts
+
+  !> Increment the counter by the current number of particles
+  nProcParts = nProcParts + PartInt_Shared(2,ElemID)-PartInt_Shared(1,ElemID)
+END DO
+
+! > Allocate an array to hold the mapping
+ALLOCATE(PartColl(nProcParts))
+PartColl = .FALSE.
+
+! > Allocate local collision arrays
+! ALLOCATE(PartColl(PartInt_Shared(1,offsetElem+1)+1:PartInt_Shared(2,offsetEle+nElems)))
+
+! loop over internal elements
+DO iElem = offsetElem+1,offsetElem+nElems
+  ! skip if there is no particles inside the current element
+  IF (PartInt_Shared(2,iElem).EQ.PartInt_Shared(1,iElem)) CYCLE
+
+  ! loop over all particles in the element
+  DO iPart1 = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
+    ! Ignore already collided particles
+    ! IF (PartColl(iPart1 - offsetNeighElemPart(iElem))) IPWRITE(*,*) 'ipart1:', ipart1
+    IF (PartColl(iPart1 - offsetNeighElemPart(iElem))) CYCLE
+
+    ! loop over neighbor elements (includes own element)
+PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Neigh_nElems(iElem)
+      CNNeighElemID = CNElem2CNNeighElem(iCNNeighElem)
+      NeighElemID   = GetGlobalElemID(CNNeighElemID)
+
+      ! loop over all particles in the element
+      DO iPart2 = PartInt_Shared(1,NeighElemID)+1,PartInt_Shared(2,NeighElemID)
+        ! Ignore already collided particles
+        ! IF (PartColl(iPart2 - offsetNeighElemPart(NeighElemID))) IPWRITE(*,*) 'ipart2:', ipart2
+        IF (PartColl(iPart2 - offsetNeighElemPart(NeighElemID))) CYCLE
+
+        ! FIXME: What about periodic?
+
+        ! Check if particles will collide
+        P1 = PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_VELV,iPart1)*dtLoc
+        P2 = PartData_Shared(PART_POSV,iPart2) - PartData_Shared(PART_VELV,iPart2)*dtLoc
+        ! compute coefficients a,b,c of the previous quadratic equation (a*t^2+b*t+c=0)
+        ASSOCIATE(Term => PartData_Shared(PART_VELV,iPart2) - PartData_Shared(PART_VELV,iPart1))
+        a = DOT_PRODUCT(Term,Term)
+        END ASSOCIATE
+
+        ! if a.EQ.0 then b.EQ.0 and so the previous equation has no solution: go to the next pair
+        IF (a.EQ.0.) CYCLE
+
+        b = 2. * DOT_PRODUCT(PartData_Shared(PART_VELV,iPart2) - PartData_Shared(PART_VELV,iPart1),P2 - P1)
+        ASSOCIATE(Term => P2 - P1 - (PartData_Shared(PART_DIAM,iPart2) + PartData_Shared(PART_DIAM,iPart1)))
+        c = DOT_PRODUCT(Term,Term) ** 2. / 4.
+        END ASSOCIATE
+
+        ! if delta < 0, no collision is possible for this pair
+        delta = b * b - 4. * a * c
+        IF (delta.LT.0.) CYCLE
+
+        ! a collision is possible, determine when relatively to (tStage+dtloc)
+        dtColl = (b + SQRT(delta)) / (2. * a) * dtLoc
+        ! the collision is only valid if it occurred between tStage and tStage+dtLoc
+        IF (dtColl.LT.0. .OR. dtColl.GT.dtLoc) CYCLE
+
+        ! the collision is only valid if it occurred before a BC intersection
+        IF (dtColl.GT.PartBC_Shared(iPart1)) CYCLE
+        IF (dtColl.GT.PartBC_Shared(iPart2)) CYCLE
+
+        ! collision found
+        ! IPWRITE(*,*) 'iElem,NeighElemID:', iElem,NeighElemID
+        ! IPWRITE(*,*) 'iPart1,iPart1 - offsetNeighElemPart(iElem)      :', iPart1,iPart1 - offsetNeighElemPart(iElem)      ,PartData_Shared(PART_POSV,iPart1)
+        ! IPWRITE(*,*) 'iPart2,iPart2 - offsetNeighElemPart(NeighElemID):', iPart2,iPart2 - offsetNeighElemPart(NeighElemID),PartData_Shared(PART_POSV,iPart2)
+        PartColl(iPart1 - offsetNeighElemPart(iElem      )) = .TRUE.
+        PartColl(iPart2 - offsetNeighElemPart(NeighElemID)) = .TRUE.
+
+        ! FIXME: apply the power
+
+        EXIT PartLoop
+        ! stop 1
+
+
+
+
+
+      END DO ! iPart2
+    END DO PartLoop ! iCNNeighElem
+  END DO ! iPart1
+END DO ! iElem
+
+IPWRITE(*,*) 'PartColl:', PartColl
+stop 2
+
+
+
+
+
+
+  !     ! FIXME: What about periodic?
+  !
+  !     ! Check if particles will collide
+  !     P1 = PartState(PART_POSV,PartID1) - PartState(PART_VELV,PartID1)*dtLoc
+  !     P2 = PartState(PART_POSV,PartID2) - PartState(PART_VELV,PartID2)*dtLoc
+  !     ! compute coefficients a,b,c of the previous quadratic equation (a*t^2+b*t+c=0)
+  !     a = DOTPRODUCT(PartState(PART_VELV,iPart2) - PartState(PART_VELV,PartID1))
+  !
+  !     ! if a.EQ.0 then b.EQ.0 and so the previous equation has no solution: go to the next pair
+  !     IF (a.EQ.0.) CYCLE
+  !
+  !     b = 2. * DOT_PRODUCT(PartState(PART_VELV,iPart2) - PartState(PART_VELV,PartID1),P2 - P1)
+  !     ASSOCIATE(Term => (P2 - P1 - (PartState(PART_DIAM,iPart2) + PartState(PART_DIAM,PartID1))))
+  !     c = DOTPRODUCT(Term,Term) ** 2. / 4.
+  !     END ASSOCIATE
+  !
+  !     ! if delta < 0, no collision is possible for this pair
+  !     delta = b * b - 4. * a * c
+  !     IF (delta.LT.0.) CYCLE
+  !
+  !     ! a collision is possible, determine when relatively to (tStage+dtloc)
+  !     dtColl = (b + SQRT(delta)) / (2. * a)
+  !     ! the collision is only valuable if it occurred between tStage and tStage+dtLoc
+  !     IF (dtColl.LT.0. .OR. dtColl.GT.dtLoc) CYCLE
+  !
+  !     ! Store the collision
+  !     PartColl(1,PartID1) = dtColl
+  !     PartColl(2,PartID1) = PartID2
+  !     PartColl(1,PartID2) = dtColl
+  !     PartColl(2,PartID2) = PartID1
+
+  ! FIXBME:
+  ! PartBC_Shared
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ! ! skip if there is no particles inside the current element
+  ! IF (PEM%pNumber(iElem).EQ.0) CYCLE
+  !
+  ! ! loop over all particles in the element, linked list!
+  ! DO iPart1 = PEM%pStart(iElem),PEM%pStart(iElem)+PEM%pNumber(iElem)
+  !   PartID1 = PEM%pStart(iElem)
+  !
+  !   ! Check collisions with particles in the same element
+  !   DO iPart2 = PEM%pStart(iElem),PEM%pStart(iElem)+PEM%pNumber(iElem)
+  !     PartID2 = PEM%pStart(iElem)
+  !
+  !     ! Particle not checked, set pointer to next particle
+  !     IF (PartID1.GE.PartID2) THEN
+  !       PartID2 = PEM%pNext(PartID2)
+  !       CYCLE
+  !     END IF
+  !
+  !     ! > Check for collisions
+  !     ! Ignore already collided particles
+  !     IF (PartColl(1,PartID1).GT.0) CYCLE
+  !     IF (PartColl(1,PartID2).GT.0) CYCLE
+  !
+  !     ! FIXME: What about periodic?
+  !
+  !     ! Check if particles will collide
+  !     P1 = PartState(PART_POSV,PartID1) - PartState(PART_VELV,PartID1)*dtLoc
+  !     P2 = PartState(PART_POSV,PartID2) - PartState(PART_VELV,PartID2)*dtLoc
+  !     ! compute coefficients a,b,c of the previous quadratic equation (a*t^2+b*t+c=0)
+  !     a = DOTPRODUCT(PartState(PART_VELV,iPart2) - PartState(PART_VELV,PartID1))
+  !
+  !     ! if a.EQ.0 then b.EQ.0 and so the previous equation has no solution: go to the next pair
+  !     IF (a.EQ.0.) CYCLE
+  !
+  !     b = 2. * DOT_PRODUCT(PartState(PART_VELV,iPart2) - PartState(PART_VELV,PartID1),P2 - P1)
+  !     ASSOCIATE(Term => (P2 - P1 - (PartState(PART_DIAM,iPart2) + PartState(PART_DIAM,PartID1))))
+  !     c = DOTPRODUCT(Term,Term) ** 2. / 4.
+  !     END ASSOCIATE
+  !
+  !     ! if delta < 0, no collision is possible for this pair
+  !     delta = b * b - 4. * a * c
+  !     IF (delta.LT.0.) CYCLE
+  !
+  !     ! a collision is possible, determine when relatively to (tStage+dtloc)
+  !     dtColl = (b + SQRT(delta)) / (2. * a)
+  !     ! the collision is only valuable if it occurred between tStage and tStage+dtLoc
+  !     IF (dtColl.LT.0. .OR. dtColl.GT.dtLoc) CYCLE
+  !
+  !     ! Store the collision
+  !     PartColl(1,PartID1) = dtColl
+  !     PartColl(2,PartID1) = PartID2
+  !     PartColl(1,PartID2) = dtColl
+  !     PartColl(2,PartID2) = PartID1
+  !
+  !     ! Move particle index to next particle
+  !     PartID2 = PEM%pNext(PartID2)
+  !   END DO
+  !
+  !   ! Check collisions with particles in neighbor elements
+  !   DO iNeighElem = Neigh_offsetElem(iElem)+1:Neigh_offsetElem(iElem)+Neigh_nElems(iElem)
+  !
+  !   END DO
+  !   PartID1 = PEM%pNext(PartID1)
+  ! END DO ! iPart1 = 1,PEM%pNumber(iElem)
+
+
+
+
+
+
+
+! ! register info about the detected collision
+! PartCollisionProc%nCollisions = PartCollisionProc%nCollisions + 1
+! IF (PartCollisionProc%nCollisions.GT.MAXPartCollisionPairs) CALL Abort(__STAMP__, "Too many candidate collision pairs to save. Increase Part-Collision-MAXPartCollisionPairs!")
+! #if USE_MPI
+! PartCollisionProc%type  (PartCollisionProc%nCollisions) = 0
+! #endif /*USE_MPI*/
+! PartCollisionProc%iPartPeriodicShift(PartCollisionProc%nCollisions) = iPartPeriodicShift
+! PartCollisionProc%iPart1            (PartCollisionProc%nCollisions) = iPart1
+! PartCollisionProc%iPart2            (PartCollisionProc%nCollisions) = iPart2
+! PartCollisionProc%dtColl            (PartCollisionProc%nCollisions) = dtcand
+
+DEALLOCATE( PEM%pStart   &
+          , PEM%pNumber  &
+          , PEM%pNext    &
+          , PEM%pEnd)
 
 ! Done with particle collisions. Deallocate SHM windows
 ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
@@ -129,8 +532,8 @@ REAL                               :: Jxn_loc(3)
 ! END IF
 
 ! Move the particles back to their positions at the collision time
-LastPartPos(PART_POSV,iPart1) = LastPartPos(PART_POSV,iPart1) + dtColl * PartState(PART_VELV,iPart1)
-LastPartPos(PART_POSV,iPart2) = LastPartPos(PART_POSV,iPart2) + dtColl * PartState(PART_VELV,iPart2)
+LastPartPos(PART_POSV,iPart1) = PartState(PART_POSV,iPart1) - dtColl * PartState(PART_VELV,iPart1)
+LastPartPos(PART_POSV,iPart2) = PartState(PART_POSV,iPart2) - dtColl * PartState(PART_VELV,iPart2)
 
 ! Compute normal vector from iPart1 to iPart2
 n_loc = UNITVECTOR(PartState(PART_POSV,iPart2) - PartState(PART_POSV,iPart1))

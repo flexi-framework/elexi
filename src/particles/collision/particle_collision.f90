@@ -129,7 +129,8 @@ USE MOD_Particle_MPI_Vars       ,ONLY: halo_eps
 USE MOD_MPI_Shared              ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
 USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
-USE MOD_Mesh_Vars               ,ONLY: offsetElem
+USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeTotalElems
+USE MOD_Mesh_Vars               ,ONLY: offsetElem,nGlobalElems
 USE MOD_Mesh_Vars               ,ONLY: nComputeNodeElems,offsetComputeNodeElem
 USE MOD_Utils                   ,ONLY: InsertionSort
 ! IMPLICIT VARIABLE HANDLING
@@ -160,6 +161,9 @@ INTEGER                        :: iBGMmin,jBGMmin,kBGMmin
 INTEGER                        :: iBGMmax,jBGMmax,kBGMmax
 ! Compute-node
 INTEGER                        :: CNNeighElemID
+! Processor
+INTEGER                        :: iNeighElem
+LOGICAL,ALLOCATABLE            :: ElemIsNeighElem(:)
 ! MPI
 INTEGER                        :: iProc
 INTEGER                        :: sendint,recvint
@@ -256,7 +260,7 @@ DO iElem = firstElem,lastElem
               currentNeighElem(1,CNNeighElemID) = .TRUE.
 
               ! ignore myself
-              IF (ElemID.EQ.NeighElemID) CYCLE
+              ! IF (ElemID.EQ.NeighElemID) CYCLE
 
               LocalBoundsOfElemCenter(1:3) = (/ SUM(   BoundsOfElem_Shared(1:2,1,NeighElemID)),                                         &
                                                 SUM(   BoundsOfElem_Shared(1:2,2,NeighElemID)),                                         &
@@ -410,7 +414,7 @@ DO iElem = firstElem,lastElem
               currentNeighElem(1,CNNeighElemID) = .TRUE.
 
               ! ignore myself
-              IF (ElemID.EQ.NeighElemID) CYCLE
+              ! IF (ElemID.EQ.NeighElemID) CYCLE
 
               LocalBoundsOfElemCenter(1:3) = (/ SUM(   BoundsOfElem_Shared(1:2,1,NeighElemID)),                                         &
                                                 SUM(   BoundsOfElem_Shared(1:2,2,NeighElemID)),                                         &
@@ -460,6 +464,43 @@ IF (myComputeNodeRank.EQ.0) THEN
 END IF
 CALL BARRIER_AND_SYNC(CNElem2CNNeighElem_Win,MPI_COMM_SHARED)
 
+! Count number of own and neighbor elements on the current proc
+ALLOCATE(ElemIsNeighElem(nComputeNodeTotalElems))
+ElemIsNeighElem = .FALSE.
+
+DO iElem = 1,nComputeNodeElems
+  ElemID = GetGlobalElemID(iElem)
+
+  DO iNeighElem = Neigh_offsetElem(ElemID)+1,Neigh_offsetElem(ElemID)+Neigh_nElems(ElemID)
+    ElemIsNeighElem(CNElem2CNNeighElem(iNeighElem)) = .TRUE.
+  END DO ! iNeighElem
+END DO ! iELem
+
+nProcNeighElems = COUNT(ElemIsNeighElem)
+ElemIsNeighElem = .FALSE.
+
+currentCounter = 0.
+ALLOCATE(NeighElemsProc(     nProcNeighElems))
+ALLOCATE(offsetNeighElemPart(nGlobalElems))
+
+DO iElem = 1,nComputeNodeElems
+  ElemID = GetGlobalElemID(iElem)
+
+  DO iNeighElem = Neigh_offsetElem(ElemID)+1,Neigh_offsetElem(ElemID)+Neigh_nElems(ElemID)
+    IF (ElemIsNeighElem(CNElem2CNNeighElem(iNeighElem))) CYCLE
+
+    ElemIsNeighElem(CNElem2CNNeighElem(iNeighElem)) = .TRUE.
+    currentCounter = currentCounter + 1
+
+    NeighElemsProc(currentCounter) = GetGlobalElemID(CNElem2CNNeighElem(iNeighElem))
+  END DO ! iNeighElem
+END DO ! iELem
+
+! Sort each neighbor element in an cell with ascending index
+CALL InsertionSort(NeighElemsProc,len=nProcNeighElems)
+
+DEALLOCATE(ElemIsNeighElem)
+
 END SUBROUTINE IdentifyNeighboringElements
 
 
@@ -492,7 +533,7 @@ INTEGER                        :: iPart,iElem
 INTEGER                        :: iProc
 ! Offsets for MPI_ALLGATHERV
 INTEGER,ALLOCATABLE            :: MPI_COMM_LEADERS_REQUEST(:)           !> Request handle for non-blocking communication
-INTEGER,ALLOCATABLE            :: displsPartInt(:),recvcountPartInt(:)
+! INTEGER,ALLOCATABLE            :: displsPartInt(:),recvcountPartInt(:)
 !===================================================================================================================================
 
 ! Determine number of particles in the complete domain
@@ -523,6 +564,9 @@ CALL UpdateNextFreePosition()
 
 ! Walk along the linked list and fill the data arrays
 iPart = offsetnPart
+! Allocate inverse mapping
+ALLOCATE(PEM2PartID(offsetnPart+1:offsetnPart+locnPart))
+PEM2PartID = -1
 ! Walk over all elements on local proc
 DO iElem = offsetElem+1,offsetElem+nElems
   ! Set start of particle numbers in current element
@@ -533,6 +577,7 @@ DO iElem = offsetElem+1,offsetElem+nElems
   pcount = PEM%pStart(iElem)
   DO iPart = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
     PartData_Shared(:,iPart) = PartState(:,pcount)
+    PEM2PartID(iPart)        = pcount
 
     ! Set the index to the next particle
     pcount = PEM%pNext(pcount)
@@ -544,10 +589,10 @@ END DO ! iElem = offsetElem+1,offsetElem+nElems
 
 ! De-allocate linked list and return to normal particle array mode
 useLinkedList=.FALSE.
-DEALLOCATE( PEM%pStart   &
-          , PEM%pNumber  &
-          , PEM%pNext    &
-          , PEM%pEnd)
+! DEALLOCATE( PEM%pStart   &
+!           , PEM%pNumber  &
+!           , PEM%pNext    &
+!           , PEM%pEnd)
 
 CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(PartData_Shared_Win,MPI_COMM_SHARED)
@@ -571,6 +616,9 @@ IF (myComputeNodeRank.EQ.0) THEN
   CALL MPI_IALLGATHERV(MPI_IN_PLACE   ,0                                                      ,MPI_DATATYPE_NULL   &
                       ,PartData_Shared,PP_nVarPart*recvcountPartInt,PP_nVarPart*displsPartInt,MPI_DOUBLE_PRECISION &
                       ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(2),iError)
+  ! DEALLOCATE(displsPartInt)
+  ! DEALLOCATE(recvcountPartInt)
+
   ! Non-blocking but actually blocking
   CALL MPI_WAITALL(1,MPI_COMM_LEADERS_REQUEST,MPI_STATUSES_IGNORE,iError)
   DEALLOCATE(MPI_COMM_LEADERS_REQUEST)
@@ -710,7 +758,6 @@ CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 MDEALLOCATE(Neigh_nElems_Shared)
 MDEALLOCATE(Neigh_offsetElem_Shared)
 MDEALLOCATE(CNElem2CNNeighElem)
-
 
 END SUBROUTINE FinalizeCollision
 

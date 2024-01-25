@@ -51,7 +51,7 @@ SUBROUTINE ParticleTriaTracking()
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Mesh_Vars                   ,ONLY: ElemInfo_Shared,SideInfo_Shared
-USE MOD_Particle_Globals            ,ONLY: DOTPRODUCT,VECNORM
+USE MOD_Particle_Globals            ,ONLY: VECNORM
 USE MOD_Particle_Boundary_Condition ,ONLY: GetBoundaryInteraction
 USE MOD_Particle_Boundary_Vars      ,ONLY: PartBound
 USE MOD_Particle_Localization       ,ONLY: ParticleInsideQuad3D

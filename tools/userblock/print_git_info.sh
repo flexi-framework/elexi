@@ -64,7 +64,14 @@ echo "{[( GIT DIFF )]}"
 # commited changes
 git diff -p $PARENTCOMMIT..HEAD
 # uncommited changes
-git diff -p HEAD
+## exclude any files not wanted such as HDF5, regressionchecks, and tutorials files
+## these can still normally committed as they are only excluded from the userblock
+GITROOT=$(git rev-parse --show-toplevel)
+PWD=$(pwd)
+## this only works from the root of the git directory
+cd $GITROOT
+git diff -p HEAD ':!regressioncheck' ':!tutorials' ':!*.h5'
+cd $PWD
 
 echo "{[( GIT URL )]}"
 git config --get remote.origin.url

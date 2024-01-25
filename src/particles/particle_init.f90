@@ -1805,9 +1805,6 @@ USE MOD_Particle_Analyze,           ONLY: FinalizeParticleAnalyze
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Boundary_Sampling, ONLY: FinalizeParticleBoundarySampling
 USE MOD_Particle_Boundary_Tracking, ONLY: FinalizeParticleBoundaryTracking
-#if PARTICLES_COUPLING >= 2
-USE MOD_Particle_Deposition,        ONLY: FinalizeDeposition
-#endif /*PARTICLES_COUPLING >= 2*/
 USE MOD_Particle_Interpolation,     ONLY: FinalizeParticleInterpolation
 USE MOD_Particle_Mesh,              ONLY: FinalizeParticleMesh
 USE MOD_Particle_Surfaces,          ONLY: FinalizeParticleSurfaces
@@ -1823,7 +1820,13 @@ USE MOD_Particle_MPI_Halo,          ONLY: FinalizePartExchangeProcs
 USE MOD_Particle_RandomWalk,        ONLY: ParticleFinalizeRandomWalk
 #endif /*USE_RW*/
 USE MOD_Particle_SGS,               ONLY: ParticleFinalizeSGS
-#endif
+#endif /*PARABOLIC*/
+#if PARTICLES_COUPLING >= 2
+USE MOD_Particle_Deposition,        ONLY: FinalizeDeposition
+#endif /*PARTICLES_COUPLING >= 2*/
+#if PARTICLES_COUPLING == 4
+USE MOD_Particle_Collision,         ONLY: FinalizeCollision
+#endif /*PARTICLES_COUPLING == 4*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1966,6 +1969,10 @@ CALL FinalizeParticleMesh()
 #if PARTICLES_COUPLING >= 2
 IF (doCalcPartSource) CALL FinalizeDeposition()
 #endif /*PARTICLES_COUPLING >= 2*/
+
+#if PARTICLES_COUPLING == 4
+IF (doCalcPartCollision) CALL FinalizeCollision()
+#endif /*PARTICLES_COUPLING == 4*/
 
 ParticlesInitIsDone = .FALSE.
 

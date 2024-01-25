@@ -37,14 +37,14 @@ INTERFACE UpdateParticleShared
   MODULE PROCEDURE UpdateParticleShared
 END INTERFACE
 
-! INTERFACE FinalizeCollision
-!   MODULE PROCEDURE FinalizeCollision
-! END INTERFACE
+INTERFACE FinalizeCollision
+  MODULE PROCEDURE FinalizeCollision
+END INTERFACE
 
 PUBLIC :: DefineParametersCollission
 PUBLIC :: InitializeCollision
 PUBLIC :: UpdateParticleShared
-! PUBLIC :: FinalizeCollision
+PUBLIC :: FinalizeCollision
 !==================================================================================================================================
 
 CONTAINS
@@ -129,7 +129,8 @@ USE MOD_Particle_MPI_Vars       ,ONLY: halo_eps
 USE MOD_MPI_Shared              ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
 USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
-USE MOD_Mesh_Vars               ,ONLY: nComputeNodeElems
+USE MOD_Mesh_Vars               ,ONLY: offsetElem
+USE MOD_Mesh_Vars               ,ONLY: nComputeNodeElems,offsetComputeNodeElem
 USE MOD_Utils                   ,ONLY: InsertionSort
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -302,12 +303,12 @@ nComputeNodeNeighElems = sendint
 ! Arrays to hold the mapping
 ALLOCATE(displsNeighElem(   0:nComputeNodeProcessors-1),&
          recvcountNeighElem(0:nComputeNodeProcessors-1))
-displsNeighElem(myComputeNodeRank) = offsetNeighElem
+displsNeighElem(myComputeNodeRank) = offsetElem - offsetComputeNodeElem
 CALL MPI_ALLGATHER(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsNeighElem,1,MPI_INTEGER,MPI_COMM_SHARED,iError)
 DO iProc=1,nComputeNodeProcessors-1
   recvcountNeighElem(iProc-1) = displsNeighElem(iProc)-displsNeighElem(iProc-1)
 END DO
-recvcountNeighElem(nComputeNodeProcessors-1) = nComputeNodeNeighElems - displsNeighElem(nComputeNodeProcessors-1)
+recvcountNeighElem(nComputeNodeProcessors-1) = nComputeNodeElems - displsNeighElem(nComputeNodeProcessors-1)
 CALL MPI_ALLGATHERV(MPI_IN_PLACE,0                                 ,MPI_DATATYPE_NULL &
                    ,nNeighElems ,recvcountNeighElem,displsNeighElem,MPI_INTEGER      ,MPI_COMM_SHARED,iError)
 DEALLOCATE(displsNeighElem   ,&
@@ -494,12 +495,21 @@ INTEGER,ALLOCATABLE            :: MPI_COMM_LEADERS_REQUEST(:)           !> Reque
 INTEGER,ALLOCATABLE            :: displsPartInt(:),recvcountPartInt(:)
 !===================================================================================================================================
 
+! Determine number of particles in the complete domain
+locnPart =   0
+!>> Count number of particle on local proc
+DO pcount = 1,PDM%ParticleVecLength
+  IF(PDM%ParticleInside(pcount)) THEN
+    locnPart = locnPart + 1
+  END IF
+END DO
+
 ! Communicate the total number and offset
 CALL GetOffsetAndGlobalNumberOfParts('UpdateParticleShared',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
 
 ! Allocate data arrays for mean particle quantities
-CALL Allocate_Shared((/PartIntSize,nGlobalElems         /),PartInt_Shared_Win ,PartInt_Shared)
-CALL Allocate_Shared((/PP_nVarPart,nGlobalNbrOfParticles/),PartData_Shared_Win,PartData_Shared)
+CALL Allocate_Shared((/PartIntSize,nGlobalElems            /),PartInt_Shared_Win ,PartInt_Shared)
+CALL Allocate_Shared((/PP_nVarPart,nGlobalNbrOfParticles(3)/),PartData_Shared_Win,PartData_Shared)
 CALL MPI_WIN_LOCK_ALL(0,PartInt_Shared_Win,iError)
 CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
 
@@ -529,7 +539,7 @@ DO iElem = offsetElem+1,offsetElem+nElems
   END DO
   ! Set counter to the end of particle number in the current element
   iPart = PartInt_Shared(2,iElem)
-  PartInt_Shared(2,iElem) = iPart
+  ! PartInt_Shared(2,iElem) = iPart
 END DO ! iElem = offsetElem+1,offsetElem+nElems
 
 ! De-allocate linked list and return to normal particle array mode
@@ -661,6 +671,48 @@ END SUBROUTINE UpdateParticleShared
 ! END SELECT
 !
 ! END SUBROUTINE IdentifyPeriodicNeighboringElements
+
+
+SUBROUTINE FinalizeCollision()
+!===================================================================================================================================
+!> Finalize particle collisions module
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Collision_Vars
+#if USE_MPI
+USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED
+#endif /*USE_MPI*/
+!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+
+CALL MPI_WIN_UNLOCK_ALL(Neigh_nElems_Shared_Win        ,iError)
+CALL MPI_WIN_FREE(      Neigh_nElems_Shared_Win        ,iError)
+CALL MPI_WIN_UNLOCK_ALL(Neigh_offsetElem_Shared_Win    ,iError)
+CALL MPI_WIN_FREE(      Neigh_offsetElem_Shared_Win    ,iError)
+CALL MPI_WIN_UNLOCK_ALL(CNElem2CNNeighElem_Win         ,iError)
+CALL MPI_WIN_FREE(      CNElem2CNNeighElem_Win         ,iError)
+
+CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+#endif /*USE_MPI*/
+
+! Then, free the pointers or arrays
+MDEALLOCATE(Neigh_nElems_Shared)
+MDEALLOCATE(Neigh_offsetElem_Shared)
+MDEALLOCATE(CNElem2CNNeighElem)
+
+
+END SUBROUTINE FinalizeCollision
 
 #endif /*PARTICLES_COUPLING == 4*/
 

@@ -536,11 +536,13 @@ USE MOD_FV_Metrics           ,ONLY: FinalizeFV_Metrics
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars     ,ONLY: PerformLoadBalance
-USE MOD_Mesh_Shared          ,ONLY: FinalizeMeshShared
 #endif /*USE_LOADBALANCE*/
 #if USE_PARTICLES
 USE MOD_Particle_Mesh        ,ONLY: FinalizeParticleMeshBasis
 #endif /*USE_PARTICLES*/
+#if USE_LOADBALANCE || USE_PARTICLES
+USE MOD_Mesh_Shared          ,ONLY: FinalizeMeshShared
+#endif /*USE_LOADBALANCE || USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !============================================================================================================================
@@ -599,9 +601,11 @@ CALL FinalizeParticleMeshBasis()
 MeshInitIsDone = .FALSE.
 
 ! Shared mesh readin happens during mesh readin, finalize with gathered routine here
-#if USE_LOADBALANCE
+#if USE_LOADBALANCE || USE_PARTICLES
 CALL FinalizeMeshShared()
+#endif /*USE_LOADBALANCE || USE_PARTICLES*/
 
+#if USE_LOADBALANCE
 IF (PerformLoadBalance) RETURN
 #endif /*USE_LOADBALANCE*/
 

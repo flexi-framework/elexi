@@ -45,7 +45,7 @@ REAL,ALLOCATABLE                  :: PartSource_tmp(:,:,:,:)                 !< 
 REAL,ALLOCATABLE                  :: Ut_src(:,:,:,:,:)                       !< Source term scale with dt   (1:PP_nVar,0:N,0:N,0:N,nElems)
 
 INTEGER                           :: nUniqueFEMNodes                         !< Number of unique corner nodes (including periodic sides)
-REAL,ALLOCATABLE                  :: FEMNodeSource(:,:)                      !< Source term on unique corner nodes (non-normalized)
+! REAL,ALLOCATABLE                  :: FEMNodeSource(:,:)                      !< Source term on unique corner nodes (non-normalized)
 REAL,ALLOCATABLE                  :: CellVolWeightFac(:)                     !< Weighing factor for each corner node
 REAL,ALLOCATABLE                  :: NodeSource_tmp(:,:)                     !< Source term on unique corner nodes (normalized with volume)
 

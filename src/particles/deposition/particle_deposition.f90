@@ -211,6 +211,7 @@ SELECT CASE(DepositionType)
 
       ! Results array
       CALL Allocate_Shared((/PP_nVar,nUniqueFEMNodes/),FEMNodeSource_Shared_Win,FEMNodeSource_Shared)
+      CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 #if USE_LOADBALANCE
     END IF
 #endif /*USE_LOADBALANCE*/
@@ -298,6 +299,7 @@ SDEALLOCATE(PartSource)
 SDEALLOCATE(PartSource_tmp)
 SDEALLOCATE(NodeSource_tmp)
 SDEALLOCATE(Ut_src)
+SDEALLOCATE(CellVolWeightFac)
 
 SELECT CASE(DepositionType)
   CASE(DEPO_CVLM,DEPO_SF_GAUSS,DEPO_SF_POLY)

@@ -522,9 +522,9 @@ CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-WallVelo'   , 'Velocity (g
 #if PARTICLES_COUPLING >= 2
 CALL DefineParametersDepositionMethod()
 #endif /*PARTICLES_COUPLING >= 2*/
-#if PARTICLES_COUPLING >= 2
+#if PARTICLES_COUPLING > 2
 CALL DefineParametersCollission()
-#endif /*PARTICLES_COUPLING >= 2*/
+#endif /*PARTICLES_COUPLING > 2*/
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
 CALL DefineParametersParticleBoundaryTracking()
@@ -600,7 +600,6 @@ USE MOD_Particle_Surface_Flux,      ONLY: InitializeParticleSurfaceFlux
 USE MOD_Particle_TimeDisc,          ONLY: Particle_InitTimeDisc
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,nSpecies,PDM
-USE MOD_Particle_Vars,              ONLY: doCalcPartSource,doCalcPartCollision
 USE MOD_ReadInTools,                ONLY: PrintOption
 #if USE_LOADBALANCE
 USE MOD_LoadBalance,                ONLY:InitLoadBalanceTracking
@@ -615,10 +614,12 @@ USE MOD_Particle_RandomWalk,        ONLY: ParticleInitRandomWalk
 USE MOD_Particle_SGS,               ONLY: ParticleInitSGS
 #endif /*PARABOLIC*/
 #if PARTICLES_COUPLING >= 2
+USE MOD_Particle_Vars,              ONLY: doCalcPartSource
 USE MOD_Particle_Deposition        ,ONLY: InitializeDeposition
 #endif /*PARTICLES_COUPLING >= 2*/
 #if PARTICLES_COUPLING == 4
 USE MOD_Particle_Collision         ,ONLY: InitializeCollision
+USE MOD_Particle_Vars,              ONLY: doCalcPartCollision
 #endif /*PARTICLES_COUPLING == 4*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -725,8 +726,8 @@ CALL InitParticleCommSize()
 
 #if PARTICLES_COUPLING >= 2
 ! Fluid-particle coupling
-IF (doCalcPartSource)    CALL InitializeDeposition()
 doCalcPartSource        = GETLOGICAL('Part-CalcSource'    )
+IF (doCalcPartSource)    CALL InitializeDeposition()
 #endif /*PARTICLES_COUPLING >= 2*/
 
 #if PARTICLES_COUPLING == 4

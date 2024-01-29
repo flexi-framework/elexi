@@ -107,7 +107,7 @@
 
 ! Debug memory
 #if DEBUG_MEMORY
-#define Allocate_Shared(a,b,c)   Allocate_Shared_DEBUG(a,b,c,'b')
+#define Allocate_Shared(a,b,c)   Allocate_Shared_DEBUG(a,b,c,'b',TRIM(__FILE__),__LINE__)
 #endif
 #if USE_MPI
 #define LWRITE IF(myComputeNodeRank.EQ.0) WRITE

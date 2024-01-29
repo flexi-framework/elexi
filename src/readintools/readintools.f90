@@ -217,7 +217,7 @@ CLASS(link), POINTER         :: current
 IF (this%count_unread().EQ.0) RETURN
 
 ! iterate over all options and compare names
-SWRITE(UNIT_stdOut,'(132("="))')
+! SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,I0,A)') ' Following ',this%count_unread(),' Parameters are defined in INI but not called!'
 current => this%firstLink
 DO WHILE (ASSOCIATED(current))
@@ -237,7 +237,7 @@ DO WHILE (ASSOCIATED(current))
   END IF
   current => current%next
 END DO
-SWRITE(UNIT_stdOut,'(132("="))')
+! SWRITE(UNIT_stdOut,'(132("="))')
 
 END SUBROUTINE WriteUnused
 

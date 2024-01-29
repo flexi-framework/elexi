@@ -419,7 +419,7 @@ USE MOD_Equation_Vars       ,ONLY: StrVarNames
 USE MOD_HDF5_Output         ,ONLY: WriteBaseFlow
 USE MOD_HDF5_Output_State   ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
-USE MOD_Output              ,ONLY: Visualize,PrintAnalyze,PrintStatusLine
+USE MOD_Output              ,ONLY: Visualize,PrintAnalyze
 USE MOD_PruettDamping       ,ONLY: TempFilterTimeDeriv
 USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
@@ -478,6 +478,15 @@ END IF
 
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 IF (doAnalyze) THEN
+  ! determine the SimulationEfficiency and PID here, because it is used in ComputeElemLoad -> WriteElemTimeStatistics
+  ! > Get calculation time per DOF
+  CalcTimeEnd          = FLEXITIME()
+  WallTimeEnd          = CalcTimeEnd
+  WallTime             = WallTimeEnd-StartTime
+  SimulationEfficiency = (t-RestartTime)/((WallTimeEnd-RestartWallTime)*nProcessors/3600.) ! in [s] / [CPUh]
+  PID                  = (CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_analyze))/nRKStages
+
+  ! > Print the information to the statusline
   CALL PrintAnalyze(dt_Min(DT_MIN))
   CALL TimeDisc_Info(iter_analyze+1)
 #if FV_ENABLED
@@ -497,17 +506,6 @@ IF (doAnalyze) THEN
   PreviousTime = -1
   END IF
 #endif /*USE_PARTICLES*/
-END IF
-
-! determine the SimulationEfficiency and PID here,
-! because it is used in ComputeElemLoad -> WriteElemTimeStatistics
-IF(doAnalyze) THEN
-  ! Get calculation time per DOF
-  CalcTimeEnd          = FLEXITIME()
-  WallTimeEnd          = CalcTimeEnd
-  WallTime             = WallTimeEnd-StartTime
-  SimulationEfficiency = (t-RestartTime)/((WallTimeEnd-RestartWallTime)*nProcessors/3600.) ! in [s] / [CPUh]
-  PID                  = (CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_analyze))/nRKStages
 END IF
 
 ! Analysis (possible PerformAnalyze+WriteStateToHDF5 and/or LoadBalance)

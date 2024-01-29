@@ -401,7 +401,7 @@ CALL FinalizeCommandlineArguments()
 CALL FinalizeMPI()
 #endif
 
-CALL DisplaySimulationTime(Time, StartTime, 'FINISHED')
+CALL DisplaySimulationTime(Time, StartTime, 'FINISHED!')
 END SUBROUTINE FinalizeFlexi
 
 END MODULE MOD_Flexi

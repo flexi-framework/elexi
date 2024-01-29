@@ -569,10 +569,10 @@ IF(.NOT.MPIRoot.AND.(Message.NE.'ABORTED')) RETURN
 
 ! Output particle info
 WRITE(UNIT_stdOut,'(132("="))')
-#if USE_PARTICLES
-IF(Message.NE.'RUNNING') CALL DisplayNumberOfParticles(2)
-WRITE(UNIT_stdOut,'(132("-"))')
-#endif /*USE_PARTICLES*/
+! #if USE_PARTICLES
+! IF(Message.NE.'RUNNING') CALL DisplayNumberOfParticles(2)
+! WRITE(UNIT_stdOut,'(132("-"))')
+! #endif /*USE_PARTICLES*/
 
 ! Calculate simulation time
 SimulationTime = Time-StartTime
@@ -589,7 +589,7 @@ days = SimulationTime
 
 ! Output message with all procs, as root might not be the calling process during abort
 WRITE(hilf,'(F16.2)') Time-StartTime
-WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')  ' FLEXI '//TRIM(Message)//'! [ '//TRIM(ADJUSTL(hilf))//' sec ]'
+WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')  ' FLEXI '//TRIM(Message)//' [ '//TRIM(ADJUSTL(hilf))//' sec ]'
 WRITE(UNIT_stdOut,'(A3,I0,A1,I0.2,A1,I0.2,A1,I0.2,A2)') ' [ ',INT(days),':',INT(hours),':',INT(mins),':',INT(secs),' ]'
 IF(MPIRoot.AND.(Message.NE.'ABORTED')) WRITE(UNIT_stdOut,'(132("="))')
 END SUBROUTINE DisplaySimulationTime

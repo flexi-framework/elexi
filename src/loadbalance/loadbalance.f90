@@ -552,6 +552,7 @@ END SUBROUTINE ComputeImbalance
 SUBROUTINE PrintImbalance()
 ! MODULES
 USE MOD_Globals
+USE MOD_LoadBalance_Vars    ,ONLY: DoLoadBalance
 USE MOD_LoadBalance_Vars    ,ONLY: TargetWeight,CurrentImbalance,MaxWeight,MinWeight,DeviationThreshold
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -560,11 +561,12 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-IF(.NOT.MPIRoot) RETURN
+IF(.NOT.MPIRoot      ) RETURN
+IF(.NOT.doLoadBalance) RETURN
 
-  SWRITE(UNIT_stdOut,'(A,ES10.3,A,ES10.3,A,ES10.3,A,ES10.3,A,ES8.2,A)')&
-      '   MinWeight: ', MinWeight, '   MaxWeight: ', MaxWeight, '   TargetWeight: ', TargetWeight,'    CurrentImbalance: ',&
-        CurrentImbalance, '    (Threshold: ', DeviationThreshold, ')'
+WRITE(UNIT_stdOut,'(A,ES10.3,A,ES10.3,A,ES10.3,A,ES10.3,A,ES8.2,A)')&
+   '   MinWeight: ', MinWeight, '   MaxWeight: ', MaxWeight, '   TargetWeight: ', TargetWeight,'    CurrentImbalance: ',&
+     CurrentImbalance, '    (Threshold: ', DeviationThreshold, ')'
 
 END SUBROUTINE PrintImbalance
 

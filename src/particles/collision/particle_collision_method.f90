@@ -184,6 +184,8 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
         ! FIXME: What about periodic?
 
         ! Check if particles will collide
+        ! Solve: |x-y|**2 = (r1+r2)**2, x = xp1^n-xp2^n, y = dt_coll*up1^{n+1} - dt_coll*up2^{n+1}; dt_coll \in [0;1]
+        ! Triangle inequality: |x+y|**2 <= |x| + |y|
         P1 = PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_VELV,iPart1)*dtLoc
         P2 = PartData_Shared(PART_POSV,iPart2) - PartData_Shared(PART_VELV,iPart2)*dtLoc
         ! compute coefficients a,b,c of the previous quadratic equation (a*t^2+b*t+c=0)
@@ -194,9 +196,11 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
         ! if a.EQ.0 then b.EQ.0 and so the previous equation has no solution: go to the next pair
         IF (a.EQ.0.) CYCLE
 
+        ! Cauchy-Schwarz inequality: <x,y> + <y,x> <= 2 |<x,y>| <= 2|x||y|
+        ! TODO: check if abs needed!
         b = 2. * DOT_PRODUCT(PartData_Shared(PART_VELV,iPart2) - PartData_Shared(PART_VELV,iPart1),P2 - P1)
-        ASSOCIATE(Term => P2 - P1 - (PartData_Shared(PART_DIAM,iPart2) + PartData_Shared(PART_DIAM,iPart1)))
-        c = DOT_PRODUCT(Term,Term) ** 2. / 4.
+        ASSOCIATE(Term => P2 - P1)
+        c = DOT_PRODUCT(Term,Term) - 0.25*(PartData_Shared(PART_DIAM,iPart2) + PartData_Shared(PART_DIAM,iPart1))**2.
         END ASSOCIATE
 
         ! if delta < 0, no collision is possible for this pair
@@ -217,6 +221,7 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
         PartColl(iPart2 - offsetNeighElemPart(NeighElemID)) = .TRUE.
 
         ! FIXME: apply the power
+        CALL ComputeHardSphereCollision(iElem,iPart1,iPart2,dtLoc-dtColl)
 
         EXIT PartLoop
         ! stop 1
@@ -383,7 +388,7 @@ SDEALLOCATE(PEM2PartID)
 END SUBROUTINE ComputeParticleCollisions
 
 
-SUBROUTINE ComputeHardSphereCollision(iPart1,iPart2,dtColl)
+SUBROUTINE ComputeHardSphereCollision(iElem,iPart1,iPart2,dtColl)
 !===================================================================================================================================
 !> Apply hard sphere collision model
 !===================================================================================================================================
@@ -393,46 +398,38 @@ USE MOD_Utils                   , ONLY: ALMOSTZERO
 USE MOD_Particle_Collision_Vars
 USE MOD_Particle_Globals        , ONLY: UNITVECTOR
 USE MOD_Particle_Vars           , ONLY: PartState, Species, PartSpecies, LastPartPos!, PDM
-!USE MOD_TimeDisc_Vars           , only: CurrentStage, t, iter, dt, RKc
-! USE MOD_Particle_Mesh_Vars      , ONLY: GEO
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+INTEGER, INTENT(IN)                :: iElem
 INTEGER, INTENT(IN)                :: iPart1, iPart2
 REAL   , INTENT(IN)                :: dtColl
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                               :: n_loc(3),t_loc(3)
+INTEGER                            :: LocPartID1
+REAL                               :: n_loc(3),t_loc(3),P1_old(3),P2_old(3)
 REAL                               :: v_rel_contactpoint(3)
 REAL                               :: vt_rel_contactpoint(3),vt_rel_contactpoint_norm
 REAL                               :: m_red,m1,m2
-REAL                               :: Jn, Jt,J(3)
+REAL                               :: Jn,Jt,J(3)
 #if USE_PARTROT
 REAL                               :: Jxn_loc(3)
 #endif /*USE_PARTROT*/
-! INTEGER                            :: iPart1Track, iPart2Track
-! INTEGER                            :: iPartPeriodicShiftLoc, jPeriodic
 !===================================================================================================================================
 
-! ! apply periodic vectors (if there are some)
-! IF (GEO%nPeriodicVectors.GT.0) THEN
-!   iPartPeriodicShiftLoc = PartCollisionProc%iPartPeriodicShift(iCollision)
-!   DO jPeriodic=1,GEO%nPeriodicVectors
-!     PartState(PART_POSV,iPart2) = PartState(PART_POSV,iPart2) - REAL(MOD(iPartPeriodicShiftLoc, 3) - 1) * GEO%PeriodicVectors(1:3,jPeriodic)
-!     iPartPeriodicShiftLoc = iPartPeriodicShiftLoc / 3
-!   END DO
-! END IF
-
 ! Move the particles back to their positions at the collision time
-LastPartPos(PART_POSV,iPart1) = PartState(PART_POSV,iPart1) - dtColl * PartState(PART_VELV,iPart1)
-LastPartPos(PART_POSV,iPart2) = PartState(PART_POSV,iPart2) - dtColl * PartState(PART_VELV,iPart2)
+P1_old = PartData_Shared(PART_POSV,iPart1) - dtColl * PartData_Shared(PART_VELV,iPart1)
+P2_old = PartData_Shared(PART_POSV,iPart2) - dtColl * PartData_Shared(PART_VELV,iPart2)
+
+LocPartID1 = iPart1 - offsetNeighElemPart(iElem)
+LastPartPos(PART_POSV,LocPartID1) = P1_old
 
 ! Compute normal vector from iPart1 to iPart2
-n_loc = UNITVECTOR(PartState(PART_POSV,iPart2) - PartState(PART_POSV,iPart1))
+n_loc = UNITVECTOR(PartData_Shared(PART_POSV,iPart2) - PartData_Shared(PART_POSV,iPart1))
 
 ! Relative velocity of the contact point just before the collision in iPart2's reference frame
 v_rel_contactpoint = PartState(PART_VELV,iPart1) - PartState(PART_VELV,iPart2)
@@ -470,14 +467,15 @@ END IF
 J = Jn * n_loc + Jt * t_loc
 
 ! Apply jump relation to momentum equation, i.e., update velocity of particles
-PartState(PART_VELV,iPart1) = PartState(PART_VELV,iPart1) + J / m1
-PartState(PART_VELV,iPart2) = PartState(PART_VELV,iPart2) - J / m2
+PartState(PART_VELV,LocPartID1) = PartState(PART_VELV,LocPartID1) + J / m1
+! TODO: other particle?
+! PartState(PART_VELV,iPart2) = PartState(PART_VELV,iPart2) - J / m2
 
 ! Apply jump relation also to angular momentum if particles can rotate
 #if USE_PARTROT
 Jxn_loc = CROSSPRODUCT(n_loc, J)
-PartState(PART_AMOMV,iPart1) = PartState(PART_AMOMV,iPart1) + Jxn_loc * 0.5 / (0.1 * m1 * PartState(PART_DIAM,iPart1))
-PartState(PART_AMOMV,iPart2) = PartState(PART_AMOMV,iPart2) + Jxn_loc * 0.5 / (0.1 * m2 * PartState(PART_DIAM,iPart2))
+PartState(PART_AMOMV,LocPartID1) = PartState(PART_AMOMV,LocPartID1) + Jxn_loc * 0.5 / (0.1 * m1 * PartState(PART_DIAM,LocPartID1))
+! PartState(PART_AMOMV,iPart2) = PartState(PART_AMOMV,iPart2) + Jxn_loc * 0.5 / (0.1 * m2 * PartState(PART_DIAM,iPart2))
 #endif /*USE_PARTROT*/
 
 ! for LSERK algorithm
@@ -485,24 +483,12 @@ PartState(PART_AMOMV,iPart2) = PartState(PART_AMOMV,iPart2) + Jxn_loc * 0.5 / (0
 ! PDM%IsNewPart(iPart2) = .TRUE.
 
 ! Update the particle's position at time tStage+dtloc
-PartState(PART_POSV,iPart1) = LastPartPos(PART_POSV,iPart1) + dtColl * PartState(PART_VELV,iPart1)
-PartState(PART_POSV,iPart2) = LastPartPos(PART_POSV,iPart2) + dtColl * PartState(PART_VELV,iPart2)
+PartState(PART_POSV,LocPartID1) = P1_old + dtColl * PartState(PART_VELV,LocPartID1)
+! PartState(PART_POSV,iPart2) = LastPartPos(PART_POSV,iPart2) + dtColl * PartState(PART_VELV,iPart2)
 
-! PartState(PART_POSV,iPart1) = LastPartPos(PART_POSV,iPart1) - dtColl * PartState(PART_VELV,iPart1)
-! PartState(PART_POSV,iPart2) = LastPartPos(PART_POSV,iPart2) - dtColl * PartState(PART_VELV,iPart2)
-
-! both particles can no longer be considered for collision
-! PartCollisionProc%canPartCollide(iPart1Track) = .FALSE.
-! PartCollisionProc%canPartCollide(iPart2Track) = .FALSE.
-
-! de-apply periodic vectors (if there are some)
-! IF (GEO%nPeriodicVectors.GT.0) THEN
-!   iPartPeriodicShiftLoc = PartCollisionProc%iPartPeriodicShift(iCollision)
-!   DO jPeriodic=1,GEO%nPeriodicVectors
-!     PartState(PART_POSV,iPart2) = PartState(PART_POSV,iPart2) + REAL(MOD(iPartPeriodicShiftLoc, 3) - 1) * GEO%PeriodicVectors(1:3,jPeriodic)
-!     iPartPeriodicShiftLoc = iPartPeriodicShiftLoc / 3
-!   END DO
-! END IF
+#if USE_PARTTEMP
+! TODO
+#endif
 
 END SUBROUTINE ComputeHardSphereCollision
 

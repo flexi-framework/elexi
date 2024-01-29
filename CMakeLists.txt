@@ -243,6 +243,7 @@ ELSE()
     ENDIF()
   ENDIF()
 ENDIF()
+MESSAGE(STATUS "Compiling with [${BUILD_TYPE_LC}] build type")
 
 # =========================================================================
 # Location of binary and filenames

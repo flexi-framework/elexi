@@ -563,9 +563,10 @@ IMPLICIT NONE
 !===================================================================================================================================
 IF(.NOT.MPIRoot      ) RETURN
 IF(.NOT.doLoadBalance) RETURN
+IF(MaxWeight.EQ.-1   ) RETURN
 
 WRITE(UNIT_stdOut,'(A,ES10.3,A,ES10.3,A,ES10.3,A,ES10.3,A,ES8.2,A)')&
-   '   MinWeight: ', MinWeight, '   MaxWeight: ', MaxWeight, '   TargetWeight: ', TargetWeight,'    CurrentImbalance: ',&
+   ' MinWeight: ', MinWeight, '    MaxWeight: ', MaxWeight, '    TargetWeight: ', TargetWeight,'    CurrentImbalance: ',&
      CurrentImbalance, '    (Threshold: ', DeviationThreshold, ')'
 
 END SUBROUTINE PrintImbalance

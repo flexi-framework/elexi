@@ -369,7 +369,9 @@ IF(MPIRoot)THEN
 #endif
   percent_time = (t-tStart) / (tEnd-tStart)
   percent_iter = REAL(iter) / REAL(maxIter)
-  percent      = MAX(percent_time,percent_iter)
+  percent      = ABS(MAX(percent_time,percent_iter))
+  ! ETA bar needs a tiny amount
+  percent      = MAX(percent,TINY(1.))
 
   ! Calculate ETA with percent of current run
   ASSOCIATE(tBegin => MERGE(RestartTime,tStart,DoRestart))
@@ -448,6 +450,7 @@ END IF
 #ifdef INTEL
 CLOSE(UNIT_stdOut)
 #endif /*INTEL*/
+
 END SUBROUTINE PrintStatusLine
 
 

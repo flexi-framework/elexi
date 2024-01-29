@@ -307,7 +307,6 @@ USE MOD_Benchmarking,       ONLY: Benchmarking
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_Output,             ONLY: OutputToFile,PrintStatusLine
 USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_Restart_Vars,       ONLY: RestartTime
 USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd,maxIter
 #if USE_PARTICLES
 USE MOD_Particle_Analyze,   ONLY: ParticleAnalyze,ParticleInformation
@@ -360,18 +359,17 @@ CALL ParticleInformation()
 CALL ParticleAnalyze(time,iter)
 #endif /*USE_PARTICLES*/
 
-IF(Time.GT.RestartTime) THEN
-  SWRITE(UNIT_stdOut,'(132("-"))')
+! This branch calls InitTimestep before Analyze, hence we can print the timestep
+SWRITE(UNIT_stdOut,'(132("-"))')
 #if USE_LOADBALANCE
-  CALL PrintImbalance()
+CALL PrintImbalance()
 #endif /*USE_LOADBALANCE*/
-  CALL PrintStatusLine(time,dt,tStart,tEnd,iter,maxIter,doETA=.TRUE.)
-  ! SWRITE(UNIT_stdOut,'(132("."))')
-  WRITE(hilf,'(A,A,A)') 'RUNNING ',TRIM(ProjectName),'...'
-  CALL DisplaySimulationTime(CalcTime, StartTime, hilf)
-  ! SWRITE(UNIT_stdOut,'(132("-"))')
-  SWRITE(UNIT_stdOut,*)
-END IF
+CALL PrintStatusLine(time,dt,tStart,tEnd,iter,maxIter,doETA=.TRUE.)
+! SWRITE(UNIT_stdOut,'(132("."))')
+WRITE(hilf,'(A,A,A)') 'RUNNING ',TRIM(ProjectName),'...'
+CALL DisplaySimulationTime(CalcTime, StartTime, hilf)
+! SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,*)
 END SUBROUTINE Analyze
 
 

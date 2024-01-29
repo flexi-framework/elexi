@@ -181,10 +181,10 @@ IF((t.GE.tEnd).OR.maxIter.EQ.0) RETURN
 ! Run initial analyze
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' Errors of initial solution:'
-CALL Analyze(t,iter)
-
 ! compute initial timestep
 CALL InitTimeStep()
+! print initial analyze
+CALL Analyze(t,iter)
 
 ! Fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)

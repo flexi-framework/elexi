@@ -17,7 +17,7 @@
 !===================================================================================================================================
 ! Module for particle emission
 !===================================================================================================================================
-MODULE MOD_Part_Emission
+MODULE MOD_Particle_Emission
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -511,5 +511,4 @@ END IF
 
 END SUBROUTINE DetermineInitialParticleNumber
 
-
-END MODULE MOD_Part_Emission
+END MODULE MOD_Particle_Emission

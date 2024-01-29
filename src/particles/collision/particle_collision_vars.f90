@@ -36,6 +36,7 @@ TYPE(tParticleCollisionModel)            :: PartCollisionModel          ! parame
 ! REAL,ALLOCATABLE                         :: PartColl(:,:)               ! (1:2,1:NParts) with 1st index: dtColl,PartIDColl
 INTEGER,ALLOCATABLE                      :: NeighElemsProc(:)
 INTEGER                                  :: nProcNeighElems
+INTEGER                                  :: nProcParts                  ! > Number of particles on local and halo elements
 INTEGER,ALLOCATABLE                      :: offsetNeighElemPart(:)      ! > FIXME: keep allocated
 INTEGER,ALLOCATABLE                      :: PEM2PartID(:)
 

@@ -47,18 +47,14 @@ USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
 USE MOD_Particle_Collision_Vars
 USE MOD_Particle_Globals         ,ONLY: VECNORM
 USE MOD_Particle_Localization    ,ONLY: PARTHASMOVED
-USE MOD_Particle_Mesh_Vars       ,ONLY: SideBCMetrics,ElemToBCSides
-USE MOD_Particle_Mesh_Vars       ,ONLY: GEO,ElemRadiusNGeo
-USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID,GetCNSideID
+USE MOD_Particle_Mesh_Vars       ,ONLY: SideBCMetrics
+USE MOD_Particle_Mesh_Vars       ,ONLY: ElemRadiusNGeo
+USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNSideID
 USE MOD_Particle_Intersection    ,ONLY: ComputeCurvedIntersection
 USE MOD_Particle_Intersection    ,ONLY: ComputePlanarRectIntersection
 USE MOD_Particle_Intersection    ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection    ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Surfaces_Vars   ,ONLY: SideType
-USE MOD_Particle_Tracking_Vars   ,ONLY: CartesianPeriodic
-USE MOD_Particle_Vars            ,ONLY: PEM,PDM
-USE MOD_Particle_Vars            ,ONLY: PartState,LastPartPos
-USE MOD_Utils                    ,ONLY: InsertionSort
 ! LOCAL VARIABLES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -83,8 +79,7 @@ INTEGER                       :: SideID,CNSideID,flip
 REAL                          :: PartTrajectory(1:3),lengthPartTrajectory
 ! Tracking
 REAL                          :: localpha(firstSide:lastSide),xi(firstSide:lastSide),eta(firstSide:lastSide)
-REAL                          :: alphaOld
-LOGICAL                       :: isHit,doubleCheck
+LOGICAL                       :: isHit
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 dtBC = -1.
@@ -151,7 +146,7 @@ USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID,GetGlobalElemID
 USE MOD_Particle_Vars            ,ONLY: PEM
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 #if USE_MPI
-USE MOD_MPI_Shared,               ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars,          ONLY: myComputeNodeRank
 USE MOD_MPI_Shared_Vars,          ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 #endif /*USE_MPI*/
@@ -173,12 +168,10 @@ REAL                          :: P1(3),P2(3)
 ! Collisions
 REAL                          :: a,b,c,delta,dtColl
 ! Neighbor particles
-INTEGER                       :: nProcParts
 LOGICAL,ALLOCATABLE           :: PartColl(:)
 !===================================================================================================================================
 
-CALL Allocate_Shared((/nGlobalNbrOfParticles(3)/),PartBC_Shared_Win,PartBC_Shared)
-CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win,iError)
+! nullify the BC intersection times
 IF (myComputeNodeRank.EQ.0) PartBC_Shared = -1.
 CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
 
@@ -191,9 +184,10 @@ DO iElem = offsetElem+1,offsetElem+nElems
 
   SELECT CASE(TrackingMethod)
     CASE (TRIATRACKING)
-      ! FIXME
+      CALL Abort(__STAMP__,'TODO: Tracing')
     CASE (TRACING)
       ! FIXME
+      CALL Abort(__STAMP__,'TODO: Tracing')
     CASE (REFMAPPING)
       ! loop over all particles in the element
       DO iPart = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
@@ -232,7 +226,7 @@ DO iElem = 1,nProcNeighElems
   ElemID = NeighElemsProc(iElem)
 
   ! > Map global offset to neighbor offset
-  offsetNeighElemPart(ElemID) = PartInt_Shared(1,iElem) - nProcParts
+  offsetNeighElemPart(ElemID) = PartInt_Shared(1,ElemID) - nProcParts
 
   !> Increment the counter by the current number of particles
   nProcParts = nProcParts + PartInt_Shared(2,ElemID)-PartInt_Shared(1,ElemID)
@@ -253,7 +247,6 @@ DO iElem = offsetElem+1,offsetElem+nElems
   ! loop over all particles in the element
   DO iPart1 = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
     ! Ignore already collided particles
-    ! IF (PartColl(iPart1 - offsetNeighElemPart(iElem))) IPWRITE(*,*) 'ipart1:', ipart1
     IF (PartColl(iPart1 - offsetNeighElemPart(iElem))) CYCLE
 
     ! loop over neighbor elements (includes own element)
@@ -264,7 +257,6 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
       ! loop over all particles in the element
       DO iPart2 = PartInt_Shared(1,NeighElemID)+1,PartInt_Shared(2,NeighElemID)
         ! Ignore already collided particles
-        ! IF (PartColl(iPart2 - offsetNeighElemPart(NeighElemID))) IPWRITE(*,*) 'ipart2:', ipart2
         IF (PartColl(iPart2 - offsetNeighElemPart(NeighElemID))) CYCLE
 
         ! FIXME: What about periodic?
@@ -299,9 +291,6 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
         IF (dtColl.GT.PartBC_Shared(iPart2)) CYCLE
 
         ! collision found
-        ! IPWRITE(*,*) 'iElem,NeighElemID:', iElem,NeighElemID
-        ! IPWRITE(*,*) 'iPart1,iPart1 - offsetNeighElemPart(iElem)      :', iPart1,iPart1 - offsetNeighElemPart(iElem)      ,PartData_Shared(PART_POSV,iPart1)
-        ! IPWRITE(*,*) 'iPart2,iPart2 - offsetNeighElemPart(NeighElemID):', iPart2,iPart2 - offsetNeighElemPart(NeighElemID),PartData_Shared(PART_POSV,iPart2)
         PartColl(iPart1 - offsetNeighElemPart(iElem      )) = .TRUE.
         PartColl(iPart2 - offsetNeighElemPart(NeighElemID)) = .TRUE.
 
@@ -319,8 +308,7 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
   END DO ! iPart1
 END DO ! iElem
 
-IPWRITE(*,*) 'PartColl:', PartColl
-stop 2
+SDEALLOCATE(PartColl)
 
 
 
@@ -467,22 +455,8 @@ DEALLOCATE( PEM%pStart   &
           , PEM%pNext    &
           , PEM%pEnd)
 
-! Done with particle collisions. Deallocate SHM windows
-! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
-#if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
-
-CALL MPI_WIN_UNLOCK_ALL(PartInt_Shared_Win ,iError)
-CALL MPI_WIN_UNLOCK_ALL(PartData_Shared_Win,iError)
-CALL MPI_WIN_FREE(PartInt_Shared_Win ,iError)
-CALL MPI_WIN_FREE(PartData_Shared_Win,iError)
-
-CALL MPI_BARRIER(MPI_COMM_SHARED,iERROR)
-#endif /*USE_MPI*/
-
-! Then, free the pointers or arrays
-MDEALLOCATE(PartInt_Shared)
-MDEALLOCATE(PartData_Shared)
+! Done with particle collisions. Deallocate mappings
+SDEALLOCATE(PEM2PartID)
 
 END SUBROUTINE ComputeParticleCollisions
 

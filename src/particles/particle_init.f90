@@ -587,11 +587,11 @@ USE MOD_Globals
 USE Mod_Particle_Globals
 USE MOD_ReadInTools
 USE MOD_IO_HDF5,                    ONLY: AddToElemData
-USE MOD_Part_Emission,              ONLY: InitializeParticleEmission
 USE MOD_Particle_Tools,             ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze,           ONLY: InitParticleAnalyze
 USE MOD_Particle_Boundary_Sampling, ONLY: RestartParticleBoundarySampling
 USE MOD_Particle_Boundary_Vars
+USE MOD_Particle_Emission,          ONLY: InitializeParticleEmission
 USE MOD_Particle_Mesh_Build,        ONLY: InitElemVolumes
 USE MOD_Particle_Mesh_Vars,         ONLY: LocalVolume,MeshVolume
 USE MOD_Particle_Restart,           ONLY: ParticleRestart
@@ -600,19 +600,26 @@ USE MOD_Particle_Surface_Flux,      ONLY: InitializeParticleSurfaceFlux
 USE MOD_Particle_TimeDisc,          ONLY: Particle_InitTimeDisc
 USE MOD_Particle_Tracking_Vars,     ONLY: TrackingMethod
 USE MOD_Particle_Vars,              ONLY: ParticlesInitIsDone,nSpecies,PDM
+USE MOD_Particle_Vars,              ONLY: doCalcPartSource,doCalcPartCollision
 USE MOD_ReadInTools,                ONLY: PrintOption
 #if USE_LOADBALANCE
 USE MOD_LoadBalance,                ONLY:InitLoadBalanceTracking
 #endif /*USE_LOADBALANCE*/
 #if USE_MPI
 USE MOD_Particle_MPI,               ONLY: InitParticleCommSize
-#endif
+#endif /*USE_MPI*/
 #if PARABOLIC
 #if USE_RW
 USE MOD_Particle_RandomWalk,        ONLY: ParticleInitRandomWalk
-#endif
+#endif /*USE_RW*/
 USE MOD_Particle_SGS,               ONLY: ParticleInitSGS
-#endif
+#endif /*PARABOLIC*/
+#if PARTICLES_COUPLING >= 2
+USE MOD_Particle_Deposition        ,ONLY: InitializeDeposition
+#endif /*PARTICLES_COUPLING >= 2*/
+#if PARTICLES_COUPLING == 4
+USE MOD_Particle_Collision         ,ONLY: InitializeCollision
+#endif /*PARTICLES_COUPLING == 4*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -687,10 +694,10 @@ END IF
 #if PARABOLIC
 #if USE_RW
 CALL ParticleInitRandomWalk()
-#endif
+#endif /*USE_RW*/
 ! InitSGS must be called after InitRandomWalk and will abort FLEXI if an RW model is defined
 CALL ParticleInitSGS()
-#endif
+#endif /*PARABOLIC*/
 
 ! Requires information about initialized variables
 CALL InitParticleAnalyze()
@@ -714,8 +721,19 @@ CALL InitializeParticleEmission()
 #if USE_MPI
 ! has to be called AFTER InitializeVariables because we need to read the parameter file to know the CommSize
 CALL InitParticleCommSize()
+#endif /*USE_MPI*/
 
-#endif
+#if PARTICLES_COUPLING >= 2
+! Fluid-particle coupling
+IF (doCalcPartSource)    CALL InitializeDeposition()
+doCalcPartSource        = GETLOGICAL('Part-CalcSource'    )
+#endif /*PARTICLES_COUPLING >= 2*/
+
+#if PARTICLES_COUPLING == 4
+! Particle-particle coupling
+doCalcPartCollision     = GETLOGICAL('Part-CalcCollision'    )
+IF (doCalcPartCollision) CALL InitializeCollision()
+#endif /*PARTICLES_COUPLING == 4*/
 
 ! Rebuild previous sampling on surfMesh
 CALL RestartParticleBoundarySampling()
@@ -749,12 +767,6 @@ USE MOD_Particle_Interpolation     ,ONLY: InitParticleInterpolation
 USE MOD_Particle_Interpolation_Vars,ONLY: DoInterpolation
 USE MOD_Particle_Mesh              ,ONLY: InitParticleMesh
 USE MOD_ReadInTools
-#if PARTICLES_COUPLING >= 2
-USE MOD_Particle_Deposition        ,ONLY: InitializeDeposition
-#endif /*PARTICLES_COUPLING >= 2*/
-#if PARTICLES_COUPLING == 4
-USE MOD_Particle_Collision         ,ONLY: InitializeCollision
-#endif /*PARTICLES_COUPLING == 4*/
 #if USE_MPI
 USE MOD_Particle_Analyze_Vars      ,ONLY: RPP_MPI_Request
 USE MOD_Particle_MPI_Emission      ,ONLY: InitEmissionComm
@@ -780,15 +792,6 @@ CHARACTER(30)         :: tmpStr
 !===================================================================================================================================
 doPartIndex             = GETLOGICAL('Part-PartIndex'     )
 IF(doPartIndex) sumOfMatchedParticlesSpecies = 0
-
-! Fluid-particle coupling
-#if PARTICLES_COUPLING >= 2
-doCalcPartSource        = GETLOGICAL('Part-CalcSource'    )
-#endif /*PARTICLES_COUPLING >= 2*/
-! Particle-particle coupling
-#if PARTICLES_COUPLING == 4
-doCalcPartCollision     = GETLOGICAL('Part-CalcCollision'    )
-#endif /*PARTICLES_COUPLING == 4*/
 
 doWritePartDiam         = GETLOGICAL('Part-WritePartDiam' )
 doRandomPartDiam        = GETLOGICAL('Part-RandomPartDiam')
@@ -893,14 +896,6 @@ CALL MPI_BARRIER(MPI_COMM_FLEXI,IERROR)
 !                   "Fumx","Fumy","Fumz","Fvmx","Fvmy","Fvmz","Fbmx","Fbmy","Fbmz","nIndex"],WriteRootOnly=.FALSE.)
 !END IF
 !#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
-
-#if PARTICLES_COUPLING >= 2
-IF (doCalcPartSource)    CALL InitializeDeposition()
-#endif /*PARTICLES_COUPLING >= 2*/
-
-#if PARTICLES_COUPLING == 4
-IF (doCalcPartCollision) CALL InitializeCollision()
-#endif /*PARTICLES_COUPLING == 4*/
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 

@@ -83,7 +83,11 @@ SUBROUTINE InitializeCollision()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_ReadInTools                ,ONLY: GETLOGICAL,GETREAL
+USE MOD_Mesh_Vars               ,ONLY: nGlobalElems
+USE MOD_MPI_Shared
+USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
+USE MOD_ReadInTools             ,ONLY: GETLOGICAL,GETREAL
 USE MOD_Particle_Collision_Vars
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -92,7 +96,8 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                         :: StartT,EndT
+INTEGER,PARAMETER              :: PartIntSize=2
+REAL                           :: StartT,EndT
 !===================================================================================================================================
 
 LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE COLLISIONS...'
@@ -107,8 +112,14 @@ PartCollisionModel%f        = GETREAL   ('Part-Collisions-FricCoeff')
 ! determine neighboring elements
 CALL IdentifyNeighboringElements()
 
+! allocate shared particle arrays
+CALL Allocate_Shared((/PartIntSize,nGlobalElems/),PartInt_Shared_Win ,PartInt_Shared)
+CALL MPI_WIN_LOCK_ALL(0,PartInt_Shared_Win,iError)
+IF (myComputeNodeRank.EQ.0) PartInt_Shared = -1
+CALL BARRIER_AND_SYNC(PartInt_Shared_Win,MPI_COMM_SHARED)
+
 GETTIME(EndT)
-CALL DisplayMessageAndTime(EndT-StartT, ' INIT PARTICLE COLLISIONS DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
+CALL DisplayMessageAndTime(EndT-StartT, 'INIT PARTICLE COLLISIONS DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
 
 END SUBROUTINE InitializeCollision
 
@@ -126,12 +137,12 @@ USE MOD_Particle_Mesh_Vars      ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars      ,ONLY: FIBGM_nElems,FIBGM_Element,FIBGM_offsetElem
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID,GetCNElemID
 USE MOD_Particle_MPI_Vars       ,ONLY: halo_eps
-USE MOD_MPI_Shared              ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
 USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeTotalElems
-USE MOD_Mesh_Vars               ,ONLY: offsetElem,nGlobalElems
-USE MOD_Mesh_Vars               ,ONLY: nComputeNodeElems,offsetComputeNodeElem
+USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem,nGlobalElems
+USE MOD_Mesh_Vars               ,ONLY: nComputeNodeElems
 USE MOD_Utils                   ,ONLY: InsertionSort
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -307,7 +318,7 @@ nComputeNodeNeighElems = sendint
 ! Arrays to hold the mapping
 ALLOCATE(displsNeighElem(   0:nComputeNodeProcessors-1),&
          recvcountNeighElem(0:nComputeNodeProcessors-1))
-displsNeighElem(myComputeNodeRank) = offsetElem - offsetComputeNodeElem
+displsNeighElem(myComputeNodeRank) = firstElem - 1
 CALL MPI_ALLGATHER(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsNeighElem,1,MPI_INTEGER,MPI_COMM_SHARED,iError)
 DO iProc=1,nComputeNodeProcessors-1
   recvcountNeighElem(iProc-1) = displsNeighElem(iProc)-displsNeighElem(iProc-1)
@@ -468,8 +479,8 @@ CALL BARRIER_AND_SYNC(CNElem2CNNeighElem_Win,MPI_COMM_SHARED)
 ALLOCATE(ElemIsNeighElem(nComputeNodeTotalElems))
 ElemIsNeighElem = .FALSE.
 
-DO iElem = 1,nComputeNodeElems
-  ElemID = GetGlobalElemID(iElem)
+DO iElem = offsetElem+1,offsetElem+nElems
+  ElemID = GetCNElemID(iElem)
 
   DO iNeighElem = Neigh_offsetElem(ElemID)+1,Neigh_offsetElem(ElemID)+Neigh_nElems(ElemID)
     ElemIsNeighElem(CNElem2CNNeighElem(iNeighElem)) = .TRUE.
@@ -482,9 +493,11 @@ ElemIsNeighElem = .FALSE.
 currentCounter = 0.
 ALLOCATE(NeighElemsProc(     nProcNeighElems))
 ALLOCATE(offsetNeighElemPart(nGlobalElems))
+NeighElemsProc      = -1
+offsetNeighElemPart = -1
 
-DO iElem = 1,nComputeNodeElems
-  ElemID = GetGlobalElemID(iElem)
+DO iElem = offsetElem+1,offsetElem+nElems
+  ElemID = GetCNElemID(iElem)
 
   DO iNeighElem = Neigh_offsetElem(ElemID)+1,Neigh_offsetElem(ElemID)+Neigh_nElems(ElemID)
     IF (ElemIsNeighElem(CNElem2CNNeighElem(iNeighElem))) CYCLE
@@ -510,8 +523,8 @@ SUBROUTINE UpdateParticleShared()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Mesh_Vars               ,ONLY: nGlobalElems,nElems,offsetElem
-USE MOD_MPI_Shared              ,ONLY: Allocate_Shared,BARRIER_AND_SYNC
+USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem
+USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars         ,ONLY: displsElem,recvcountElem
 USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank
 USE MOD_MPI_Shared_Vars         ,ONLY: myLeaderGroupRank,nLeaderGroupProcs
@@ -549,10 +562,30 @@ END DO
 CALL GetOffsetAndGlobalNumberOfParts('UpdateParticleShared',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
 
 ! Allocate data arrays for mean particle quantities
-CALL Allocate_Shared((/PartIntSize,nGlobalElems            /),PartInt_Shared_Win ,PartInt_Shared)
-CALL Allocate_Shared((/PP_nVarPart,nGlobalNbrOfParticles(3)/),PartData_Shared_Win,PartData_Shared)
-CALL MPI_WIN_LOCK_ALL(0,PartInt_Shared_Win,iError)
-CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
+IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
+  ! Allocate array if not yet associated
+  CALL Allocate_Shared((/PP_nVarPart,INT(nGlobalNbrOfParticles(3)*1.2)/),PartData_Shared_Win,PartData_Shared)
+  CALL Allocate_Shared((/            INT(nGlobalNbrOfParticles(3)*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
+  CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win  ,iError)
+ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nGlobalNbrOfParticles(3)) THEN
+  ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+  CALL MPI_WIN_UNLOCK_ALL(PartData_Shared_Win,iError)
+  CALL MPI_WIN_FREE(      PartData_Shared_Win,iError)
+  CALL MPI_WIN_UNLOCK_ALL(PartBC_Shared_Win  ,iError)
+  CALL MPI_WIN_FREE(      PartBC_Shared_Win  ,iError)
+  CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
+
+  ! Then, free the pointers or arrays
+  MDEALLOCATE(PartData_Shared)
+  MDEALLOCATE(PartBC_Shared)
+  ! Increase array size if needed, 20% margin
+  CALL Allocate_Shared((/PP_nVarPart,INT(nGlobalNbrOfParticles(3)*1.2)/),PartData_Shared_Win,PartData_Shared)
+  CALL Allocate_Shared((/            INT(nGlobalNbrOfParticles(3)*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
+  CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
+  CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win  ,iError)
+END IF
 
 ! Order the particles along the SFC using a linked list
 ALLOCATE(PEM%pStart (offsetElem+1:offsetElem+nElems)    , &
@@ -744,20 +777,36 @@ IMPLICIT NONE
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
+! IdentifyNeighborElements
 CALL MPI_WIN_UNLOCK_ALL(Neigh_nElems_Shared_Win        ,iError)
 CALL MPI_WIN_FREE(      Neigh_nElems_Shared_Win        ,iError)
 CALL MPI_WIN_UNLOCK_ALL(Neigh_offsetElem_Shared_Win    ,iError)
 CALL MPI_WIN_FREE(      Neigh_offsetElem_Shared_Win    ,iError)
 CALL MPI_WIN_UNLOCK_ALL(CNElem2CNNeighElem_Win         ,iError)
 CALL MPI_WIN_FREE(      CNElem2CNNeighElem_Win         ,iError)
+! ComputeParticleCollisions
+CALL MPI_WIN_UNLOCK_ALL(PartInt_Shared_Win             ,iError)
+CALL MPI_WIN_FREE(      PartInt_Shared_Win             ,iError)
+CALL MPI_WIN_UNLOCK_ALL(PartData_Shared_Win            ,iError)
+CALL MPI_WIN_FREE(      PartData_Shared_Win            ,iError)
+CALL MPI_WIN_UNLOCK_ALL(PartBC_Shared_Win              ,iError)
+CALL MPI_WIN_FREE(      PartBC_Shared_Win              ,iError)
 
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /*USE_MPI*/
 
 ! Then, free the pointers or arrays
+! IdentifyNeighborElements
 MDEALLOCATE(Neigh_nElems_Shared)
 MDEALLOCATE(Neigh_offsetElem_Shared)
 MDEALLOCATE(CNElem2CNNeighElem)
+! ComputeParticleCollisions
+MDEALLOCATE(PartInt_Shared)
+MDEALLOCATE(PartData_Shared)
+MDEALLOCATE(PartBC_Shared)
+
+SDEALLOCATE(NeighElemsProc)
+SDEALLOCATE(offsetNeighElemPart)
 
 END SUBROUTINE FinalizeCollision
 

@@ -272,9 +272,9 @@ SUBROUTINE Particle_TimeStepByEuler(t,dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Particle_Analyze_Tools,  ONLY: TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack
+USE MOD_Particle_Emission,       ONLY: ParticleInserting
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: Species,PartSpecies,PartState,Pt,PDM
 #if PARTICLES_COUPLING == 4
@@ -391,9 +391,9 @@ SUBROUTINE Particle_TimeStepByLSERK(t,dt)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,ParticleRecordPath,TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
+USE MOD_Particle_Emission,       ONLY: ParticleInserting
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,PDM,PartSpecies,Species
 USE MOD_TimeDisc_Vars,           ONLY: b_dt
@@ -479,9 +479,9 @@ SUBROUTINE Particle_TimeStepByLSERK_RK(t,dt,iStage)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_Part_Emission,           ONLY: ParticleInserting
 USE MOD_Particle_Analyze_Tools,  ONLY: ParticleRecord,ParticleRecordPath,TrackingParticlePath
 USE MOD_Particle_Analyze_Vars,   ONLY: doParticleDispersionTrack,doParticlePathTrack,RecordPart
+USE MOD_Particle_Emission,       ONLY: ParticleInserting
 USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,PDM,PartSpecies,Species

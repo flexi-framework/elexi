@@ -23,114 +23,18 @@ IMPLICIT NONE
 PRIVATE
 
 #if PARTICLES_COUPLING == 4
-
-INTERFACE ComputeHardSphereCollision
-  MODULE PROCEDURE ComputeHardSphereCollision
-END INTERFACE
+! INTERFACE ComputeHardSphereCollision
+!   MODULE PROCEDURE ComputeHardSphereCollision
+! END INTERFACE
 
 INTERFACE ComputeParticleCollisions
   MODULE PROCEDURE ComputeParticleCollisions
 END INTERFACE
 
 PUBLIC :: ComputeParticleCollisions
+!===================================================================================================================================
 
 CONTAINS
-
-
-SUBROUTINE ComputeParticleBCIntersection(PartID,CNElemID,firstSide,lastSide,nLocSides,dtLoc,dtBC)
-!===================================================================================================================================
-!> Compute particle tracing path until first BC intersection
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals
-USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
-USE MOD_Particle_Collision_Vars
-USE MOD_Particle_Globals         ,ONLY: VECNORM
-USE MOD_Particle_Localization    ,ONLY: PARTHASMOVED
-USE MOD_Particle_Mesh_Vars       ,ONLY: SideBCMetrics
-USE MOD_Particle_Mesh_Vars       ,ONLY: ElemRadiusNGeo
-USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNSideID
-USE MOD_Particle_Intersection    ,ONLY: ComputeCurvedIntersection
-USE MOD_Particle_Intersection    ,ONLY: ComputePlanarRectIntersection
-USE MOD_Particle_Intersection    ,ONLY: ComputePlanarCurvedIntersection
-USE MOD_Particle_Intersection    ,ONLY: ComputeBiLinearIntersection
-USE MOD_Particle_Surfaces_Vars   ,ONLY: SideType
-! LOCAL VARIABLES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! IMPLICIT VARIABLE HANDLING
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-INTEGER,INTENT(IN)            :: PartID
-INTEGER,INTENT(IN)            :: CNElemID
-INTEGER,INTENT(IN)            :: firstSide
-INTEGER,INTENT(IN)            :: lastSide
-INTEGER,INTENT(IN)            :: nlocSides
-REAL,INTENT(IN)               :: dtLoc
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL,INTENT(OUT)              :: dtBC
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Counters
-INTEGER                       :: ilocSide
-! Sides
-INTEGER                       :: SideID,CNSideID,flip
-! Particles
-REAL                          :: PartTrajectory(1:3),lengthPartTrajectory
-! Tracking
-REAL                          :: localpha(firstSide:lastSide),xi(firstSide:lastSide),eta(firstSide:lastSide)
-LOGICAL                       :: isHit
-!-----------------------------------------------------------------------------------------------------------------------------------
-
-dtBC = -1.
-
-! check if element is a BC element
-IF (nLocSides.EQ.0) RETURN
-
-! Calculate particle trajectory
-PartTrajectory       = PartData_Shared(PART_VELV,PartID) * dtLoc
-lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
-
-! Check if the particle moved at all. If not, tracking is done
-IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID))) RETURN
-
-PartTrajectory       = PartTrajectory/lengthPartTrajectory
-locAlpha             = HUGE(1.)
-
-DO iLocSide = firstSide,LastSide
-
-  ! SideBCMetrics is sorted by distance. stop if the first side is out of range
-  IF (SideBCMetrics(BCSIDE_DISTANCE,ilocSide).GT.lengthPartTrajectory) CYCLE
-
-  ! side potentially in range (halo_eps)
-  SideID   = INT(SideBCMetrics(BCSIDE_SIDEID,ilocSide))
-  CNSideID = GetCNSideID(SideID)
-
-  ! BezierControlPoints are now built in cell local system. Hence, sides have always the flip from the shared SideInfo
-  flip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
-
-  SELECT CASE(SideType(CNSideID))
-    CASE(PLANAR_RECT)
-      CALL ComputePlanarRectIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
-                                        ,  xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
-    CASE(BILINEAR,PLANAR_NONRECT)
-      CALL ComputeBiLinearIntersection(    isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
-                                      ,    xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
-    CASE(PLANAR_CURVED)
-      CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
-                                          ,xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
-    CASE(CURVED)
-      CALL ComputeCurvedIntersection(      isHit,PartTrajectory,lengthPartTrajectory,locAlpha(ilocSide) &
-                                    ,      xi(ilocSide),eta(ilocSide),PartID,flip,SideID)
-  END SELECT
-END DO ! iLocSide = firstSide,LastSide
-
-IF (MAXVAL(locAlpha).GT.0) dtBC = MINVAL(locAlpha,locAlpha.GT.0)
-
-END SUBROUTINE ComputeParticleBCIntersection
-
-
-!----------------------------------------------------------------------------------------------------------------------------------
 
 SUBROUTINE ComputeParticleCollisions(dtLoc)
 !===================================================================================================================================
@@ -171,6 +75,9 @@ REAL                          :: a,b,c,delta,dtColl
 LOGICAL,ALLOCATABLE           :: PartColl(:)
 !===================================================================================================================================
 
+! safety check, dt > 1 currently not supported
+IF (dtLoc.GT.1) CALL Abort(__STAMP__,'Time steps greater than 1 are unsupported with particle collisions')
+
 ! nullify the BC intersection times
 IF (myComputeNodeRank.EQ.0) PartBC_Shared = -1.
 CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
@@ -184,22 +91,37 @@ DO iElem = offsetElem+1,offsetElem+nElems
 
   SELECT CASE(TrackingMethod)
     CASE (TRIATRACKING)
-      CALL Abort(__STAMP__,'TODO: Tracing')
-    CASE (TRACING)
       ! FIXME
-      CALL Abort(__STAMP__,'TODO: Tracing')
+      CALL Abort(__STAMP__,'TODO: TriaTracking')
+    CASE (TRACING)
+      ! loop over all particles in the element
+      DO iPart = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
+        CNElemID = GetCNElemID(iElem)
+
+        CALL ComputeParticleTracingIntersection(   PartID    = iPart                , &
+                                                   ElemID    = iELem                , &
+                                                   CNElemID  = CNElemID             , &
+                                                   dtLoc     = dtLoc                , &
+                                                   dtBC      = PartBCdt)
+
+        ! Scale intersection dt with time step
+        PartBC_Shared(iPart) = PartBCdt * dtLoc
+      END DO ! iPart
     CASE (REFMAPPING)
       ! loop over all particles in the element
       DO iPart = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
         CNElemID = GetCNElemID(iElem)
 
-        CALL ComputeParticleBCIntersection(PartID    = iPart                                                                               , &
-                                           CNElemID  = CNElemID                                                                            , &
-                                           firstSide = ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + 1                                       , &
-                                           lastSide  = ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID), &
-                                           nLocSides = ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID)                                            , &
-                                           dtLoc     = dtLoc                                                                               , &
-                                           dtBC      = PartBCdt)
+        ASSOCIATE(offsetSide => ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID)           , &
+                  nSides     => ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID))
+        CALL ComputeParticleRefmappingIntersection(PartID    = iPart                , &
+                                                   CNElemID  = CNElemID             , &
+                                                   firstSide = offsetSide + 1       , &
+                                                   lastSide  = offsetSide + nSides  , &
+                                                   nLocSides = nSides               , &
+                                                   dtLoc     = dtLoc                , &
+                                                   dtBC      = PartBCdt)
+        END ASSOCIATE
 
         ! Scale intersection dt with time step
         PartBC_Shared(iPart) = PartBCdt * dtLoc
@@ -585,6 +507,186 @@ PartState(PART_POSV,iPart2) = LastPartPos(PART_POSV,iPart2) + dtColl * PartState
 END SUBROUTINE ComputeHardSphereCollision
 
 
+SUBROUTINE ComputeParticleTracingIntersection(PartID,ElemID,CNElemID,dtLoc,dtBC)
+!===================================================================================================================================
+!> Compute particle tracing path until first BC intersection
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
+USE MOD_Particle_Collision_Vars
+USE MOD_Particle_Globals         ,ONLY: VECNORM
+USE MOD_Particle_Localization    ,ONLY: PARTHASMOVED
+USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNSideID,GetGlobalNonUniqueSideID
+USE MOD_Particle_Mesh_Vars       ,ONLY: ElemRadiusNGeo
+USE MOD_Particle_Intersection    ,ONLY: ComputeCurvedIntersection
+USE MOD_Particle_Intersection    ,ONLY: ComputePlanarRectIntersection
+USE MOD_Particle_Intersection    ,ONLY: ComputePlanarCurvedIntersection
+USE MOD_Particle_Intersection    ,ONLY: ComputeBiLinearIntersection
+USE MOD_Particle_Surfaces_Vars   ,ONLY: SideType
+! LOCAL VARIABLES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)            :: PartID
+INTEGER,INTENT(IN)            :: ElemID
+INTEGER,INTENT(IN)            :: CNElemID
+REAL,INTENT(IN)               :: dtLoc
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)              :: dtBC
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Counters
+INTEGER                       :: iLocSide
+! Sides
+INTEGER                       :: SideID,CNSideID,flip
+! Particles
+REAL                          :: PartTrajectory(1:3),lengthPartTrajectory
+! Tracking
+REAL                          :: locAlpha(1:6),xi,eta
+LOGICAL                       :: isHit
+LOGICAL                       :: isCriticalParallelInFace
+!-----------------------------------------------------------------------------------------------------------------------------------
+
+dtBC = HUGE(1.)
+
+! Calculate particle trajectory
+PartTrajectory       = PartData_Shared(PART_VELV,PartID) * dtLoc
+lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
+
+! Check if the particle moved at all. If not, tracking is done
+IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID))) RETURN
+
+PartTrajectory       = PartTrajectory/lengthPartTrajectory
+locAlpha             = -1.
+
+DO iLocSide = 1,6
+  SideID   = GetGlobalNonUniqueSideID(ElemID,iLocSide)
+  CNSideID = GetCNSideID(SideID)
+  ! If the side is positive, then the element has the actual side
+  ! and neighbour element has the negative one which has to be flipped
+
+  ! BezierControlPoints are now built in cell local system. Hence, sides have always the flip from the shared SideInfo
+  flip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
+
+  isCriticalParallelInFace = .FALSE.
+
+  SELECT CASE(SideType(CNSideID))
+    CASE(PLANAR_RECT)
+      CALL ComputePlanarRectIntersection(   isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+                                           ,xi,eta,PartID,flip,SideID,isCriticalParallelInFace)
+    CASE(BILINEAR,PLANAR_NONRECT)
+      CALL ComputeBiLinearIntersection(     isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+                                           ,xi,eta,PartID,flip,SideID)
+    CASE(PLANAR_CURVED)
+      CALL ComputePlanarCurvedIntersection( isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+                                           ,xi,eta,PartID,flip,SideID,isCriticalParallelInFace)
+    CASE(CURVED)
+      CALL ComputeCurvedIntersection(       isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+                                           ,xi,eta,PartID,flip,SideID,isCriticalParallelInFace)
+    CASE DEFAULT
+      CALL Abort(__STAMP__,' Missing required side-data. Please increase halo region. ',SideID)
+  END SELECT
+END DO ! iLocSide = 1,6
+
+IF (MAXVAL(locAlpha).GT.0) dtBC = MINVAL(locAlpha,locAlpha.GT.0)
+
+END SUBROUTINE ComputeParticleTracingIntersection
+
+
+SUBROUTINE ComputeParticleRefmappingIntersection(PartID,CNElemID,firstSide,lastSide,nLocSides,dtLoc,dtBC)
+!===================================================================================================================================
+!> Compute particle tracing path until first BC intersection
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
+USE MOD_Particle_Collision_Vars
+USE MOD_Particle_Globals         ,ONLY: VECNORM
+USE MOD_Particle_Localization    ,ONLY: PARTHASMOVED
+USE MOD_Particle_Mesh_Vars       ,ONLY: SideBCMetrics
+USE MOD_Particle_Mesh_Vars       ,ONLY: ElemRadiusNGeo
+USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNSideID
+USE MOD_Particle_Intersection    ,ONLY: ComputeCurvedIntersection
+USE MOD_Particle_Intersection    ,ONLY: ComputePlanarRectIntersection
+USE MOD_Particle_Intersection    ,ONLY: ComputePlanarCurvedIntersection
+USE MOD_Particle_Intersection    ,ONLY: ComputeBiLinearIntersection
+USE MOD_Particle_Surfaces_Vars   ,ONLY: SideType
+! LOCAL VARIABLES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)            :: PartID
+INTEGER,INTENT(IN)            :: CNElemID
+INTEGER,INTENT(IN)            :: firstSide
+INTEGER,INTENT(IN)            :: lastSide
+INTEGER,INTENT(IN)            :: nlocSides
+REAL,INTENT(IN)               :: dtLoc
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)              :: dtBC
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Counters
+INTEGER                       :: iLocSide
+! Sides
+INTEGER                       :: SideID,CNSideID,flip
+! Particles
+REAL                          :: PartTrajectory(1:3),lengthPartTrajectory
+! Tracking
+REAL                          :: localpha(firstSide:lastSide),xi,eta
+LOGICAL                       :: isHit
+!-----------------------------------------------------------------------------------------------------------------------------------
+
+dtBC = HUGE(1.)
+
+! check if element is a BC element
+IF (nLocSides.EQ.0) RETURN
+
+! Calculate particle trajectory
+PartTrajectory       = PartData_Shared(PART_VELV,PartID) * dtLoc
+lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
+
+! Check if the particle moved at all. If not, tracking is done
+IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID))) RETURN
+
+PartTrajectory       = PartTrajectory/lengthPartTrajectory
+locAlpha             = -1.
+
+DO iLocSide = firstSide,LastSide
+
+  ! SideBCMetrics is sorted by distance. stop if the first side is out of range
+  IF (SideBCMetrics(BCSIDE_DISTANCE,iLocSide).GT.lengthPartTrajectory) CYCLE
+
+  ! side potentially in range (halo_eps)
+  SideID   = INT(SideBCMetrics(BCSIDE_SIDEID,iLocSide))
+  CNSideID = GetCNSideID(SideID)
+
+  ! BezierControlPoints are now built in cell local system. Hence, sides have always the flip from the shared SideInfo
+  flip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
+
+  SELECT CASE(SideType(CNSideID))
+    CASE(PLANAR_RECT)
+      CALL ComputePlanarRectIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+                                        ,  xi,eta,PartID,flip,SideID)
+    CASE(BILINEAR,PLANAR_NONRECT)
+      CALL ComputeBiLinearIntersection(    isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+                                      ,    xi,eta,PartID,flip,SideID)
+    CASE(PLANAR_CURVED)
+      CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+                                          ,xi,eta,PartID,flip,SideID)
+    CASE(CURVED)
+      CALL ComputeCurvedIntersection(      isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+                                    ,      xi,eta,PartID,flip,SideID)
+  END SELECT
+END DO ! iLocSide = firstSide,LastSide
+
+IF (MAXVAL(locAlpha).GT.0) dtBC = MINVAL(locAlpha,locAlpha.GT.0)
+
+END SUBROUTINE ComputeParticleRefmappingIntersection
 #endif /*PARTICLES_COUPLING == 4*/
 
 END MODULE MOD_Particle_Collision_Method

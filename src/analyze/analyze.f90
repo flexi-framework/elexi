@@ -307,10 +307,11 @@ USE MOD_Benchmarking,       ONLY: Benchmarking
 USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 USE MOD_Output,             ONLY: OutputToFile,PrintStatusLine
 USE MOD_Output_Vars,        ONLY: ProjectName
+USE MOD_Restart_Vars,       ONLY: RestartTime
 USE MOD_TimeDisc_Vars,      ONLY: dt,tStart,tEnd,maxIter
 #if USE_PARTICLES
 USE MOD_Particle_Analyze,   ONLY: ParticleAnalyze,ParticleInformation
-#endif
+#endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance,        ONLY: PrintImbalance
 #endif /*USE_LOADBALANCE*/
@@ -359,7 +360,7 @@ CALL ParticleInformation()
 CALL ParticleAnalyze(time,iter)
 #endif /*USE_PARTICLES*/
 
-IF(Time.GT.0.) THEN
+IF(Time.GT.RestartTime) THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
 #if USE_LOADBALANCE
   CALL PrintImbalance()

@@ -684,6 +684,10 @@ CALL InitializeVariables()
 ! Set particle timedisc pointer
 CALL Particle_InitTimeDisc()
 
+#if USE_LOADBALANCE
+CALL InitLoadBalanceTracking()
+#endif /*USE_LOADBALANCE*/
+
 ! Return if running particle code without any species
 IF (nSpecies.LE.0) THEN
   SWRITE(UNIT_stdOut,'(A)')' INIT PARTICLES DONE!'
@@ -702,10 +706,6 @@ CALL ParticleInitSGS()
 
 ! Requires information about initialized variables
 CALL InitParticleAnalyze()
-
-#if USE_LOADBALANCE
-CALL InitLoadBalanceTracking()
-#endif /*USE_LOADBALANCE*/
 
 ! Restart particles here, otherwise we can not know if we need to have an initial emission
 IF (PRESENT(doLoadBalance_opt)) THEN

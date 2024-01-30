@@ -198,6 +198,7 @@ ELSE
   UseH5IOLoadBalance   = GETLOGICAL('UseH5IOLoadBalance')
   LoadBalanceSample    = GETINT    ('LoadBalanceSample')
   LoadBalanceMaxSteps  = GETINT    ('LoadBalanceMaxSteps')
+  IF (LoadBalanceMaxSteps.LT.0) LoadBalanceMaxSteps = 0
   LoadBalanceInterval  = GETINT    ('LoadBalanceInterval',tmpStr)
   DeviationThreshold   = GETREAL   ('Load-DeviationThreshold')
 #if USE_PARTICLES

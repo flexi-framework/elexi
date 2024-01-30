@@ -17,7 +17,7 @@
 !===================================================================================================================================
 ! helper functions for particle emission
 !===================================================================================================================================
-MODULE MOD_Part_Emission_Tools
+MODULE MOD_Particle_Emission_Tools
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
@@ -584,7 +584,8 @@ SUBROUTINE SetParticlePositionCircle(FractNbr,iInit,chunkSize,particle_positions
 ! Set particle position
 !===================================================================================================================================
 ! modules
-USE MOD_Particle_Globals       ,ONLY: Pi,FindLinIndependentVectors
+USE MOD_Globals_Vars           ,ONLY: PI
+USE MOD_Particle_Globals       ,ONLY: FindLinIndependentVectors
 USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -608,9 +609,9 @@ radius = Species(FractNbr)%Init(iInit)%RadiusIC
 DO i = 1,chunkSize
   IF(TRIM(Species(FractNbr)%Init(iInit)%SpaceIC).EQ.'circle') THEN
     CALL RANDOM_NUMBER(RandVal)
-    Phi = 2.*Pi*RandVal
+    Phi = 2.*PI*RandVal
   ELSE
-    Phi = 2.*Pi*REAL(i)/ REAL(chunkSize)
+    Phi = 2.*PI*REAL(i)/ REAL(chunkSize)
   END IF
   Particle_pos = Species(FractNbr)%Init(iInit)%BasePointIC + &
                 linevector  * COS(Phi) * radius            + &
@@ -770,7 +771,7 @@ SUBROUTINE SetParticlePositionGaussian(FractNbr,iInit,chunkSize,particle_positio
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
-USE MOD_Particle_Globals       ,ONLY: Pi
+USE MOD_Globals_Vars           ,ONLY: PI
 USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -873,7 +874,8 @@ SUBROUTINE SetParticlePositionFromFile(FractNbr,iInit,chunkSize,particle_positio
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
-USE MOD_Particle_Globals       ,ONLY: Pi,FindLinIndependentVectors
+USE MOD_Globals_Vars           ,ONLY: PI
+USE MOD_Particle_Globals       ,ONLY: FindLinIndependentVectors
 USE MOD_Particle_Vars          ,ONLY: Species
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -1053,4 +1055,4 @@ Vector3(:) = Vector3(:) / SQRT(Vector3(1)**2 + Vector3(2)**2 + Vector3(3)**2)
 
 END SUBROUTINE GramSchmidtAlgo
 
-END MODULE MOD_Part_Emission_Tools
+END MODULE MOD_Particle_Emission_Tools

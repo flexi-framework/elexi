@@ -15,7 +15,7 @@
 #include "eos.h"
 #include "particle.h"
 
-MODULE MOD_Part_Pos_and_Velo
+MODULE MOD_Particle_Pos_and_Velo
 !===================================================================================================================================
 ! module for particle emission
 !===================================================================================================================================
@@ -58,7 +58,7 @@ SUBROUTINE SetParticlePositionCellLocal(FractNbr,iInit,NbrOfParticle)
 ! modules
 USE MOD_Globals
 USE MOD_Particle_Vars          ,ONLY: Species
-USE MOD_Part_Emission_Tools    ,ONLY: IntegerDivide,SetCellLocalParticlePosition
+USE MOD_Particle_Emission_Tools,ONLY: IntegerDivide,SetCellLocalParticlePosition
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
@@ -146,12 +146,12 @@ SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
 USE MOD_Globals
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,doPartIndex
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionPoint
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionPlane,SetParticlePositionDisk,SetParticlePositionCross,SetParticlePositionCircle
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionCuboidCylinder,SetParticlePositionSphere
-!USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionSinDeviation
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticlePositionGaussian,SetParticlePositionFromFile
+USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionPoint
+USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine
+USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionPlane,SetParticlePositionDisk,SetParticlePositionCross,SetParticlePositionCircle
+USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionCuboidCylinder,SetParticlePositionSphere
+! USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionSinDeviation
+USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionGaussian,SetParticlePositionFromFile
 #if USE_MPI
 USE MOD_Particle_MPI_Emission  ,ONLY: SendEmissionParticlesToProcs
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
@@ -772,4 +772,4 @@ END SELECT
 END SUBROUTINE SetParticleTemperature
 #endif
 
-END  MODULE MOD_Part_Pos_and_Velo
+END  MODULE MOD_Particle_Pos_and_Velo

@@ -325,6 +325,7 @@ SUBROUTINE ParticleSGS(dt,iStage) !,b_dt)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_Globals_Vars                ,ONLY: PI
 USE MOD_DG_Vars                     ,ONLY: U,UPrim
 USE MOD_Filter                      ,ONLY: Filter_Pointer
 USE MOD_Filter_Vars                 ,ONLY: FilterMat

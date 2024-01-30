@@ -1146,7 +1146,7 @@ SUBROUTINE CalcPartInsSubSidesStandardCase(iSpec,iSF,PartInsSubSides)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Part_Emission_Tools     ,ONLY: IntegerDivide, SamplePoissonDistri
+USE MOD_Particle_Emission_Tools ,ONLY: IntegerDivide, SamplePoissonDistri
 USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfFluxSideSize, BCdata_auxSF
 USE MOD_Particle_TimeDisc_Vars  ,ONLY: RKdtFrac,RKdtFracTotal
 USE MOD_Particle_Vars           ,ONLY: Species
@@ -1242,8 +1242,8 @@ USE MOD_Interpolation           ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars      ,ONLY: NodeType
 USE MOD_Mesh_Vars               ,ONLY: BC,BoundaryType,SideToElem,offsetElem
 USE MOD_Mesh_Vars               ,ONLY: Face_xGP,SurfElem
-USE MOD_Part_Emission_Tools     ,ONLY: IntegerDivide,SetParticleMass,SamplePoissonDistri
-USE MOD_Part_Pos_and_Velo       ,ONLY: SetParticleVelocity
+USE MOD_Particle_Emission_Tools ,ONLY: IntegerDivide,SetParticleMass,SamplePoissonDistri
+USE MOD_Particle_Pos_and_Velo   ,ONLY: SetParticleVelocity
 USE MOD_Particle_Tools          ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Tools  ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars   ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
@@ -1819,10 +1819,10 @@ SUBROUTINE CalcPartInsPoissonDistr(iSpec, iSF, iSample, jSample, iSide, PartInsS
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_TimeDisc_Vars           ,ONLY: dt
-USE MOD_Part_Emission_Tools     ,ONLY: SamplePoissonDistri
+USE MOD_Particle_Emission_Tools ,ONLY: SamplePoissonDistri
 USE MOD_Particle_TimeDisc_Vars  ,ONLY: RKdtFrac
 USE MOD_Particle_Vars           ,ONLY: Species
+USE MOD_TimeDisc_Vars           ,ONLY: dt
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

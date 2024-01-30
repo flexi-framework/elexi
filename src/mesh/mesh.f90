@@ -149,8 +149,8 @@ REAL              :: StartT,EndT,WallTime
 IF (.NOT.InterpolationInitIsDone .OR. MeshInitIsDone) &
   CALL CollectiveStop(__STAMP__,'InitMesh not ready to be called or already called.')
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT MESH IN MODE ',meshMode,'...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT MESH IN MODE ',meshMode,'...'
 GETTIME(StartT)
 
 ! prepare pointer structure (get nElems, etc.)
@@ -159,9 +159,15 @@ IF (PRESENT(MeshFile_IN)) THEN
 ELSE
   MeshFile = GETSTR('MeshFile')
 END IF
-validMesh = ISVALIDMESHFILE(MeshFile)
-IF(.NOT.validMesh) &
-    CALL CollectiveStop(__STAMP__,'ERROR - Mesh file not a valid HDF5 mesh.')
+
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  validMesh = ISVALIDMESHFILE(MeshFile)
+  IF(.NOT.validMesh) CALL CollectiveStop(__STAMP__,'ERROR - Mesh file not a valid HDF5 mesh.')
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 IF (PRESENT(UseCurveds_IN)) THEN
   useCurveds = UseCurveds_IN

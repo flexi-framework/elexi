@@ -1123,6 +1123,7 @@ SUBROUTINE InitializeVariablesSpeciesInits()
 ! MODULES
 USE MOD_ISO_VARYING_STRING
 USE MOD_Globals
+USE MOD_Globals_Vars          ,ONLY: PI
 USE MOD_Equation_Vars         ,ONLY: RefStatePrim
 USE MOD_Particle_Globals
 USE MOD_Particle_RHS          ,ONLY: InitRHS

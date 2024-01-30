@@ -78,7 +78,6 @@ INTERFACE ElementOnNode
   MODULE PROCEDURE ElementOnNode
 END INTERFACE
 
-PUBLIC :: PI
 PUBLIC :: CROSSNORM
 PUBLIC :: VECNORM
 PUBLIC :: UnitVector
@@ -145,6 +144,7 @@ PURE SUBROUTINE OrthoNormVec(v1,v2,v3)
 !> computes orthonormal basis from a given vector v1 (v1 must be normalized)
 !===================================================================================================================================
 ! MODULES
+USE MOD_Globals_Vars,      ONLY: EpsMach
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

@@ -430,11 +430,11 @@ SUBROUTINE Visualize_Particles(OutputTime)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars     ,ONLY: PI
 USE MOD_PreProc
 ! USE MOD_Mesh_Vars        ,ONLY: nElems
 USE MOD_Output_Vars      ,ONLY: ProjectName
 USE MOD_Particle_Vars
-USE MOD_Particle_Globals ,ONLY: pi
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

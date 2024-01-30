@@ -45,13 +45,13 @@ SUBROUTINE InitializeParticleEmission()
 USE MOD_Globals
 USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists,EmissionTime
 USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PDM,PEM,doPartIndex,PartIndex,sumOfMatchedParticlesSpecies
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticleMass
-#if USE_PARTTEMP
-USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticleTemperature
-#endif
-USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
+USE MOD_Particle_Emission_Tools,ONLY: SetParticleMass
+USE MOD_Particle_Pos_and_Velo  ,ONLY: SetParticlePosition,SetParticleVelocity
 USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition
 USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
+#if USE_PARTTEMP
+USE MOD_Particle_Pos_and_Velo  ,ONLY: SetParticleTemperature
+#endif
 #if USE_MPI
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /* MPI*/
@@ -193,9 +193,9 @@ SUBROUTINE ParticleInserting()
 ! Modules
 USE MOD_Globals
 USE MOD_Restart_Vars           ,ONLY: RestartTime
-USE MOD_Part_Emission_Tools    ,ONLY: SamplePoissonDistri
-USE MOD_Part_Emission_Tools    ,ONLY: SetParticleMass
-USE MOD_Part_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
+USE MOD_Particle_Emission_Tools,ONLY: SamplePoissonDistri
+USE MOD_Particle_Emission_Tools,ONLY: SetParticleMass
+USE MOD_Particle_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
 USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition
 USE MOD_Particle_Analyze_Tools ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn

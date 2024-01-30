@@ -59,10 +59,20 @@ INTERFACE GetVarnames
   MODULE PROCEDURE GetVarnames
 END INTERFACE
 
-PUBLIC :: Plist_File_ID,File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to be public
-PUBLIC :: OpenDataFile,CloseDataFile ! Subroutines from MOD_IO_HDF5 that need to be public
-PUBLIC :: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetAttributeSize,GetDataProps,GetNextFileName
-PUBLIC :: ReadArray,ReadAttribute
+PUBLIC :: Plist_File_ID       ! Variables from MOD_IO_HDF5 that need to be public
+PUBLIC :: File_ID             ! Variables from MOD_IO_HDF5 that need to be public
+PUBLIC :: HSize               ! Variables from MOD_IO_HDF5 that need to be public
+PUBLIC :: nDims               ! Variables from MOD_IO_HDF5 that need to be public
+PUBLIC :: OpenDataFile        ! Subroutines from MOD_IO_HDF5 that need to be public
+PUBLIC :: CloseDataFile       ! Subroutines from MOD_IO_HDF5 that need to be public
+PUBLIC :: ISVALIDHDF5FILE
+PUBLIC :: ISVALIDMESHFILE
+PUBLIC :: GetDataSize
+PUBLIC :: GetAttributeSize
+PUBLIC :: GetDataProps
+PUBLIC :: GetNextFileName
+PUBLIC :: ReadArray
+PUBLIC :: ReadAttribute
 PUBLIC :: GetArrayAndName
 PUBLIC :: GetVarnames
 PUBLIC :: DatasetExists
@@ -205,19 +215,15 @@ IF(iError.EQ.0) THEN
   CALL DatasetExists(File_ID,'Ngeo',NGeoExists,attrib=.TRUE.)
   IF (.NOT.NGeoExists) isValidMeshFile = .FALSE.
 
-  ! Close property list
-  CALL H5PCLOSE_F(Plist_ID, iError)
   ! Close the file.
   CALL H5FCLOSE_F(File_ID, iError)
-  ! Close FORTRAN predefined datatypes
-  CALL H5CLOSE_F(iError)
 ELSE
   isValidMeshFile=.FALSE.
-  ! Close property list
-  CALL H5PCLOSE_F(Plist_ID, iError)
-  ! Close FORTRAN predefined datatypes
-  CALL H5CLOSE_F(iError)
 END IF
+! Close property list
+CALL H5PCLOSE_F(Plist_ID, iError)
+! Close FORTRAN predefined datatypes
+CALL H5CLOSE_F(iError)
 
 END FUNCTION ISVALIDMESHFILE
 

@@ -142,7 +142,6 @@ PUBLIC :: GetDatasetNamesInGroup
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Define parameters
 !==================================================================================================================================
@@ -166,6 +165,7 @@ CALL prms%CreateLogicalOption('UseCollectiveIO', "Set true to activate collectiv
                                                '.FALSE.')
 #endif /*USE_PARTICLES*/
 END SUBROUTINE DefineParametersIO_HDF5
+
 
 !==================================================================================================================================
 !> Initialize HDF5 IO
@@ -192,6 +192,7 @@ output2D = GETLOGICAL('output2D')
 
 CALL InitMPIInfo()
 END SUBROUTINE InitIOHDF5
+
 
 !==================================================================================================================================
 !> Initialize MPIInfo variable
@@ -279,6 +280,10 @@ INTEGER                       :: comm
 !==================================================================================================================================
 LOGWRITE(*,'(A)')'  OPEN HDF5 FILE "',TRIM(FileString),'" ...'
 
+! #if USE_LOADBALANCE
+! IF (PerformLoadBalance) CALL Abort(__STAMP__,'Opening HDF5 files not permitted during load balance due to HDF5 handle leaks!')
+! #endif /*USE_LOADBALANCE*/
+
 userblockSize_loc = 0
 IF (PRESENT(userblockSize)) userblockSize_loc = userblockSize
 
@@ -313,15 +318,15 @@ ELSE
   IF(.NOT.FILEEXISTS(FileString)) CALL Abort(__STAMP__,&
     'ERROR: Specified file '//TRIM(FileString)//' does not exist.')
   IF (readOnly) THEN
-    CALL H5FOPEN_F(  TRIM(FileString), H5F_ACC_RDONLY_F,  File_ID, iError, access_prp = Plist_File_ID)
+    CALL H5FOPEN_F(TRIM(FileString), H5F_ACC_RDONLY_F, File_ID, iError, access_prp = Plist_File_ID)
   ELSE
-    CALL H5FOPEN_F(  TRIM(FileString), H5F_ACC_RDWR_F,  File_ID, iError, access_prp = Plist_File_ID)
+    CALL H5FOPEN_F(TRIM(FileString), H5F_ACC_RDWR_F  , File_ID, iError, access_prp = Plist_File_ID)
   END IF
 END IF
-IF(iError.NE.0) CALL Abort(__STAMP__,&
-  'ERROR: Could not open or create file '//TRIM(FileString))
+IF(iError.NE.0) CALL Abort(__STAMP__,'ERROR: Could not open or create file '//TRIM(FileString))
 
 LOGWRITE(*,*)'...DONE!'
+
 END SUBROUTINE OpenDataFile
 
 
@@ -330,7 +335,7 @@ END SUBROUTINE OpenDataFile
 !==================================================================================================================================
 SUBROUTINE CloseDataFile()
 ! MODULES
-USE MOD_Globals,ONLY:UNIT_logOut,Logging
+USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -339,13 +344,19 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 LOGWRITE(*,'(A)')'  CLOSE HDF5 FILE...'
+
+! #if USE_LOADBALANCE
+! IF (PerformLoadBalance) CALL Abort(__STAMP__,'Opening HDF5 files not permitted during load balance due to HDF5 handle leaks!')
+! #endif /*USE_LOADBALANCE*/
+
 ! Close file
 CALL H5PCLOSE_F(Plist_File_ID, iError)
 CALL H5FCLOSE_F(File_ID, iError)
 ! Close FORTRAN predefined datatypes.
 CALL H5CLOSE_F(iError)
-File_ID=0
+File_ID = 0
 LOGWRITE(*,*)'...DONE!'
+
 END SUBROUTINE CloseDataFile
 
 
@@ -412,8 +423,8 @@ IF(PRESENT(eval))THEN
   eout%eval       => Eval
   nOpts=nOpts+1
 ENDIF
-IF(nOpts.NE.1) CALL Abort(__STAMP__,&
-  'More then one optional argument passed to AddToElemData.')
+IF(nOpts.NE.1) CALL Abort(__STAMP__,'More then one optional argument passed to AddToElemData.')
+
 END SUBROUTINE AddToElemData
 
 
@@ -486,8 +497,8 @@ IF(PRESENT(eval))THEN
   nout%eval       => Eval
   nOpts=nOpts+1
 ENDIF
-IF(nOpts.NE.1) CALL Abort(__STAMP__,&
-  'More then one optional argument passed to AddToFieldData.')
+IF(nOpts.NE.1) CALL Abort(__STAMP__,'More then one optional argument passed to AddToFieldData.')
+
 END SUBROUTINE AddToFieldData
 
 
@@ -617,11 +628,14 @@ CHARACTER(LEN=255),ALLOCATABLE :: names(:) !< names of datasets
 INTEGER                        :: nMembers,i,type
 !===================================================================================================================================
 CALL H5GN_MEMBERS_F(File_ID, TRIM(group), nMembers, iError)
+
 ALLOCATE(names(nMembers))
+
 DO i=1,nMembers
   CALL h5gget_obj_info_idx_f(File_ID, TRIM(group), i-1, names(i), type, iError)
   IF (type.NE.H5G_DATASET_F) names(i) = ''
 END DO
+
 END SUBROUTINE GetDatasetNamesInGroup
 
 
@@ -630,21 +644,22 @@ END SUBROUTINE GetDatasetNamesInGroup
 !> ATTENTION: Name string must be terminated with 'MY_ENV_VAR'//ACHAR(0)
 !> https://software.intel.com/zh-cn/comment/1842053
 !==================================================================================================================================
-!FUNCTION SETENV(name,value,overwrite) BIND(C,name='setenv')
-!! MODULES
-!USE ISO_C_BINDING
-!!----------------------------------------------------------------------------------------------------------------------------------!
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! COMBINE INPUT AND VARIABLE SETTING
-!!==================================================================================================================================
-!    INTEGER(C_INT) setenv
-!    CHARACTER(KIND=C_CHAR), INTENT(in) :: name(*)
-!    CHARACTER(KIND=C_CHAR), INTENT(in) :: value(*)
-!    INTEGER(C_INT), VALUE :: overwrite
+! FUNCTION SETENV(name,value,overwrite) BIND(C,name='setenv')
+! ! MODULES
+! USE ISO_C_BINDING
+! !----------------------------------------------------------------------------------------------------------------------------------!
+! ! IMPLICIT VARIABLE HANDLING
+! IMPLICIT NONE
+! !----------------------------------------------------------------------------------------------------------------------------------
+! ! COMBINE INPUT AND VARIABLE SETTING
+! !==================================================================================================================================
+!     INTEGER(C_INT) setenv
+!     CHARACTER(KIND=C_CHAR), INTENT(in) :: name(*)
+!     CHARACTER(KIND=C_CHAR), INTENT(in) :: value(*)
+!     INTEGER(C_INT), VALUE :: overwrite
 !
-!END FUNCTION SETENV
+! END FUNCTION SETENV
+
 
 !> Finalizes HDF5 IO
 !==================================================================================================================================
@@ -698,6 +713,7 @@ IF(ASSOCIATED(ElementOut_In)) THEN
 END IF
 
 END SUBROUTINE FinalizeElemData
+
 
 !==================================================================================================================================
 !> Deallocate and nullify additional field data arrays or scalars which were added for writeout by means of a linked list.

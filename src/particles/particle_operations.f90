@@ -17,7 +17,7 @@
 !===================================================================================================================================
 ! Contains tools for particle related operations. This routine is used in MOD_Particle_Boundary_Tools, but not vice versa!
 !===================================================================================================================================
-MODULE MOD_Part_Operations
+MODULE MOD_Particle_Operations
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -128,4 +128,4 @@ IF (PRESENT(crossedBC)) crossedBC = .TRUE.
 
 END SUBROUTINE RemoveParticle
 
-END MODULE MOD_part_operations
+END MODULE MOD_Particle_Operations

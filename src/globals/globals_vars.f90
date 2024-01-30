@@ -43,6 +43,12 @@ REAL                       :: CommMeshReadinWallTime               !> Shared mem
 REAL                       :: SimulationEfficiency                 !> relates the simulated time to the used CPUh (SIMULATION TIME PER
                                                                    !> CALCULATION in [s]/[CPUh])
 REAL                       :: StartT                               !> Timer start
+REAL                       :: memory(1:4)                          !> RAM: used, available, total and initial (total at the beginning of the simulation)
+LOGICAL                    :: MemoryMonitor                        !> Flag for turning RAM monitoring ON/OFF. Used for the detection of RAM overflows (e.g. due to memory leaks)
+! Parameters and error bounds
+REAL,PARAMETER             ::PI         = ACOS(-1.0D0)
+REAL,PARAMETER             ::epsMach    = EPSILON(0.)
+REAL,PARAMETER             ::TwoEpsMach = 2.D0 * EPSILON(0.)
 !===================================================================================================================================
 
 END MODULE MOD_Globals_Vars

@@ -196,7 +196,7 @@ LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitParticleAnalyze
 
 
-SUBROUTINE ParticleAnalyze(t,iter)
+SUBROUTINE ParticleAnalyze(t)
 !==================================================================================================================================
 !> Controls particle analysis routines and is called at analyze time levels
 !> - writes load balancing statistics
@@ -218,26 +218,14 @@ USE MOD_Particle_Output           ,ONLY: WriteParticleAnalyze,WriteInfoStdOut
 USE MOD_Restart_Vars              ,ONLY: RestartTime
 USE MOD_TimeDisc_Vars             ,ONLY: doFinalize,writeCounter
 USE MOD_Particle_Tracking_Vars    ,ONLY: CountNbOfLostParts
-#if USE_LOADBALANCE
-USE MOD_LoadDistribution          ,ONLY: WriteElemTimeStatistics
-#endif /*LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                 :: t                      !< current simulation time
-INTEGER(KIND=8),INTENT(IN)      :: iter                   !< current iteration
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-
-#if USE_LOADBALANCE
-! Create .csv file for performance analysis and load balance: write header line
-CALL WriteElemTimeStatistics(WriteHeader=.TRUE.,iter=iter,time=t)
-#else
-! Supress compiler warning
-NO_OP(iter)
-#endif /*LOADBALANCE*/
 
 ! Write information to console output
 IF (CountNbOfLostParts) THEN

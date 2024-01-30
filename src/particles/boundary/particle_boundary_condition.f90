@@ -50,9 +50,9 @@ SUBROUTINE GetBoundaryInteraction(PartTrajectory,lengthPartTrajectory,alpha,xi,e
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals                    ,ONLY: Abort,FLEXITIME
+USE MOD_Globals_Vars               ,ONLY: PI
 ! USE MOD_Mesh_Vars                  ,ONLY: BC
 USE MOD_Mesh_Vars                  ,ONLY: SideInfo_Shared
-USE MOD_Particle_Globals           ,ONLY: PI
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound,doParticleImpactTrack
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
@@ -61,7 +61,7 @@ USE MOD_Particle_Surfaces          ,ONLY: CalcNormAndTangTriangle,CalcNormAndTan
 USE MOD_Particle_Surfaces_Vars     ,ONLY: SideNormVec,SideType
 USE MOD_Particle_Tracking_Vars     ,ONLY: TrackingMethod
 USE MOD_Particle_Vars              ,ONLY: PartState,PartReflCount
-USE MOD_Part_Operations            ,ONLY: RemoveParticle
+USE MOD_Particle_Operations        ,ONLY: RemoveParticle
 #if CODE_ANALYZE
 USE MOD_Globals                    ,ONLY: myRank,UNIT_stdOut
 USE MOD_Mesh_Vars                  ,ONLY: NGeo
@@ -217,6 +217,7 @@ SUBROUTINE PerfectReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+USE MOD_Globals_Vars               ,ONLY: PI
 USE MOD_Mesh_Vars                  ,ONLY: SideInfo_Shared
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
@@ -362,9 +363,7 @@ SUBROUTINE DiffuseReflection(PartTrajectory,lengthPartTrajectory,alpha,xi,eta,Pa
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-#if USE_PARTROT
-USE MOD_Mathtools                  ,ONLY: CROSS
-#endif
+USE MOD_Globals_Vars               ,ONLY: PI
 USE MOD_Mesh_Vars                  ,ONLY: SideInfo_Shared
 USE MOD_Particle_Globals           ,ONLY: VECNORM,OrthoNormVec
 USE MOD_Particle_Boundary_Sampling ,ONLY: RecordParticleBoundaryImpact
@@ -377,6 +376,9 @@ USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
 USE MOD_Particle_Fracture          ,ONLY: DiffuseReflectionFracture
 USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars              ,ONLY: PDM
+#if USE_PARTROT
+USE MOD_Mathtools                  ,ONLY: CROSS
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -857,6 +859,7 @@ FUNCTION RoughWall(n_in,locBCID,PartTrajectory) RESULT (n_out)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Globals_Vars               ,ONLY: PI
 USE MOD_Particle_Boundary_Vars     ,ONLY: PartBound
 USE MOD_Particle_Globals
 ! IMPLICIT VARIABLE HANDLING
@@ -907,7 +910,7 @@ RECURSIVE SUBROUTINE RoughnessPDF(x,MeanIC,VarianceIC,angle)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
-USE MOD_Particle_Globals, ONLY: PI
+USE MOD_Globals_Vars,               ONLY: PI
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES

@@ -39,6 +39,10 @@ INTEGER,ALLOCATABLE:: MPIRankShared(:)                      !> Array of size nPr
 INTEGER,ALLOCATABLE:: MPIRankLeader(:)                      !> Array of size nLeaderGroupProcs holding the global rank of each proc
 INTEGER            :: nComputeNodeProcessors                !> Number of procs on current compute-node
 INTEGER            :: nLeaderGroupProcs                     !> Number of nodes
+#if ! (CORE_SPLIT==0)
+! When core-level splitting is used, it is not clear how many cores are on the same physical compute node.
+INTEGER            :: NbrOfPhysicalNodes                    !> Number of physical nodes (as opposed to virtual nodes) on which the simulation is executed
+#endif /*! (CORE_SPLIT==0)*/
 INTEGER            :: nProcessors_Global                    !> Number of total procs
 INTEGER            :: MPI_COMM_SHARED        =MPI_COMM_NULL !> Communicator on current compute-node
 INTEGER            :: MPI_COMM_LEADERS_SHARED=MPI_COMM_NULL !> Communicator compute-node roots (my_rank_shared=0)

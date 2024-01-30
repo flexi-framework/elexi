@@ -32,14 +32,14 @@ IMPLICIT NONE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=255)::ParameterFile                                             !< filename of the parameter file
-INTEGER,PARAMETER ::UNIT_stdOut=6                                             !< unit for writing to standard output (e.g. terminal)
-INTEGER,PARAMETER ::UNIT_logOut=133                                           !< unit for writing log files
-INTEGER           ::UNIT_errOut=999                                           !< unit for writing error files
+INTEGER,PARAMETER ::UNIT_stdOut = 6                                           !< unit for writing to standard output (e.g. terminal)
+INTEGER,PARAMETER ::UNIT_logOut = 133                                         !< unit for writing log files
+INTEGER           ::UNIT_errOut = 999                                         !< unit for writing error files
 LOGICAL           ::Logging                                                   !< switch to turn log file writing on or of
-LOGICAL           ::use_escape_codes=.TRUE.                                   !< If set to .FALSE., output will consist only of standard text, allowing the
+LOGICAL           ::use_escape_codes = .TRUE.                                 !< If set to .FALSE., output will consist only of standard text, allowing the
                                                                               !< escape characters to be switched off in environments which don't support them.
 LOGICAL           ::ErrorFiles                                                !< switch to turn error file writing on or of
-CHARACTER(LEN=255)::ErrorFileName='NOT_SET'                                   !< file to write error data into
+CHARACTER(LEN=255)::ErrorFileName = 'NOT_SET'                                 !< file to write error data into
 INTEGER           ::iError                                                    !< default error handle
 INTEGER           ::myRank,myLocalRank,myLeaderRank,myWorkerRank
 INTEGER           ::nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
@@ -48,14 +48,10 @@ LOGICAL           ::MPIRoot                                                   !<
 LOGICAL           ::MPILocalRoot                                              !< flag whether process is root of MPI subgroup
 #if USE_MPI
 INTEGER           ::MPIStatus(MPI_STATUS_SIZE)
-INTEGER           ::MPI_COMM_NODE   =MPI_COMM_NULL                            !< local node subgroup
-INTEGER           ::MPI_COMM_LEADERS=MPI_COMM_NULL                            !< all node masters
-INTEGER           ::MPI_COMM_WORKERS=MPI_COMM_NULL                            !< all non-master nodes
+INTEGER           ::MPI_COMM_NODE    = MPI_COMM_NULL                          !< local node subgroup
+INTEGER           ::MPI_COMM_LEADERS = MPI_COMM_NULL                          !< all node masters
+INTEGER           ::MPI_COMM_WORKERS = MPI_COMM_NULL                          !< all non-master nodes
 #endif
-! Parameters and error bounds
-REAL,PARAMETER    ::PI         = ACOS(-1.0D0)
-REAL,PARAMETER    ::epsMach    = epsilon(0.)
-REAL,PARAMETER    ::TwoEpsMach = 2.d0 * epsilon(0.)
 #if USE_PARTICLES
 #ifdef INTKIND8
 INTEGER(KIND=SELECTED_INT_KIND(18))  :: nGlobalNbrOfParticles(6)              !< 1-3: min,max,total number of simulation particles over all processors
@@ -67,7 +63,7 @@ INTEGER(KIND=SELECTED_INT_KIND( 8))  :: nGlobalNbrOfParticles(6)              !<
 LOGICAL           :: doGenerateUnittestReferenceData
 INTEGER           :: doPrintHelp ! 0: no help, 1: help, 2: markdown-help
 
-LOGICAL           :: postiMode=.FALSE.                                        !< set TRUE if called from posti
+LOGICAL           :: postiMode = .FALSE.                                      !< set TRUE if called from posti
 
 ! Overload the MPI interface because MPICH fails to provide it
 ! > https://github.com/pmodels/mpich/issues/2659

@@ -234,6 +234,7 @@ USE MOD_Mesh_Shared,        ONLY:StartCommunicateMeshReadin,FinishCommunicateMes
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars,   ONLY:PerformLoadBalance
 USE MOD_Mesh_Vars,          ONLY:ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
+USE MOD_Mesh_Vars,          ONLY:ElemToTree_Shared,xiMinMax_Shared,TreeCoords_Shared
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -619,33 +620,65 @@ END DO
 !                    first index = coordinate
 !                    second index =1 for minimum corner node, =2 for maximum corner node
 !   'TreeCoords'   : coordinates of all nodes of the tree-elements
-dsExists = .FALSE.
-iMortar  = 0
-CALL DatasetExists(File_ID,'isMortarMesh',dsExists,.TRUE.)
-IF(dsExists)&
-  CALL ReadAttribute(File_ID,'isMortarMesh',1,IntScalar=iMortar)
-isMortarMesh = (iMortar.EQ.1)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  dsExists = .FALSE.
+  iMortar  = 0
+  CALL DatasetExists(File_ID,'isMortarMesh',dsExists,.TRUE.)
+  IF(dsExists)&
+    CALL ReadAttribute(File_ID,'isMortarMesh',1,IntScalar=iMortar)
+  isMortarMesh = (iMortar.EQ.1)
+#if USE_LOADBALANCE
+END IF ! PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
+
 IF(isMortarMesh)THEN
-  CALL ReadAttribute(File_ID,'NgeoTree'    ,1,IntScalar=NGeoTree)
-  CALL ReadAttribute(File_ID,'nTrees'      ,1,IntScalar=nGlobalTrees)
+#if USE_LOADBALANCE
+  IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+    CALL ReadAttribute(File_ID,'NgeoTree'    ,1,IntScalar=NGeoTree)
+    CALL ReadAttribute(File_ID,'nTrees'      ,1,IntScalar=nGlobalTrees)
+#if USE_LOADBALANCE
+  END IF ! PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 
-  ALLOCATE(xiMinMax(3,2,1:nElems))
-  xiMinMax   = -1.
-  CALL ReadArray('xiMinMax'  ,3,(/3,2,nElems/),offsetElem,3,RealArray=xiMinMax)
+    ALLOCATE(xiMinMax(3,2,1:nElems))
+    ALLOCATE(ElemToTree(1:nElems))
+    xiMinMax   = -1.
+    ElemToTree = 0
 
-  ALLOCATE(ElemToTree(1:nElems))
-  ElemToTree = 0
-  CALL ReadArray('ElemToTree',1,(/    nElems/),offsetElem,1,IntArray=ElemToTree)
+#if USE_LOADBALANCE
+  IF (PerformLoadBalance) THEN
+    xiMinMax(:,:,:) = xiMinMax_Shared(:,:,offsetElem+1:offsetElem+nElems)
+    ElemToTree(  :) = ElemToTree_Shared(  offsetElem+1:offsetElem+nElems)
+  ELSE
+#endif /*USE_LOADBALANCE*/
+    CALL ReadArray('xiMinMax'  ,3,(/3,2,nElems/),offsetElem,3,RealArray=xiMinMax)
+    CALL ReadArray('ElemToTree',1,(/    nElems/),offsetElem,1,IntArray=ElemToTree)
+#if USE_LOADBALANCE
+  END IF ! PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 
-  ! only read trees, connected to a procs elements
-  offsetTree = MINVAL(ElemToTree)-1
-  ElemToTree = ElemToTree-offsetTree
-  nTrees     = MAXVAL(ElemToTree)
+    ! only read trees, connected to a procs elements
+    offsetTree = MINVAL(ElemToTree)-1
+    ElemToTree = ElemToTree-offsetTree
+    nTrees     = MAXVAL(ElemToTree)
 
-  ALLOCATE(TreeCoords(3,0:NGeoTree,0:NGeoTree,0:NGeoTree,nTrees))
-  TreeCoords = -1.
-  CALL ReadArray('TreeCoords',2,(/3,(NGeoTree+1)**3*nTrees/),&
-                 (NGeoTree+1)**3*offsetTree,2,RealArray=TreeCoords)
+    ALLOCATE(TreeCoords(3,0:NGeoTree,0:NGeoTree,0:NGeoTree,nTrees))
+    TreeCoords = -1.
+
+#if USE_LOADBALANCE
+  IF (PerformLoadBalance) THEN
+    TreeCoords(:,:,:,:,:) = TreeCoords_Shared(:,:,:,:,offsetTree:offsetTree+nTrees)
+  ELSE
+    CALL ReadArray('TreeCoords',2,(/3,(NGeoTree+1)**3*nTrees/),&
+                   (NGeoTree+1)**3*offsetTree,2,RealArray=TreeCoords)
+#endif /*USE_LOADBALANCE*/
+#if USE_LOADBALANCE
+  END IF ! PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
+
 #if USE_PARTICLES || USE_LOADBALANCE
   CALL ReadMeshTrees()
 #endif /*USE_PARTICLES || USE_LOADBALANCE*/
@@ -653,7 +686,11 @@ IF(isMortarMesh)THEN
 ELSE
   nTrees = 0
 END IF
-CALL CloseDataFile()
+
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) &
+#endif /*USE_LOADBALANCE*/
+  CALL CloseDataFile()
 
 #if USE_PARTICLES || USE_LOADBALANCE
 ! Start non-blocking communication of mesh information
@@ -890,14 +927,22 @@ INTEGER           :: iElem
 INTEGER           :: iProc
 #endif
 !===================================================================================================================================
-CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
-CALL CloseDataFile()
-IF(HSize(1).NE.6) CALL Abort(__STAMP__,'ERROR: Wrong size of ElemInfo, should be 6')
 
-CHECKSAFEINT(HSize(2),4)
-nGlobalElems = INT(HSize(2),4)
-DEALLOCATE(HSize)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
+  CALL CloseDataFile()
+  IF(HSize(1).NE.6) CALL Abort(__STAMP__,'ERROR: Wrong size of ElemInfo, should be 6')
+
+  CHECKSAFEINT(HSize(2),4)
+  nGlobalElems = INT(HSize(2),4)
+  DEALLOCATE(HSize)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
+
 #if USE_MPI
 IF(nGlobalElems.LT.nProcessors) CALL Abort(__STAMP__,&
   'ERROR: Number of elements (1) is smaller then number of processors (2)!',nGlobalElems,REAL(nProcessors))

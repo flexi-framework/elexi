@@ -245,7 +245,7 @@ IF (nSpecies.GT.0) THEN
   END IF ! MPIRoot
 END IF ! nSpecies.GT.0
 
-! Every proc needs to get the information to arrive at the same timedisc
+! Distribute PartsInElem to all procs (Every proc needs to get the information to arrive at the same timedisc)
 CALL MPI_BCAST(PartsInElem,nGlobalElems,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 
 ! No historical data and no particles in restart file
@@ -430,11 +430,11 @@ LastProcDiff      = 0.
 iDistriIter       = 0
 CurWeight         = 0.
 
-WRITE(UNIT_stdOut,'(A)') ' Performing iterative search for new load distribution...'
+LBWRITE(UNIT_stdOut,'(A)') ' Performing iterative search for new load distribution...'
 
 DO WHILE(.NOT.FoundDistribution)
   iDistriIter     = iDistriIter+1
-  WRITE(UNIT_stdOut,'(A,I7,A,ES15.7)') ' | Iteration ',iDistriIter,' with TargetWeight ',TargetWeight_loc
+  LBWRITE(UNIT_stdOut,'(A,I4,A,ES15.7)') ' | Iteration ',iDistriIter,' with TargetWeight ',TargetWeight_loc
 
   TargetWeight_loc = TargetWeight_loc+LastProcDiff/REAL(nProcs)
   curiElem         = 1
@@ -517,7 +517,7 @@ DO WHILE(.NOT.FoundDistribution)
 
 END DO ! .NOT.FoundDistribution
 
-WRITE(UNIT_stdOut,'(A,A17,ES15.7,A,ES15.7,A)') ' Accepted distribution','    TargetWeight: ',TargetWeight_loc,'    (last proc: ',LastProcDiff,')'
+LBWRITE(UNIT_stdOut,'(A,A17,ES11.4,A,ES11.4,A)') ' Accepted distribution','    TargetWeight: ',TargetWeight_loc,'    (last proc: ',LastProcDiff,')'
 
 END SUBROUTINE WeightDistribution_ElemTimeLeast
 
@@ -575,7 +575,7 @@ offsetElemMPI = 0
 offsetElemMPI(nProcs) = nGlobalElems
 
 TargetWeight_loc = WeightSum/REAL(nProcs)
-SWRITE(UNIT_stdOut,'(A,ES16.7)') ' TargetWeight: ', TargetWeight_loc
+LBWRITE(UNIT_stdOut,'(A,ES16.7)') ' TargetWeight: ', TargetWeight_loc
 
 IF (WeightDistributionMethod.EQ.3) THEN
   LastProcDiff = 0.
@@ -1208,15 +1208,20 @@ SUBROUTINE WriteElemTimeStatistics(WriteHeader,time,iter)
 USE MOD_Globals                   ,ONLY: MPIRoot,FILEEXISTS,UNIT_stdOut,Abort,nProcessors
 USE MOD_Globals_Vars              ,ONLY: SimulationEfficiency,WallTime,InitializationWallTime,ReadMeshWallTime
 USE MOD_Globals_Vars              ,ONLY: DomainDecompositionWallTime,CommMeshReadinWallTime
+USE MOD_Globals_Vars              ,ONLY: memory,MemoryMonitor
 USE MOD_Analyze_Vars              ,ONLY: PID
 USE MOD_LoadBalance_Vars          ,ONLY: TargetWeight,nLoadBalanceSteps,CurrentImbalance,MinWeight,MaxWeight,WeightSum
 USE MOD_LoadBalance_Vars          ,ONLY: ElemTimeField
 USE MOD_Memory                    ,ONLY: ProcessMemUsage
 USE MOD_Restart_Vars              ,ONLY: DoRestart
+USE MOD_StringTools               ,ONLY: set_formatting,clear_formatting
 #if USE_MPI
 USE MOD_Globals
 USE MOD_MPI_Shared_Vars           ,ONLY: myComputeNodeRank,myLeaderGroupRank
 USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_SHARED
+#if ! (CORE_SPLIT==0)
+USE MOD_MPI_Shared_Vars           ,ONLY: NbrOfPhysicalNodes,nLeaderGroupProcs
+#endif /*! (CORE_SPLIT==0)*/
 #endif /*USE_MPI*/
 #if USE_PARTICLES
 USE MOD_Globals                   ,ONLY: nGlobalNbrOfParticles
@@ -1275,7 +1280,7 @@ CHARACTER(LEN=255),DIMENSION(nOutputVar) :: StrVarNames(nOutputVar)=(/ CHARACTER
 CHARACTER(LEN=255),DIMENSION(nOutputVar) :: tmpStr ! needed because PerformAnalyze is called multiple times at the beginning
 CHARACTER(LEN=1000)                      :: tmpStr2
 CHARACTER(LEN=1),PARAMETER               :: delimiter=","
-REAL                                     :: memory(1:3)       ! used, available and total
+REAL                                     :: MemUsagePercent
 #if USE_MPI
 REAL                                     :: ProcMemoryUsed    ! Used memory on a single proc
 REAL                                     :: NodeMemoryUsed    ! Sum of used memory across one compute node
@@ -1322,8 +1327,34 @@ memory=memory/1048576.
 #if ! (CORE_SPLIT==0)
   ! When core-level splitting is used, it is not clear how many cores are on the same physical compute node.
   ! Therefore, the values are set to -1.
+#if USE_MPI
+IF(NbrOfPhysicalNodes.GT.0)THEN
+  memory(2:3) = memory(2:3) * REAL(NbrOfPhysicalNodes) / REAL(nLeaderGroupProcs)
+ELSE
   memory(2:3) = -1.
+END IF ! NbrOfPhysicalNodes.GT.0
+#endif /*USE_MPI*/
 #endif /*! (CORE_SPLIT==0)*/
+
+! Check for memory leaks
+#if USE_MPI
+IF(MemoryMonitor)THEN
+#endif /*USE_MPI*/
+  IF(memory(4).LE.0.)THEN
+    memory(4) = memory(1) ! Store total initially used memory
+  ELSE
+    ! Check if more memory is used than at the beginning AND 95% of the total memory available is reached
+    MemUsagePercent = (memory(1)/memory(3))*100.0
+    !MemUsagePercent = 99.32
+    IF((memory(1).GT.memory(4)).AND.(MemUsagePercent.GT.95.0))THEN
+      CALL set_formatting("red")
+      SWRITE(UNIT_stdOut,'(A,F6.2,A)') ' WARNING: Memory reaching maximum, RAM is at ',MemUsagePercent,'%'
+      CALL clear_formatting()
+    END IF
+  END IF ! WriteHeader
+#if USE_MPI
+END IF ! MemoryMonitor
+#endif /*USE_MPI*/
 
 ! Either create new file or add info to existing file
 !> create new file

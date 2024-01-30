@@ -175,16 +175,17 @@ SUBROUTINE ComputePlanarRectIntersection(isHit                       &
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,            ONLY: epsMach
 USE MOD_Particle_Globals
-USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
-USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,epsilontol,SideDistance
-USE MOD_Particle_Surfaces_Vars,  ONLY:BaseVectors0,BaseVectors1,BaseVectors2
-USE MOD_Particle_Vars,           ONLY:LastPartPos
-USE MOD_Utils,                   ONLY:ALMOSTZERO
+USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
+USE MOD_Particle_Surfaces_Vars,  ONLY: SideNormVec,epsilontol,SideDistance
+USE MOD_Particle_Surfaces_Vars,  ONLY: BaseVectors0,BaseVectors1,BaseVectors2
+USE MOD_Particle_Vars,           ONLY: LastPartPos
+USE MOD_Utils,                   ONLY: ALMOSTZERO
 #if CODE_ANALYZE
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
-USE MOD_Mesh_Vars,               ONLY:NGeo
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints3D
+USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
+USE MOD_Mesh_Vars,               ONLY: NGeo
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -350,15 +351,16 @@ SUBROUTINE ComputePlanarNonRectIntersection(isHit                       &
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,            ONLY: epsMach
 USE MOD_Particle_Globals
-USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
-USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,epsilontol,SideDistance
-USE MOD_Particle_Vars,           ONLY:LastPartPos
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Utils,                   ONLY:ALMOSTZERO
+USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
+USE MOD_Particle_Surfaces_Vars,  ONLY: SideNormVec,epsilontol,SideDistance
+USE MOD_Particle_Vars,           ONLY: LastPartPos
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints3D
+USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Utils,                   ONLY: ALMOSTZERO
 #if CODE_ANALYZE
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
+USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -531,18 +533,19 @@ SUBROUTINE ComputePlanarCurvedIntersection(isHit                        &
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,            ONLY: PI
 USE MOD_Particle_Globals
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
-USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,SideSlabNormals
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D,BezierControlPoints3D
-USE MOD_Particle_Surfaces_Vars,  ONLY:locXi,locEta,locAlpha,SideDistance
-USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
-USE MOD_Particle_Vars,           ONLY:LastPartPos
-USE MOD_Utils,                   ONLY:ALMOSTZERO
-USE MOD_Utils,                   ONLY:InsertionSort
+USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
+USE MOD_Particle_Surfaces_Vars,  ONLY: SideNormVec,SideSlabNormals
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints2D,BezierControlPoints3D
+USE MOD_Particle_Surfaces_Vars,  ONLY: locXi,locEta,locAlpha,SideDistance
+USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
+USE MOD_Particle_Vars,           ONLY: LastPartPos
+USE MOD_Utils,                   ONLY: ALMOSTZERO
+USE MOD_Utils,                   ONLY: InsertionSort
 #if CODE_ANALYZE
-USE MOD_Particle_Surfaces_Vars,  ONLY:rBoundingBoxChecks
+USE MOD_Particle_Surfaces_Vars,  ONLY: rBoundingBoxChecks
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -705,21 +708,21 @@ SUBROUTINE ComputeBiLinearIntersection(isHit,PartTrajectory,lengthPartTrajectory
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Mesh_Vars,               ONLY:SideInfo_Shared
-USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
-USE MOD_Particle_Surfaces_Vars,  ONLY:BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,SideNormVec,epsilonTol!,BaseVectorsScale
-USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBilinear
-USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
-USE MOD_Particle_Vars,           ONLY:LastPartPos
-! USE MOD_Particle_Vars,           ONLY:PartState,PEM
-USE MOD_Utils,                   ONLY:ALMOSTEQUAL
+USE MOD_Mesh_Vars,               ONLY: SideInfo_Shared
+USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
+USE MOD_Particle_Surfaces_Vars,  ONLY: BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,SideNormVec,epsilonTol!,BaseVectorsScale
+USE MOD_Particle_Surfaces,       ONLY: CalcNormAndTangBilinear
+USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
+USE MOD_Particle_Vars,           ONLY: LastPartPos
+! USE MOD_Particle_Vars,           ONLY: PartState,PEM
+USE MOD_Utils,                   ONLY: ALMOSTEQUAL
 #if CODE_ANALYZE
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
-USE MOD_Mesh_Vars,               ONLY:NGeo
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints3D
+USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
+USE MOD_Mesh_Vars,               ONLY: NGeo
 #endif /*CODE_ANALYZE*/
 ! #if USE_MPI
-! USE MOD_Mesh_Vars,               ONLY:BC
+! USE MOD_Mesh_Vars,               ONLY: BC
 ! #endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1021,26 +1024,27 @@ SUBROUTINE ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,a
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,            ONLY: PI
 USE MOD_Particle_Globals
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Mesh_Vars,               ONLY:SideInfo_Shared
-USE MOD_Particle_Mesh_Tools,     ONLY:GetCNSideID
-USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBezier
-USE MOD_Particle_Surfaces_Vars,  ONLY:SideNormVec,BezierNewtonAngle
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D,BezierControlPoints3D
-USE MOD_Particle_Surfaces_Vars,  ONLY:locXi,locEta,locAlpha
-USE MOD_Particle_Surfaces_Vars,  ONLY:BoundingBoxIsEmpty
-USE MOD_Particle_Surfaces_Vars,  ONLY:SideSlabNormals
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipTolerance,BezierClipLocalTol
-USE MOD_Particle_Tracking_Vars,  ONLY:TrackingMethod
-USE MOD_Particle_Vars,           ONLY:PartState,LastPartPos
-USE MOD_Utils,                   ONLY:ALMOSTZERO
-USE MOD_Utils,                   ONLY:InsertionSort
+USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Mesh_Vars,               ONLY: SideInfo_Shared
+USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
+USE MOD_Particle_Surfaces,       ONLY: CalcNormAndTangBezier
+USE MOD_Particle_Surfaces_Vars,  ONLY: SideNormVec,BezierNewtonAngle
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints2D,BezierControlPoints3D
+USE MOD_Particle_Surfaces_Vars,  ONLY: locXi,locEta,locAlpha
+USE MOD_Particle_Surfaces_Vars,  ONLY: BoundingBoxIsEmpty
+USE MOD_Particle_Surfaces_Vars,  ONLY: SideSlabNormals
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipTolerance,BezierClipLocalTol
+USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
+USE MOD_Particle_Vars,           ONLY: PartState,LastPartPos
+USE MOD_Utils,                   ONLY: ALMOSTZERO
+USE MOD_Utils,                   ONLY: InsertionSort
 #if CODE_ANALYZE
-USE MOD_Globals,                 ONLY:myRank,UNIT_stdOut
-USE MOD_Particle_Surfaces,       ONLY:OutputBezierControlPoints
-USE MOD_Particle_Surfaces_Vars,  ONLY:rBoundingBoxChecks,rPerformBezierClip,rPerformBezierNewton
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
+USE MOD_Globals,                 ONLY: myRank,UNIT_stdOut
+USE MOD_Particle_Surfaces,       ONLY: OutputBezierControlPoints
+USE MOD_Particle_Surfaces_Vars,  ONLY: rBoundingBoxChecks,rPerformBezierClip,rPerformBezierNewton
+USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1410,13 +1414,13 @@ RECURSIVE SUBROUTINE BezierClipRecursive(ClipMode,BezierControlPoints2D,LineNorm
 !================================================================================================================================
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipMaxIter
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipLineVectorMethod
+USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipMaxIter
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipLineVectorMethod
 #if CODE_ANALYZE
-USE MOD_Globals,                 ONLY:myRank
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
-USE MOD_Particle_Surfaces,       ONLY:OutputBezierControlPoints
+USE MOD_Globals,                 ONLY: myRank
+USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
+USE MOD_Particle_Surfaces,       ONLY: OutputBezierControlPoints
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1520,20 +1524,20 @@ SUBROUTINE BezierNewton(alpha,Xi,BezierControlPoints2D,PartTrajectory,lengthPart
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierNewtonTolerance2,BezierNewtonMaxIter,BezierControlPoints3D,epsilontol &
-                                     ,BezierNewtonGuess
-USE MOD_Particle_Vars,           ONLY:LastPartPos!,PartState
-USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
-USE MOD_Particle_Surfaces_Vars,  ONLY:D_Bezier
+USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierNewtonTolerance2,BezierNewtonMaxIter,BezierControlPoints3D,epsilontol
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierNewtonGuess
+USE MOD_Particle_Vars,           ONLY: LastPartPos!,PartState
+USE MOD_Particle_Surfaces,       ONLY: EvaluateBezierPolynomialAndGradient
+USE MOD_Particle_Surfaces_Vars,  ONLY: D_Bezier
 #if CODE_ANALYZE
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierNewtonHit
-USE MOD_Globals,                 ONLY:myRank,UNIT_stdOut
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierNewtonHit
+USE MOD_Globals,                 ONLY: myRank,UNIT_stdOut
+USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 REAL,INTENT(IN)    :: BezierControlPoints2D(2,0:NGeo,0:NGeo)
 REAL,INTENT(IN)    :: PartTrajectory(3),lengthPartTrajectory
@@ -1757,6 +1761,7 @@ PURE FUNCTION InsideBoundingBox(ParticlePosition,SideID)
 ! check is the particles is inside the bounding box, return TRUE/FALSE
 !================================================================================================================================
 USE MOD_Globals
+USE MOD_Globals_Vars,            ONLY: epsMach
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
 USE MOD_Particle_Vars
@@ -1817,6 +1822,7 @@ FUNCTION BoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,Side
 ! check if the particle trajectory penetrates the bounding box, return TRUE/FALSE
 !================================================================================================================================
 USE MOD_Globals,                 ONLY: Abort
+USE MOD_Globals_Vars,            ONLY: epsMach
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY: SideSlabNormals,SideSlabIntervals,BezierControlPoints3D
@@ -1889,10 +1895,11 @@ FUNCTION FlatBoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,
 ! check if the particle trajectory penetrates the bounding box, return TRUE/FALSE
 !================================================================================================================================
 USE MOD_Globals
+USE MOD_Globals_Vars,            ONLY: epsMach
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
-USE MOD_Particle_Surfaces_Vars,  ONLY:SideSlabNormals,SideSlabIntervals,BezierControlPoints3D
-USE MOD_Particle_Vars,           ONLY:LastPartPos
+USE MOD_Particle_Surfaces_Vars,  ONLY: SideSlabNormals,SideSlabIntervals,BezierControlPoints3D
+USE MOD_Particle_Vars,           ONLY: LastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -1988,7 +1995,7 @@ SUBROUTINE QuadraticSolver(A,B,C,nRoot,r1,r2)
 ! subroutine to compute the modified a,b,c equation, parameter already mapped in final version
 !================================================================================================================================
 #if CODE_ANALYZE
-USE MOD_Globals,            ONLY:UNIT_stdOut,myRank
+USE MOD_Globals,            ONLY: UNIT_stdOut,myRank
 #endif /*CODE_ANALYZE*/
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -2123,23 +2130,23 @@ SUBROUTINE ComputeBezierIntersectionPoint(nXiClip,nEtaClip,PartID,SideID,nInterS
 ! b) alpha is not a multiple intersection
 !===================================================================================================================================
 ! MODULES
-USE MOD_Globals,                 ONLY:UNIT_stdOut,Abort
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Surfaces_Vars,  ONLY:XiArray,EtaArray,locAlpha,locXi,locEta
-USE MOD_Particle_Surfaces_Vars,  ONLY:epsilontol,Beziercliphit
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipTolerance,BezierClipLocalTol,BezierClipMaxIntersec
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints3D
-USE MOD_Particle_Vars,           ONLY:LastPartPos
+USE MOD_Globals,                 ONLY: UNIT_stdOut,Abort
+USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Particle_Surfaces_Vars,  ONLY: XiArray,EtaArray,locAlpha,locXi,locEta
+USE MOD_Particle_Surfaces_Vars,  ONLY: epsilontol,Beziercliphit
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipTolerance,BezierClipLocalTol,BezierClipMaxIntersec
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints3D
+USE MOD_Particle_Vars,           ONLY: LastPartPos
 #if USE_MPI
 USE MOD_Globals,                 ONLY: myRank
 #endif /*USE_MPI*/
 #if CODE_ANALYZE
-USE MOD_Particle_Surfaces,       ONLY:CalcNormAndTangBezier
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
+USE MOD_Particle_Surfaces,       ONLY: CalcNormAndTangBezier
+USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
 #endif /*CODE_ANALYZE*/
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)                 :: nXiClip
 INTEGER,INTENT(IN)                 :: nEtaClip
@@ -2311,16 +2318,16 @@ SUBROUTINE CheckXiClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory
 !   title = {Curves and Surfaces for CAGD: A Practical Guide},
 !   year = {2002},
 !================================================================================================================================
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Surfaces_Vars,  ONLY:XiArray,XiBuf,MinMax,XiUp,XiDown
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipLocalTol,FacNchooseK
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierSplitLimit
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints1D,BezierControlPoints2D_temp,BezierControlPoints2D_temp2
-USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
+USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Particle_Surfaces_Vars,  ONLY: XiArray,XiBuf,MinMax,XiUp,XiDown
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipLocalTol,FacNchooseK
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierSplitLimit
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints1D,BezierControlPoints2D_temp,BezierControlPoints2D_temp2
+USE MOD_Particle_Surfaces,       ONLY: EvaluateBezierPolynomialAndGradient
 #if CODE_ANALYZE
-USE MOD_Globals,                 ONLY:myRank,UNIT_stdOut
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
-USE MOD_Particle_Surfaces,       ONLY:OutputBezierControlPoints
+USE MOD_Globals,                 ONLY: myRank,UNIT_stdOut
+USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
+USE MOD_Particle_Surfaces,       ONLY: OutputBezierControlPoints
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -2699,17 +2706,17 @@ SUBROUTINE CheckEtaClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajector
 !   title = {Curves and Surfaces for CAGD: A Practical Guide},
 !   year = {2002},
 !================================================================================================================================
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Surfaces_Vars,  ONLY:EtaArray
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipLocalTol,FacNchooseK
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierSplitLimit
-USE MOD_Particle_Surfaces_Vars,  ONLY:MinMax,XiUp,XiDown,XiBuf
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierControlPoints2D_temp,BezierControlPoints2D_temp2
-USE MOD_Particle_Surfaces,       ONLY:EvaluateBezierPolynomialAndGradient
+USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Particle_Surfaces_Vars,  ONLY: EtaArray
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipLocalTol,FacNchooseK
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierSplitLimit
+USE MOD_Particle_Surfaces_Vars,  ONLY: MinMax,XiUp,XiDown,XiBuf
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints2D_temp,BezierControlPoints2D_temp2
+USE MOD_Particle_Surfaces,       ONLY: EvaluateBezierPolynomialAndGradient
 #if CODE_ANALYZE
-USE MOD_Globals,                 ONLY:myRank,UNIT_stdOut
-USE MOD_Particle_Tracking_Vars,  ONLY:PartOut,MPIRankOut
-USE MOD_Particle_Surfaces,       ONLY:OutputBezierControlPoints
+USE MOD_Globals,                 ONLY: myRank,UNIT_stdOut
+USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
+USE MOD_Particle_Surfaces,       ONLY: OutputBezierControlPoints
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -3084,13 +3091,11 @@ SUBROUTINE OutputTrajectory(PartID,PartPos,PartTrajectory,lengthPartTrajectory)
 ! subroutine to print particle trajectory, lengthPartTrajectory and Last and Current position in matlab format
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
-!----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
 USE MOD_Particle_Vars, ONLY: LastPartPos
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -3130,9 +3135,10 @@ SUBROUTINE CalcLineNormVec3(BezierControlPoints2D,LineNormVec)
 !                            3) and right rotated. The rotation constructs the vector which is perpendicular to Ls,
 !                               the scalar product <LineNormVec,ControlPoint> gives the distance
 !================================================================================================================================
+! MODULES
 USE MOD_Globals
 USE MOD_Particle_Globals
-USE MOD_Mesh_Vars,               ONLY:NGeo
+USE MOD_Mesh_Vars,               ONLY: NGeo
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
@@ -3189,11 +3195,12 @@ SUBROUTINE CalcSminSmax2(minmax,Smin,Smax,iter)
 ! 2) check lower line for an intersection with x-axis
 ! 3) check if both ends have a sign change
 !================================================================================================================================
-USE MOD_Mesh_Vars,               ONLY:NGeo
-USE MOD_Particle_Mesh_Vars,      ONLY:Xi_NGeo
-USE MOD_Particle_Surfaces_Vars,  ONLY:BezierClipTolerance!,BezierClipHit
+! MODULES
+USE MOD_Mesh_Vars,               ONLY: NGeo
+USE MOD_Particle_Mesh_Vars,      ONLY: Xi_NGeo
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipTolerance!,BezierClipHit
 #if CODE_ANALYZE
-USE MOD_Globals,                 ONLY:UNIT_stdOut
+USE MOD_Globals,                 ONLY: UNIT_stdOut
 #endif /*CODE_ANALYZE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

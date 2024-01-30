@@ -313,6 +313,7 @@ USE MOD_Particle_Analyze,   ONLY: ParticleAnalyze,ParticleInformation
 #endif /*USE_PARTICLES*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance,        ONLY: PrintImbalance
+USE MOD_LoadDistribution,   ONLY: WriteElemTimeStatistics
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -356,12 +357,14 @@ CALL Benchmarking()
 CALL ParticleInformation()
 
 ! Perform particle analyze depending on ParticleInformation
-CALL ParticleAnalyze(time,iter)
+CALL ParticleAnalyze(time)
 #endif /*USE_PARTICLES*/
 
 ! This branch calls InitTimestep before Analyze, hence we can print the timestep
 SWRITE(UNIT_stdOut,'(132("-"))')
 #if USE_LOADBALANCE
+! Create .csv file for performance analysis and load balance: write header line
+CALL WriteElemTimeStatistics(WriteHeader=.TRUE.,iter=iter,time=Time)
 CALL PrintImbalance()
 #endif /*USE_LOADBALANCE*/
 CALL PrintStatusLine(time,dt,tStart,tEnd,iter,maxIter,doETA=.TRUE.)

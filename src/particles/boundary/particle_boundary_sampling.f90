@@ -633,6 +633,7 @@ SUBROUTINE RecordParticleBoundaryImpact(PartTrajectory,n_loc,xi,eta,PartID,SideI
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+USE MOD_Globals_Vars           ,ONLY: PI
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars
 USE MOD_Particle_Tracking_Vars, ONLY:TrackingMethod
@@ -696,6 +697,7 @@ SUBROUTINE RecordParticleBoundarySampling(PartID,SurfSideID,p,q,v_old,PartFaceAn
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
 USE MOD_Globals
+USE MOD_Globals_Vars           ,ONLY: PI
 USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars ,ONLY: SampWallState,nImpactVars
 USE MOD_Particle_Vars          ,ONLY: Species,PartSpecies,nSpecies,PartState

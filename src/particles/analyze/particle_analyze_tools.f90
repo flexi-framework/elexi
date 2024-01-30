@@ -53,7 +53,7 @@ PURE FUNCTION CalcEkinPart(iPart)
 ! computes the kinetic energy of one particle
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Globals,       ONLY : pi
+USE MOD_Globals_Vars,           ONLY: PI
 USE MOD_Particle_Vars,          ONLY : PartState, PartSpecies, Species
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

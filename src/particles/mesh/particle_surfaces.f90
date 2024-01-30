@@ -102,6 +102,7 @@ SUBROUTINE InitParticleSurfaces()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Globals_Vars,               ONLY: epsMach
 USE MOD_PreProc
 USE MOD_Mesh_Vars,                  ONLY: NGeo
 USE MOD_Particle_Surfaces_Vars

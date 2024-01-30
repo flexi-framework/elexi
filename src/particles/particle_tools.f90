@@ -132,7 +132,7 @@ FUNCTION DiceUnitVector()
 !===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
-USE MOD_Particle_Globals ,ONLY: Pi
+USE MOD_Globals_Vars,      ONLY: PI
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES

@@ -75,7 +75,7 @@ INTEGER                        :: offsetElemSend,offsetElemRecv
 REAL                           :: StartT,EndT
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)')' DOMAIN DECOMPOSITION...'
+LBWRITE(UNIT_stdOut,'(A)')' DOMAIN DECOMPOSITION...'
 
 GETTIME(StartT)
 
@@ -212,13 +212,13 @@ IF (ElemTimeExists.AND.MPIRoot) THEN
   IF(TargetWeight.LE.0.0) CALL Abort(__STAMP__,' LoadBalance: TargetWeight = ',RealInfo=TargetWeight)
 
   ! valid decomposition, output result
-  SWRITE(UNIT_stdOut,'(132("."))')
-  SWRITE(UNIT_stdOut,'(A)') ' Calculated new (theoretical) imbalance with offsetElemMPI information'
-  CALL PrintOption('MaxWeight'   ,'CALC',RealOpt=MaxWeight)
-  CALL PrintOption('MinWeight'   ,'CALC',RealOpt=MinWeight)
-  CALL PrintOption('TargetWeight','CALC',RealOpt=TargetWeight)
-  CALL PrintOption('NewImbalance','CALC',RealOpt=NewImbalance)
-  SWRITE(UNIT_stdOut,'(132("."))')
+  LBWRITE(UNIT_stdOut,'(132("."))')
+  LBWRITE(UNIT_stdOut,'(A)') ' Calculated new (theoretical) imbalance with offsetElemMPI information'
+  CALL PrintOption('MaxWeight'   ,'INFO',RealOpt=MaxWeight)
+  CALL PrintOption('MinWeight'   ,'INFO',RealOpt=MinWeight)
+  CALL PrintOption('TargetWeight','INFO',RealOpt=TargetWeight)
+  CALL PrintOption('NewImbalance','INFO',RealOpt=NewImbalance)
+  LBWRITE(UNIT_stdOut,'(132("."))')
   DEALLOCATE(WeightSum_proc)
 ELSE
   SWRITE(UNIT_stdOut,'(A)') ' | No ElemTime found in restart file'

@@ -137,6 +137,7 @@ USE MOD_Particle_Mesh_Vars      ,ONLY: GEO
 USE MOD_Particle_Mesh_Vars      ,ONLY: FIBGM_nElems,FIBGM_Element,FIBGM_offsetElem
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetGlobalElemID,GetCNElemID
 USE MOD_Particle_MPI_Vars       ,ONLY: halo_eps
+USE MOD_Particle_Vars           ,ONLY: doCalcPartCollision
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
@@ -185,6 +186,8 @@ INTEGER,ALLOCATABLE            :: Neigh_Sort(:)
 ! Timers
 ! REAL                           :: StartT,EndT
 !===================================================================================================================================
+
+IF (.NOT.doCalcPartCollision) RETURN
 
 ! IF (MPIRoot) THEN
 !   ! WRITE(UNIT_StdOut,'(132("-"))')
@@ -533,6 +536,7 @@ USE MOD_Particle_Output_Vars    ,ONLY: offsetnPart,locnPart
 USE MOD_Particle_Tools          ,ONLY: GetOffsetAndGlobalNumberOfParts,UpdateNextFreePosition
 USE MOD_Particle_Vars           ,ONLY: PDM,PEM,PartState
 USE MOD_Particle_Vars           ,ONLY: useLinkedList
+USE MOD_Particle_Vars           ,ONLY: doCalcPartCollision
 USE MOD_Particle_Collision_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -548,6 +552,8 @@ INTEGER                        :: iProc
 INTEGER,ALLOCATABLE            :: MPI_COMM_LEADERS_REQUEST(:)           !> Request handle for non-blocking communication
 ! INTEGER,ALLOCATABLE            :: displsPartInt(:),recvcountPartInt(:)
 !===================================================================================================================================
+
+IF (.NOT.doCalcPartCollision) RETURN
 
 ! Determine number of particles in the complete domain
 locnPart =   0
@@ -660,6 +666,9 @@ END IF ! myComputeNodeRank.EQ.0
 CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(PartData_Shared_Win,MPI_COMM_SHARED)
 
+! IPWRITE(*,*) 'PartInt_Shared(1,:):', PartInt_Shared(1,:)
+! IPWRITE(*,*) 'PartInt_Shared(2,:):', PartInt_Shared(2,:)
+
 END SUBROUTINE UpdateParticleShared
 
 
@@ -761,8 +770,9 @@ SUBROUTINE FinalizeCollision()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Collision_Vars
+USE MOD_Particle_Vars           ,ONLY: doCalcPartCollision
 #if USE_MPI
-USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -772,6 +782,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+
+IF (.NOT.doCalcPartCollision) RETURN
 
 ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 #if USE_MPI

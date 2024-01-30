@@ -397,6 +397,10 @@ USE MOD_Particle_Emission,       ONLY: ParticleInserting
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,PDM,PartSpecies,Species
 USE MOD_TimeDisc_Vars,           ONLY: b_dt
+#if PARTICLES_COUPLING == 4
+USE MOD_Particle_Collision,      ONLY: UpdateParticleShared
+USE MOD_Particle_Collision_Method,ONLY: ComputeParticleCollisions
+#endif /*PARTICLES_COUPLING == 4*/
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles
 #endif /*MPI*/
@@ -442,6 +446,10 @@ DO iPart=1,PDM%ParticleVecLength
   END IF
 END DO
 
+#if PARTICLES_COUPLING == 4
+CALL UpdateParticleShared()
+#endif /*PARTICLES_COUPLING == 4*/
+
 ! No BC interaction expected, so path can be calculated here. Periodic BCs are ignored purposefully
 IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath
 
@@ -454,6 +462,9 @@ CALL IRecvNbofParticles()
 MeasureSplitTime_PARTCOMM()      ! LoadBalance
 #endif /*USE_MPI*/
 
+#if PARTICLES_COUPLING == 4
+CALL ComputeParticleCollisions(b_dt(1))
+#endif /*PARTICLES_COUPLING == 4*/
 ! track new particle position
 CALL PerformTracking()
 MeasureSplitTime_TRACK()         ! LoadBalance
@@ -486,6 +497,10 @@ USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,PDM,PartSpecies,Species
 USE MOD_TimeDisc_Vars,           ONLY: RKA,b_dt
+#if PARTICLES_COUPLING == 4
+USE MOD_Particle_Collision,      ONLY: UpdateParticleShared
+USE MOD_Particle_Collision_Method,ONLY: ComputeParticleCollisions
+#endif /*PARTICLES_COUPLING == 4*/
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles
 #endif /*MPI*/
@@ -568,6 +583,10 @@ IF (doParticleDispersionTrack.OR.doParticlePathTrack) CALL TrackingParticlePath(
 IF (RecordPart.GT.0) CALL ParticleRecordPath()
 MeasureSplitTime_PUSH()          ! LoadBalance
 
+#if PARTICLES_COUPLING == 4
+CALL UpdateParticleShared()
+#endif /*PARTICLES_COUPLING == 4*/
+
 ! particle tracking
 #if USE_MPI
 ! open receive buffer for number of particles
@@ -575,6 +594,9 @@ CALL IRecvNbofParticles()
 MeasureSplitTime_PARTCOMM()      ! LoadBalance
 #endif /*USE_MPI*/
 
+#if PARTICLES_COUPLING == 4
+CALL ComputeParticleCollisions(b_dt(iStage))
+#endif /*PARTICLES_COUPLING == 4*/
 CALL PerformTracking()
 MeasureSplitTime_TRACK()         ! LoadBalance
 

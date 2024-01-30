@@ -522,9 +522,9 @@ CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-WallVelo'   , 'Velocity (g
 #if PARTICLES_COUPLING >= 2
 CALL DefineParametersDepositionMethod()
 #endif /*PARTICLES_COUPLING >= 2*/
-#if PARTICLES_COUPLING > 2
+#if PARTICLES_COUPLING == 4
 CALL DefineParametersCollission()
-#endif /*PARTICLES_COUPLING > 2*/
+#endif /*PARTICLES_COUPLING == 4*/
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
 CALL DefineParametersParticleBoundaryTracking()

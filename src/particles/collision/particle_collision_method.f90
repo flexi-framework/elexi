@@ -277,7 +277,7 @@ USE MOD_Utils                   ,ONLY: ALMOSTZERO
 USE MOD_Particle_Collision_Vars
 USE MOD_Particle_Globals        ,ONLY: UNITVECTOR
 USE MOD_Particle_Output_Vars    ,ONLY: offsetnPart,locnPart
-USE MOD_Particle_Vars           ,ONLY: PartState,Species,PartSpecies,LastPartPos,PDM
+USE MOD_Particle_Vars           ,ONLY: PartState,Species,LastPartPos,PDM
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -305,15 +305,14 @@ P1_old = PartData_Shared(PART_POSV,iPart1) - mdtColl * PartData_Shared(PART_VELV
 P2_old = PartData_Shared(PART_POSV,iPart2) - mdtColl * PartData_Shared(PART_VELV,iPart2)
 
 LocPartID1 = PEM2PartID(iPart1)
-LocPartID2 = PEM2PartID(iPart2)
 
 ! Compute normal vector from iPart1 to iPart2
 n_loc = UNITVECTOR(P2_old - P1_old)
 
 ! Compute reduced mass of particle pair
-m1 = MASS_SPHERE(Species(PartSpecies(LocPartID1))%DensityIC,PartData_Shared(PART_DIAM,iPart1))
+m1 = MASS_SPHERE(Species(INT(PartData_Shared(PP_nVarPart+1,iPart1)))%DensityIC,PartData_Shared(PART_DIAM,iPart1))
 ! FIXME: density of iPart2
-m2 = MASS_SPHERE(Species(PartSpecies(LocPartID1))%DensityIC,PartData_Shared(PART_DIAM,iPart2))
+m2 = MASS_SPHERE(Species(INT(PartData_Shared(PP_nVarPart+1,iPart2)))%DensityIC,PartData_Shared(PART_DIAM,iPart2))
 m_red = m1*m2/(m1+m2)
 
 ! Compute normal component Jn of impulsive contact force J

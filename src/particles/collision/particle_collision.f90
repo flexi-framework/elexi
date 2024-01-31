@@ -534,7 +534,7 @@ USE MOD_MPI_Shared_Vars         ,ONLY: myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 USE MOD_Particle_Output_Vars    ,ONLY: offsetnPart,locnPart
 USE MOD_Particle_Tools          ,ONLY: GetOffsetAndGlobalNumberOfParts,UpdateNextFreePosition
-USE MOD_Particle_Vars           ,ONLY: PDM,PEM,PartState
+USE MOD_Particle_Vars           ,ONLY: PDM,PEM,PartState,PartSpecies
 USE MOD_Particle_Vars           ,ONLY: useLinkedList
 USE MOD_Particle_Vars           ,ONLY: doCalcPartCollision
 USE MOD_Particle_Collision_Vars
@@ -570,8 +570,8 @@ CALL GetOffsetAndGlobalNumberOfParts('UpdateParticleShared',offsetnPart,nGlobalN
 ! Allocate data arrays for mean particle quantities
 IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
   ! Allocate array if not yet associated
-  CALL Allocate_Shared((/PP_nVarPart,INT(nGlobalNbrOfParticles(3)*1.2)/),PartData_Shared_Win,PartData_Shared)
-  CALL Allocate_Shared((/            INT(nGlobalNbrOfParticles(3)*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
+  CALL Allocate_Shared((/PP_nVarPart+1,INT(nGlobalNbrOfParticles(3)*1.2)/),PartData_Shared_Win,PartData_Shared)
+  CALL Allocate_Shared((/              INT(nGlobalNbrOfParticles(3)*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
   CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
   CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win  ,iError)
 ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nGlobalNbrOfParticles(3)) THEN
@@ -587,8 +587,8 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nGlobalNbrOfParticles(3)) THEN
   MDEALLOCATE(PartData_Shared)
   MDEALLOCATE(PartBC_Shared)
   ! Increase array size if needed, 20% margin
-  CALL Allocate_Shared((/PP_nVarPart,INT(nGlobalNbrOfParticles(3)*1.2)/),PartData_Shared_Win,PartData_Shared)
-  CALL Allocate_Shared((/            INT(nGlobalNbrOfParticles(3)*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
+  CALL Allocate_Shared((/PP_nVarPart+1,INT(nGlobalNbrOfParticles(3)*1.2)/),PartData_Shared_Win,PartData_Shared)
+  CALL Allocate_Shared((/              INT(nGlobalNbrOfParticles(3)*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
   CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
   CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win  ,iError)
 END IF
@@ -615,8 +615,9 @@ DO iElem = offsetElem+1,offsetElem+nElems
   ! Sum up particles and add properties to output array
   pcount = PEM%pStart(iElem)
   DO iPart = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
-    PartData_Shared(:,iPart) = PartState(:,pcount)
-    PEM2PartID(iPart)        = pcount
+    PartData_Shared(1:PP_nVarPart,iPart) = PartState(:,pcount)
+    PartData_Shared(PP_nVarPart+1,iPart) = PartSpecies(pcount)
+    PEM2PartID(iPart)                    = pcount
 
     ! Set the index to the next particle
     pcount = PEM%pNext(pcount)
@@ -649,11 +650,11 @@ IF (myComputeNodeRank.EQ.0) THEN
   recvcountPartInt(nLeaderGroupProcs-1) = nGlobalNbrOfParticles(3) - displsPartInt(nLeaderGroupProcs-1)
 
   ALLOCATE(MPI_COMM_LEADERS_REQUEST(1:2))
-  CALL MPI_IALLGATHERV(MPI_IN_PLACE   ,0                                                      ,MPI_DATATYPE_NULL   &
-                      ,PartInt_Shared ,PartIntSize*recvcountElem   ,PartIntSize*displsElem    ,MPI_INTEGER         &
+  CALL MPI_IALLGATHERV(MPI_IN_PLACE   ,0                                                         ,MPI_DATATYPE_NULL    &
+                      ,PartInt_Shared ,PartIntSize*recvcountElem   ,PartIntSize*displsElem       ,MPI_INTEGER          &
                       ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(1),iError)
-  CALL MPI_IALLGATHERV(MPI_IN_PLACE   ,0                                                      ,MPI_DATATYPE_NULL   &
-                      ,PartData_Shared,PP_nVarPart*recvcountPartInt,PP_nVarPart*displsPartInt,MPI_DOUBLE_PRECISION &
+  CALL MPI_IALLGATHERV(MPI_IN_PLACE   ,0                                                         ,MPI_DATATYPE_NULL    &
+                      ,PartData_Shared,(PP_nVarPart+1)*recvcountPartInt,PP_nVarPart*displsPartInt,MPI_DOUBLE_PRECISION &
                       ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(2),iError)
   ! DEALLOCATE(displsPartInt)
   ! DEALLOCATE(recvcountPartInt)

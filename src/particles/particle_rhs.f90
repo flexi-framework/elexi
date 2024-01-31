@@ -477,8 +477,9 @@ FUNCTION ParticlePushRot(PartID,FieldAtParticle,Omega,Rew)
 ! Push due to Stoke's drag and source terms (gravity)
 !===================================================================================================================================
 ! MODULES
+USE MOD_Globals_Vars,      ONLY: PI
 USE MOD_Particle_Globals
-USE MOD_Particle_Vars,     ONLY : Species, PartSpecies
+USE MOD_Particle_Vars,     ONLY: Species, PartSpecies
 #if PARABOLIC
 USE MOD_Viscosity
 #endif

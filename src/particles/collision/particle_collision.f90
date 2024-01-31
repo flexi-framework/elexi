@@ -570,6 +570,8 @@ CALL GetOffsetAndGlobalNumberOfParts('UpdateParticleShared',offsetnPart,nGlobalN
 ! Allocate data arrays for mean particle quantities
 IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
   ! Allocate array if not yet associated
+  ! > FIXME: This array should be changed to nComputeNodeTotalElems. Use GetGlobalElemID to map CN to global elemID and expose
+  ! >        remote memory windows using one-sided RMA appraoch. Get the desired data using MPI_IGET and build a mapping
   CALL Allocate_Shared((/PP_nVarPart+1,INT(nGlobalNbrOfParticles(3)*1.2)/),PartData_Shared_Win,PartData_Shared)
   CALL Allocate_Shared((/              INT(nGlobalNbrOfParticles(3)*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
   CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)

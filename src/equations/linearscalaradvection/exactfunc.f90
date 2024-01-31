@@ -122,6 +122,7 @@ SUBROUTINE ExactFunc(ExactFunction,tIn,x,resu,RefStateOpt)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
+USE MOD_Globals_Vars,  ONLY: PI
 USE MOD_Equation_Vars, ONLY: AdvVel
 USE MOD_Exactfunc_Vars,ONLY: OmegaRef
 USE MOD_Timedisc_Vars, ONLY: fullBoundaryOrder,CurrentStage,dt,RKb,RKc,t

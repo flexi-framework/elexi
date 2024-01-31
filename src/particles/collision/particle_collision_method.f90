@@ -193,7 +193,8 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
         P1 = PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_VELV,iPart1)*dtLoc
         P2 = PartData_Shared(PART_POSV,iPart2) - PartData_Shared(PART_VELV,iPart2)*dtLoc
         ! compute coefficients a,b,c of the previous quadratic equation (a*t^2+b*t+c=0)
-        ASSOCIATE(Term => PartData_Shared(PART_VELV,iPart2) - PartData_Shared(PART_VELV,iPart1))
+        ! ASSOCIATE(Term => PartData_Shared(PART_VELV,iPart2) - PartData_Shared(PART_VELV,iPart1))
+        ASSOCIATE(Term => PartData_Shared(PART_POSV,iPart1)-PartData_Shared(PART_POSV,iPart2)-(P1-P2))
         a = DOT_PRODUCT(Term,Term)
         END ASSOCIATE
 
@@ -201,8 +202,8 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
         IF (a.EQ.0.) CYCLE
 
         ! Cauchy-Schwarz inequality: <x,y> + <y,x> <= 2 |<x,y>| <= 2|x||y|
-        ! TODO: check if abs needed!
-        b = 2. * DOT_PRODUCT(PartData_Shared(PART_VELV,iPart2) - PartData_Shared(PART_VELV,iPart1),P2 - P1)
+        ! b = 2. * DOT_PRODUCT(PartData_Shared(PART_VELV,iPart2) - PartData_Shared(PART_VELV,iPart1),P2 - P1)
+        b = 2. * DOT_PRODUCT(P1-P2,PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_POSV,iPart2)-(P1 - P2))
         ASSOCIATE(Term => P2 - P1)
         c = DOT_PRODUCT(Term,Term) - 0.25*(PartData_Shared(PART_DIAM,iPart2) + PartData_Shared(PART_DIAM,iPart1))**2.
         END ASSOCIATE
@@ -212,7 +213,7 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
         IF (delta.LT.0.) CYCLE
 
         ! a collision is possible, determine when relatively to (tStage+dtloc)
-        dtColl = (b + SQRT(delta)) / (2. * a) * dtLoc
+        dtColl = MIN(MAX((-b + SQRT(delta)) / (2. * a),0.),MAX((-b - SQRT(delta)) / (2. * a),0.)) * dtLoc
         ! the collision is only valid if it occurred between tStage and tStage+dtLoc
         IF (dtColl.LT.0. .OR. dtColl.GT.dtLoc) CYCLE
 
@@ -231,12 +232,13 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
         IF (DOT_PRODUCT(pColl - P2,N2).LE.0) CYCLE
         END ASSOCIATE
 
-        ! IPWRITE(*,*) 'dtColl:', dtColl
+        ! IPWRITE(*,*) 'dtColl 2:', dtColl
         ! IPWRITE(*,*) 'Species:', PartSpecies(PEM2PartID(iPart1)),PartSpecies(PEM2PartID(iPart2))
         ! IPWRITE(*,*) 'b,t:', b,t,dtLoc
         ! IPWRITE(*,*) 'p1,p2:', p1,p2
         ! IPWRITE(*,*) 'PartData_shared(PART_VELV,ipart1),PartData_shared(PART_VELV,ipart2):', PartData_shared(PART_VELV,ipart1),PartData_shared(PART_VELV,ipart2)
         ! IPWRITE(*,*) 'PartInt_Shared(:,iElem):', PartInt_Shared(:,iElem),iElem
+        ! read *;
 
         ! collision found
         PartColl(iPart1 - offsetNeighElemPart(iElem      )) = .TRUE.
@@ -303,54 +305,50 @@ P1_old = PartData_Shared(PART_POSV,iPart1) - mdtColl * PartData_Shared(PART_VELV
 P2_old = PartData_Shared(PART_POSV,iPart2) - mdtColl * PartData_Shared(PART_VELV,iPart2)
 
 LocPartID1 = PEM2PartID(iPart1)
-LastPartPos(PART_POSV,LocPartID1) = P1_old
+LocPartID2 = PEM2PartID(iPart2)
 
 ! Compute normal vector from iPart1 to iPart2
 n_loc = UNITVECTOR(P2_old - P1_old)
 
-! Relative velocity of the contact point just before the collision in iPart2's reference frame
-v_rel_contactpoint = PartState(PART_VELV,iPart1) - PartState(PART_VELV,iPart2)
-#if USE_PARTROT
-! Take particle rotation into account
-v_rel_contactpoint = v_rel_contactpoint + &
-                     PartState(PART_DIAM,iPart1) * 0.5 * CROSSPRODUCT(PartState(PART_AMOMV,iPart1),n_loc) + &
-                     PartState(PART_DIAM,iPart2) * 0.5 * CROSSPRODUCT(PartState(PART_AMOMV,iPart2),n_loc)
-#endif /*USE_PARTROT*/
-
 ! Compute reduced mass of particle pair
-m1 = MASS_SPHERE(Species(PartSpecies(iPart1))%DensityIC,PartState(PART_DIAM,iPart1))
-m2 = MASS_SPHERE(Species(PartSpecies(iPart2))%DensityIC,PartState(PART_DIAM,iPart2))
+m1 = MASS_SPHERE(Species(PartSpecies(LocPartID1))%DensityIC,PartData_Shared(PART_DIAM,iPart1))
+! FIXME: density of iPart2
+m2 = MASS_SPHERE(Species(PartSpecies(LocPartID1))%DensityIC,PartData_Shared(PART_DIAM,iPart2))
 m_red = m1*m2/(m1+m2)
 
 ! Compute normal component Jn of impulsive contact force J
-Jn = - m_red * (1+PartCollisionModel%e) * DOT_PRODUCT(PartState(PART_VELV,iPart1) - PartState(PART_VELV,iPart2),n_loc)
-! IPWRITE(*,*) 'Jn,n_loc:', Jn,n_loc
-
-! Compute tangent unit vector t_loc that is in the same plan as n_loc and v_rel_contactpoint
-vt_rel_contactpoint      = v_rel_contactpoint - DOT_PRODUCT(v_rel_contactpoint,n_loc) * n_loc
-vt_rel_contactpoint_norm = NORM2(vt_rel_contactpoint)
-IF (ALMOSTZERO(vt_rel_contactpoint_norm)) THEN; t_loc = 0.
-ELSE;                                           t_loc = vt_rel_contactpoint / vt_rel_contactpoint_norm
-END IF
+Jn = - m_red * (1+PartCollisionModel%e) * DOT_PRODUCT(PartData_Shared(PART_VELV,iPart1) - PartData_Shared(PART_VELV,iPart2),n_loc)
 
 ! Compute friction (Jt) if enabled
-IF (PartCollisionModel%Friction .AND. vt_rel_contactpoint_norm.NE.0.) THEN
+IF (PartCollisionModel%Friction) THEN
+  ! Relative velocity of the contact point just before the collision in iPart2's reference frame
+  v_rel_contactpoint = PartData_Shared(PART_VELV,iPart1) - PartData_Shared(PART_VELV,iPart2)
+#if USE_PARTROT
+  ! Take particle rotation into account
+  v_rel_contactpoint = v_rel_contactpoint + &
+                       PartData_Shared(PART_DIAM,iPart1) * 0.5 * CROSSPRODUCT(PartData_Shared(PART_AMOMV,iPart1),n_loc) + &
+                       PartData_Shared(PART_DIAM,iPart2) * 0.5 * CROSSPRODUCT(PartData_Shared(PART_AMOMV,iPart2),n_loc)
+#endif /*USE_PARTROT*/
+
+  ! Compute tangent unit vector t_loc that is in the same plan as n_loc and v_rel_contactpoint
+  vt_rel_contactpoint      = v_rel_contactpoint - DOT_PRODUCT(v_rel_contactpoint,n_loc) * n_loc
+  vt_rel_contactpoint_norm = NORM2(vt_rel_contactpoint)
+  IF (ALMOSTZERO(vt_rel_contactpoint_norm)) THEN; t_loc = 0.
+  ELSE;                                           t_loc = vt_rel_contactpoint / vt_rel_contactpoint_norm
+  END IF
+
   ! as particles can slide on each other, the fact that they can stop sliding during the collision due to friction is taken into account
   Jt = MAX(PartCollisionModel%f * Jn, - 2. / 7. * m_red * vt_rel_contactpoint_norm)
+
+  ! Compute impulsive contact force J
+  J = Jn * n_loc + Jt * t_loc
 ELSE
-  Jt = 0.
+  ! Compute impulsive contact force J
+  J = Jn * n_loc
 END IF
-
-! Compute impulsive contact force J
-J = Jn * n_loc + Jt * t_loc
-
-  LocPartID2 = PEM2PartID(iPart2)
-! IPWRITE(*,*) 'PartState(PART_POSV,LocPartID1):', PartState(1:6,LocPartID1),PartSpecies(LocPartID1)
-! IPWRITE(*,*) 'PartState(PART_POSV,LocPartID2):', PartState(1:6,LocPartID2),PartSpecies(LocPartID2)
 
 ! Apply jump relation to momentum equation, i.e., update velocity of particles
 PartState(PART_VELV,LocPartID1) = PartState(PART_VELV,LocPartID1) + J / m1
-! IPWRITE(*,*) 'J, m1:', J, m1
 
 IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
   LocPartID2 = PEM2PartID(iPart2)
@@ -372,14 +370,12 @@ IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) &
 PDM%IsNewPart(LocPartID2) = .TRUE.
 
 ! Update the particle's position at time tStage+dtloc
-PartState(PART_POSV,LocPartID1) = P1_old + mdtColl * PartState(PART_VELV,LocPartID1)
+PartState(PART_POSV,LocPartID1)   = P1_old + mdtColl * PartState(PART_VELV,LocPartID1)
+LastPartPos(PART_POSV,LocPartID1) = P1_old
 IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
   LastPartPos(PART_POSV,LocPartID2) = P2_old
   PartState(  PART_POSV,LocPartID2) = P2_old + mdtColl * PartState(PART_VELV,LocPartID2)
 END IF
-! IPWRITE(*,*) 'PartState(PART_POSV,LocPartID1):', PartState(1:6,LocPartID1),PartSpecies(LocPartID1)
-! IPWRITE(*,*) 'PartState(PART_POSV,LocPartID2):', PartState(1:6,LocPartID2),PartSpecies(LocPartID2)
-! read*
 
 #if USE_PARTTEMP
 ! TODO

@@ -23,6 +23,13 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+INTEGER                       :: offsetComputeNodeParts                      !
+INTEGER                       :: nComputeNodeParts                           !
+INTEGER                       :: nComputeNodeTotalParts                      !
+INTEGER                       :: nGlobalParts                                !
+INTEGER,ALLOCATABLE           :: offsetPartMPI(:)                            !< gives offsetposotion of particles of all procs,
+                                                                             !< allocated from 0:nProcessors set
+
 LOGICAL                       :: useLinkedList                               ! Flag to trigger the start of the linked list for output tools
 
 REAL    , ALLOCATABLE         :: PartState(:,:)                              ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz

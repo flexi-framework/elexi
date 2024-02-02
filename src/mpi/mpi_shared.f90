@@ -170,10 +170,12 @@ IF (MOD(nProcessors_Global,nComputeNodeProcessors).NE.0) &
   CALL Abort(__STAMP__,'MPI shared communication currently only supported with equal procs per node!')
 
 IF (nProcessors_Global.EQ.nComputeNodeProcessors) THEN
+  nComputeNodes = 1
   SWRITE(UNIT_stdOut,'(A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',1,' node'
 ELSE
+  nComputeNodes = INT(nProcessors_Global/nComputeNodeProcessors)
   SWRITE(UNIT_stdOut,'(A,I0,A,I0,A,I0,A)') ' | Starting shared communication with ',nComputeNodeProcessors,' procs on ',         &
-                                                         nProcessors_Global/nComputeNodeProcessors,' nodes for a total number of ',&
+                                                         nComputeNodes     ,' nodes for a total number of ',&
                                                          nProcessors_Global,' procs'
 END IF
 
@@ -222,6 +224,12 @@ CALL MPI_INFO_SET(   MPI_INFO_SHARED_LOOSE,'accumulate_ordering','none',IERROR)
 ! Only root allocates, size differs between ranks
 !CALL MPI_INFO_SET(   MPI_INFO_SHARED_LOOSE,'same_size'          ,'true',IERROR)
 CALL MPI_INFO_SET(   MPI_INFO_SHARED_LOOSE,'same_disp_unit'     ,'true',IERROR)
+
+! Create a group from the communicator
+CALL MPI_COMM_GROUP(MPI_COMM_SHARED, MPI_GROUP_SHARED,IERROR)
+IF(myComputeNodeRank.EQ.0)THEN
+  CALL MPI_COMM_GROUP(MPI_COMM_LEADERS_SHARED, MPI_GROUP_LEADERS_SHARED,IERROR)
+END IF
 
 ! synchronize everything or bad things will happen
 CALL MPI_BARRIER(MPI_COMM_SHARED,IERROR)

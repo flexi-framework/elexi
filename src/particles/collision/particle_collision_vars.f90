@@ -33,11 +33,10 @@ END TYPE tParticleCollisionModel
 
 TYPE(tParticleCollisionModel)            :: PartCollisionModel          ! parameters for the collision model
 
-! REAL,ALLOCATABLE                         :: PartColl(:,:)               ! (1:2,1:NParts) with 1st index: dtColl,PartIDColl
 INTEGER,ALLOCATABLE                      :: NeighElemsProc(:)
 INTEGER                                  :: nProcNeighElems
 INTEGER                                  :: nProcParts                  ! > Number of particles on local and halo elements
-INTEGER,ALLOCATABLE                      :: offsetNeighElemPart(:)      ! > FIXME: keep allocated
+INTEGER,ALLOCATABLE                      :: offsetNeighElemPart(:)      ! >
 INTEGER,ALLOCATABLE                      :: PEM2PartID(:)
 
 ! #if USE_MPI
@@ -54,25 +53,27 @@ INTEGER,ALLOCPOINT,DIMENSION(:)          :: CNNeighElem2CNElem          !> Rever
 
 ! Shared particle arrays
 REAL   ,ALLOCPOINT,DIMENSION(:,:)        :: PartData_Shared             !>
+INTEGER,ALLOCATABLE,DIMENSION(:)         :: PartData_Window             !> MPI RMA window handle
 REAL   ,ALLOCPOINT,DIMENSION(:)          :: PartBC_Shared               !>
-INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: PartInt_Shared              !>
-! REAL   ,ALLOCPOINT,DIMENSION(:)          :: PartData_Shared_Flat        !>
-! INTEGER,ALLOCPOINT,DIMENSION(:)          :: PartInt_Shared_Flat         !>
+INTEGER,ALLOCATABLE,DIMENSION(:)         :: PartBC_Window               !> MPI RMA window handle
+INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: PartInt_Shared              !> CN-local (!) PartInt array, 1:2 offset/last part on CN
+                                                                        !>                             3:4 offset/last part global
+INTEGER,ALLOCATABLE,DIMENSION(:)         :: PartInt_Window              !> MPI RMA window handle
 
 #if USE_MPI
 ! Communication
-INTEGER,ALLOCATABLE            :: displsPartInt(:)
-INTEGER,ALLOCATABLE            :: recvcountPartInt(:)
+INTEGER,ALLOCATABLE :: displsPartInt(:)
+INTEGER,ALLOCATABLE :: recvcountPartInt(:)
 
-INTEGER           :: Neigh_nElems_Shared_Win
-INTEGER           :: Neigh_offsetElem_Shared_Win
-INTEGER           :: CNElem2CNNeighElem_Win
-INTEGER           :: CNNeighElem2CNElem_Win
+INTEGER             :: Neigh_nElems_Shared_Win
+INTEGER             :: Neigh_offsetElem_Shared_Win
+INTEGER             :: CNElem2CNNeighElem_Win
+INTEGER             :: CNNeighElem2CNElem_Win
 
 ! Shared particle arrays
-INTEGER           :: PartData_Shared_Win
-INTEGER           :: PartBC_Shared_Win
-INTEGER           :: PartInt_Shared_Win
+INTEGER             :: PartData_Shared_Win
+INTEGER             :: PartBC_Shared_Win
+INTEGER             :: PartInt_Shared_Win
 #endif /*USE_MPI*/
 
 #endif /*PARTICLES_COUPLING == 4*/

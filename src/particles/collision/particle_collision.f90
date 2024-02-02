@@ -83,12 +83,13 @@ SUBROUTINE InitializeCollision()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Mesh_Vars               ,ONLY: nGlobalElems
 USE MOD_MPI_Shared
-USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank
-USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
-USE MOD_ReadInTools             ,ONLY: GETLOGICAL,GETREAL
+USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,nLeaderGroupProcs
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_LEADERS_SHARED,myLeaderGroupRank
 USE MOD_Particle_Collision_Vars
+USE MOD_Particle_Vars           ,ONLY: offsetPartMPI
+USE MOD_ReadInTools             ,ONLY: GETLOGICAL,GETREAL
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -96,12 +97,17 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER,PARAMETER              :: PartIntSize=2
+INTEGER,PARAMETER              :: PartIntSize=4
 REAL                           :: StartT,EndT
+! MPI RMA communication
+INTEGER                        :: iLeader
 !===================================================================================================================================
 
 LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE COLLISIONS...'
 GETTIME(StartT)
+
+! initialize offset array
+IF (myComputeNodeRank.EQ.0) ALLOCATE(offsetPartMPI(0:nLeaderGroupProcs))
 
 ! initialize the parameters of the model particle collision
 PartCollisionModel%e        = GETREAL   ('Part-Collisions-RestCoeff')
@@ -113,10 +119,54 @@ PartCollisionModel%f        = GETREAL   ('Part-Collisions-FricCoeff')
 CALL IdentifyNeighboringElements()
 
 ! allocate shared particle arrays
-CALL Allocate_Shared((/PartIntSize,nGlobalElems/),PartInt_Shared_Win ,PartInt_Shared)
+CALL Allocate_Shared((/PartIntSize,nComputeNodeTotalElems/),PartInt_Shared_Win ,PartInt_Shared)
 CALL MPI_WIN_LOCK_ALL(0,PartInt_Shared_Win,iError)
 IF (myComputeNodeRank.EQ.0) PartInt_Shared = -1
 CALL BARRIER_AND_SYNC(PartInt_Shared_Win,MPI_COMM_SHARED)
+
+IF (myComputeNodeRank.EQ.0) THEN
+  ! Create MPI Window handles for one-sides communidation
+  ALLOCATE(PartInt_Window( 0:nLeaderGroupProcs-1))
+  ALLOCATE(PartData_Window(0:nLeaderGroupProcs-1))
+  ALLOCATE(PartBC_Window(  0:nLeaderGroupProcs-1))
+
+  ! Create an MPI Window object for one-sided communication
+  DO iLeader = 0,nLeaderGroupProcs-1
+    ! Specify a window of existing memory that is exposed to RMA accesses
+    IF (iLeader.EQ.myLeaderGroupRank) THEN
+      ! Create an MPI Window object for one-sided communication
+      CALL MPI_WIN_CREATE( PartInt_Shared                                          &
+                         , INT(SIZE_INT*4*nComputeNodeTotalElems,MPI_ADDRESS_KIND) &
+                         , SIZE_INT                                                &
+                         , MPI_INFO_NULL                                           &
+                         , MPI_COMM_LEADERS_SHARED                                 &
+                         , PartInt_Window(iLeader)                                 &
+                         , iError)
+    ELSE
+      ! A process may elect to expose no memory by specifying size = 0
+      CALL MPI_WIN_CREATE( MPI_INFO_NULL                                           &
+                         , INT(0,MPI_ADDRESS_KIND)                                 &
+                         , SIZE_INT                                                &
+                         , MPI_INFO_NULL                                           &
+                         , MPI_COMM_LEADERS_SHARED                                 &
+                         , PartInt_Window(iLeader)                                 &
+                         , iError)
+    END IF ! iLeader.EQ.myLeaderGroupRank
+
+    ! Start an RMA exposure epoch
+    ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
+    ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
+    ! CALL MPI_WIN_POST(      MPI_GROUP_LEADERS_SHARED                               &
+    !                  ,      0                                                      &
+    !                  ,      MPI_WINDOW(iLeader)                                    &
+    !                  ,      iError)
+    ! No local operations prior to this epoch, so give an assertion
+    ! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                      &
+    !                   ,    PartInt_Window(iLeader)                                 &
+    !                   ,    iError)
+
+  END DO ! iLeader
+END IF
 
 GETTIME(EndT)
 CALL DisplayMessageAndTime(EndT-StartT, 'INIT PARTICLE COLLISIONS DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
@@ -142,7 +192,8 @@ USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeProcessors,myComputeNodeRank
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
 USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeTotalElems
-USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem,nGlobalElems
+USE MOD_Mesh_Vars               ,ONLY: nElems,nGlobalElems
+USE MOD_Mesh_Vars               ,ONLY: offsetElem
 USE MOD_Mesh_Vars               ,ONLY: nComputeNodeElems
 USE MOD_Utils                   ,ONLY: InsertionSort
 ! IMPLICIT VARIABLE HANDLING
@@ -205,7 +256,7 @@ lastElem  = nElems
 
 ! allocate arrays to store detected neighboring elements for the currently considered element only
 ! i.e. these lists are reset when we consider a new element
-ALLOCATE(currentNeighElem(2,nComputeNodeElems))
+ALLOCATE(currentNeighElem(2,nComputeNodeTotalElems))
 ALLOCATE(nNeighElems(       nComputeNodeElems))
 currentNeighElem = .FALSE.
 nNeighElems      = 0
@@ -526,15 +577,25 @@ SUBROUTINE UpdateParticleShared()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Mesh_Readin             ,ONLY: ELEMIPROC
 USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars               ,ONLY: nComputeNodeElems
 USE MOD_MPI_Shared
-USE MOD_MPI_Shared_Vars         ,ONLY: displsElem,recvcountElem
-USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank
+! USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodes
+USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,nComputeNodeProcessors
 USE MOD_MPI_Shared_Vars         ,ONLY: myLeaderGroupRank,nLeaderGroupProcs
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
+! USE MOD_MPI_Shared_Vars         ,ONLY: MPI_GROUP_LEADERS_SHARED
+USE MOD_MPI_Vars                ,ONLY: offsetElemMPI
+USE MOD_Particle_Globals        ,ONLY: IK
+USE MOD_Particle_Mesh_Tools     ,ONLY: GetCNElemID,GetGlobalElemID
 USE MOD_Particle_Output_Vars    ,ONLY: offsetnPart,locnPart
 USE MOD_Particle_Tools          ,ONLY: GetOffsetAndGlobalNumberOfParts,UpdateNextFreePosition
+USE MOD_Particle_Vars           ,ONLY: nComputeNodeParts,offsetComputeNodeParts,nGlobalParts
+USE MOD_Particle_Vars           ,ONLY: nComputeNodeTotalParts
 USE MOD_Particle_Vars           ,ONLY: PDM,PEM,PartState,PartSpecies
+USE MOD_Particle_Vars           ,ONLY: offsetPartMPI
 USE MOD_Particle_Vars           ,ONLY: useLinkedList
 USE MOD_Particle_Vars           ,ONLY: doCalcPartCollision
 USE MOD_Particle_Collision_Vars
@@ -547,15 +608,17 @@ IMPLICIT NONE
 INTEGER,PARAMETER              :: PartIntSize=2
 INTEGER                        :: pcount
 INTEGER                        :: iPart,iElem
-INTEGER                        :: iProc
-! Offsets for MPI_ALLGATHERV
-INTEGER,ALLOCATABLE            :: MPI_COMM_LEADERS_REQUEST(:)           !> Request handle for non-blocking communication
-! INTEGER,ALLOCATABLE            :: displsPartInt(:),recvcountPartInt(:)
+! Number of particles
+INTEGER                        :: locnPartRecv
+INTEGER                        :: iLeader
+INTEGER                        :: CNElemID,ElemID,ElemProc
+INTEGER                        :: CNRank,dispElemCN
+! INTEGER                        :: MPI_WINDOW(   0:nLeaderGroupProcs)
 !===================================================================================================================================
 
 IF (.NOT.doCalcPartCollision) RETURN
 
-! Determine number of particles in the complete domain
+! Determine number of particles in the compute node domain
 locnPart =   0
 !>> Count number of particle on local proc
 DO pcount = 1,PDM%ParticleVecLength
@@ -567,16 +630,182 @@ END DO
 ! Communicate the total number and offset
 CALL GetOffsetAndGlobalNumberOfParts('UpdateParticleShared',offsetnPart,nGlobalNbrOfParticles,locnPart,.TRUE.)
 
+! Communicate the total number and offset on the compute node
+locnPartRecv = 0
+CALL MPI_EXSCAN(locnPart,locnPartRecv,1,MPI_INTEGER,MPI_SUM,MPI_COMM_SHARED,iError)
+offsetComputeNodeParts = locnPartRecv
+
+! Last proc calculates the global number and broadcasts it
+IF (myRank.EQ.nComputeNodeProcessors-1) locnPart = locnPartRecv + locnPart
+CALL MPI_BCAST(locnPart,1,MPI_INTEGER,nComputeNodeProcessors-1,MPI_COMM_SHARED,iError)
+nComputeNodeParts      = locnPart
+
+! Order the particles along the SFC using a linked list
+ALLOCATE(PEM%pStart (offsetElem+1:offsetElem+nElems)    , &
+         PEM%pNumber(offsetElem+1:offsetElem+nElems)    , &
+         PEM%pNext  (1           :PDM%maxParticleNumber), &
+         PEM%pEnd   (offsetElem+1:offsetElem+nElems))
+useLinkedList = .TRUE.
+CALL UpdateNextFreePosition()
+
+! Compute node always nullifieds
+IF (myComputeNodeRank.EQ.0) PartInt_Shared(:,:) = 0
+CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
+
+! Walk along the linked list and fill the PartInt array for the current compute node
+iPart = 0
+! Walk over all elements on local proc
+DO iElem = offsetElem+1,offsetElem+nElems
+  CNElemID = GetCNElemID(iElem)
+  ! Set start of particle numbers in current element
+  PartInt_Shared(1,CNElemID) = iPart
+  PartInt_Shared(2,CNElemID) = PartInt_Shared(1,CNElemID) + PEM%pNumber(iElem)
+  PartInt_Shared(3,CNElemID) = iPart                                           + offsetnPart
+  PartInt_Shared(4,CNElemID) = PartInt_Shared(3,CNElemID) + PEM%pNumber(iElem) ! CAVE: offset already added
+  ! Set counter to the end of particle number in the current element
+  iPart = PartInt_Shared(2,CNElemID)
+END DO
+CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
+
+! Useful guide
+! > https://cvw.cac.cornell.edu/mpionesided/synchronization-calls/fence-synchronization
+IF (myComputeNodeRank.EQ.0) THEN
+  DO iLeader = 0,nLeaderGroupProcs-1
+  !   ! Specify a window of existing memory that is exposed to RMA accesses
+  !   IF (iLeader.EQ.myLeaderGroupRank) THEN
+  !     ! Create an MPI Window object for one-sided communication
+  !     CALL MPI_WIN_CREATE( PartInt_Shared                                          &
+  !                        , INT(SIZE_INT*4*nComputeNodeTotalElems,MPI_ADDRESS_KIND) &
+  !                        , SIZE_INT                                                &
+  !                        , MPI_INFO_NULL                                           &
+  !                        , MPI_COMM_LEADERS_SHARED                                 &
+  !                        , MPI_WINDOW(iLeader)                                     &
+  !                        , iError)
+  !   ELSE
+  !     ! A process may elect to expose no memory by specifying size = 0
+  !     CALL MPI_WIN_CREATE( MPI_INFO_NULL                                           &
+  !                        , INT(0,MPI_ADDRESS_KIND)                                 &
+  !                        , SIZE_INT                                                &
+  !                        , MPI_INFO_NULL                                           &
+  !                        , MPI_COMM_LEADERS_SHARED                                 &
+  !                        , MPI_WINDOW(iLeader)                                     &
+  !                        , iError)
+  !   END IF ! iLeader.EQ.myLeaderGroupRank
+  !
+  !   ! Start an RMA exposure epoch
+  !   ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
+  !   ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
+  !   ! CALL MPI_WIN_POST(      MPI_GROUP_LEADERS_SHARED                               &
+  !   !                  ,      0                                                      &
+  !   !                  ,      MPI_WINDOW(iLeader)                                    &
+  !   !                  ,      iError)
+    ! No local operations prior to this epoch, so give an assertion
+    CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                      &
+                      ,    PartInt_Window(iLeader)                                 &
+                      ,    iError)
+  END DO ! iLeader
+
+  ! Loop over all remote elements and fill the PartInt_Shared array
+  DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
+    ElemID   = GetGlobalElemID(iElem)
+    ElemProc = ELEMIPROC(ElemID)
+    CNRank   = INT(ElemProc/nComputeNodeProcessors)
+    dispElemCN = ElemID - (offsetElemMPI(CNRank) + 1)
+
+    ! Position in the RMA window is the ElemID minus the compute node offset
+    CALL MPI_GET(          PartInt_Shared(3,iElem)                                 &
+                         , 2                                                       &
+                         , MPI_INTEGER                                             &
+                         , CNRank                                                  &
+                         , INT(4*dispElemCN+2,MPI_ADDRESS_KIND)                    &
+                         , 2                                                       &
+                         , MPI_INTEGER                                             &
+                         , PartInt_Window(CNRank)                                  &
+                         , iError)
+    ! Add the PartInt to the CN-local (!) PartInt_Shared array
+    PartInt_Shared(1,iElem) = PartInt_Shared(2,iElem-1)
+    PartInt_Shared(2,iElem) = PartInt_Shared(1,iElem) + PartInt_Shared(4,iElem) - PartInt_Shared(3,iElem)
+  END DO ! iElem
+
+  DO iLeader = 0,nLeaderGroupProcs-1
+    ! Complete the epoch - this will block until MPI_Get is complete
+    CALL MPI_WIN_FENCE(    0                                                       &
+                      ,    PartInt_Window(iLeader)                                 &
+                      ,    iError)
+    ! All done with the window - tell MPI there are no more epochs
+    CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
+                      ,    PartInt_Window(iLeader)                                 &
+                      ,    iError)
+    ! ! Free up our window
+    ! CALL MPI_WIN_FREE(     MPI_WINDOW(iLeader)                                     &
+    !                   ,    iError)
+  END DO ! iLeader
+END IF ! myComputeNodeRank.EQ.0
+CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
+
+! Count the number of particles on the CN and in the halo region
+nComputeNodeTotalParts = 0.
+IF (myComputeNodeRank.EQ.0) THEN
+  DO iElem = 1,nComputeNodeTotalElems
+    nComputeNodeTotalParts = nComputeNodeTotalParts + PartInt_Shared(2,iElem) - PartInt_Shared(1,iElem)
+  END DO ! iElem
+END IF
+
+CALL MPI_BCAST(nComputeNodeTotalParts,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
+
 ! Allocate data arrays for mean particle quantities
 IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
   ! Allocate array if not yet associated
   ! > FIXME: This array should be changed to nComputeNodeTotalElems. Use GetGlobalElemID to map CN to global elemID and expose
   ! >        remote memory windows using one-sided RMA appraoch. Get the desired data using MPI_IGET and build a mapping
-  CALL Allocate_Shared((/PP_nVarPart+1,INT(nGlobalNbrOfParticles(3)*1.2)/),PartData_Shared_Win,PartData_Shared)
-  CALL Allocate_Shared((/              INT(nGlobalNbrOfParticles(3)*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
+  CALL Allocate_Shared((/PP_nVarPart+1,INT(nComputeNodeTotalParts*1.2)/),PartData_Shared_Win,PartData_Shared)
+  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
   CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
   CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win  ,iError)
-ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nGlobalNbrOfParticles(3)) THEN
+
+  ! Create an MPI Window object for one-sided communication
+  IF (myComputeNodeRank.EQ.0) THEN
+    DO iLeader = 0,nLeaderGroupProcs-1
+      ! Specify a window of existing memory that is exposed to RMA accesses
+      IF (iLeader.EQ.myLeaderGroupRank) THEN
+        ! Create an MPI Window object for one-sided communication
+        CALL MPI_WIN_CREATE( PartData_Shared                                                        &
+                           , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
+                           , SIZE_REAL                                                              &
+                           , MPI_INFO_NULL                                                          &
+                           , MPI_COMM_LEADERS_SHARED                                                &
+                           , PartData_Window(iLeader)                                               &
+                           , iError)
+        ! Create an MPI Window object for one-sided communication
+        CALL MPI_WIN_CREATE( PartBC_Shared                                                          &
+                           , INT(SIZE_REAL*nComputeNodeTotalParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
+                           , SIZE_REAL                                                              &
+                           , MPI_INFO_NULL                                                          &
+                           , MPI_COMM_LEADERS_SHARED                                                &
+                           , PartBC_Window(iLeader)                                                 &
+                           , iError)
+      ELSE
+        ! A process may elect to expose no memory by specifying size = 0
+        CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                          &
+                           , INT(0,MPI_ADDRESS_KIND)                                                &
+                           , SIZE_REAL                                                              &
+                           , MPI_INFO_NULL                                                          &
+                           , MPI_COMM_LEADERS_SHARED                                                &
+                           , PartData_Window(iLeader)                                               &
+                           , iError)
+        ! A process may elect to expose no memory by specifying size = 0
+        CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                          &
+                           , INT(0,MPI_ADDRESS_KIND)                                                &
+                           , SIZE_REAL                                                              &
+                           , MPI_INFO_NULL                                                          &
+                           , MPI_COMM_LEADERS_SHARED                                                &
+                           , PartBC_Window(iLeader)                                                 &
+                           , iError)
+      END IF ! iLeader.EQ.myLeaderGroupRank
+    END DO ! iLeader
+  END IF ! CN root
+! Re-allocate the SHM window if it became too small
+ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
   ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
   CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
   CALL MPI_WIN_UNLOCK_ALL(PartData_Shared_Win,iError)
@@ -589,44 +818,86 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nGlobalNbrOfParticles(3)) THEN
   MDEALLOCATE(PartData_Shared)
   MDEALLOCATE(PartBC_Shared)
   ! Increase array size if needed, 20% margin
-  CALL Allocate_Shared((/PP_nVarPart+1,INT(nGlobalNbrOfParticles(3)*1.2)/),PartData_Shared_Win,PartData_Shared)
-  CALL Allocate_Shared((/              INT(nGlobalNbrOfParticles(3)*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
+  CALL Allocate_Shared((/PP_nVarPart+1,INT(nComputeNodeTotalParts*1.2)/),PartData_Shared_Win,PartData_Shared)
+  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
   CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
   CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win  ,iError)
-END IF
 
-! Order the particles along the SFC using a linked list
-ALLOCATE(PEM%pStart (offsetElem+1:offsetElem+nElems)    , &
-         PEM%pNumber(offsetElem+1:offsetElem+nElems)    , &
-         PEM%pNext  (1           :PDM%maxParticleNumber), &
-         PEM%pEnd   (offsetElem+1:offsetElem+nElems))
-useLinkedList = .TRUE.
-CALL UpdateNextFreePosition()
+  ! Create an MPI Window object for one-sided communication
+  ! > Needs to be reallocated every single time as the number of particles changes
+  IF (myComputeNodeRank.EQ.0) THEN
+    DO iLeader = 0,nLeaderGroupProcs-1
+      ! Free up our window
+      CALL MPI_WIN_FREE(     PartData_Window(iLeader)                                              &
+                        ,    iError)
+      CALL MPI_WIN_FREE(     PartBC_Window(iLeader)                                                &
+                        ,    iError)
+
+      ! Specify a window of existing memory that is exposed to RMA accesses
+      IF (iLeader.EQ.myLeaderGroupRank) THEN
+        ! Create an MPI Window object for one-sided communication
+        CALL MPI_WIN_CREATE( PartData_Shared                                                        &
+                           , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
+                           , SIZE_REAL                                                              &
+                           , MPI_INFO_NULL                                                          &
+                           , MPI_COMM_LEADERS_SHARED                                                &
+                           , PartData_Window(iLeader)                                               &
+                           , iError)
+        ! Create an MPI Window object for one-sided communication
+        CALL MPI_WIN_CREATE( PartBC_Shared                                                          &
+                           , INT(SIZE_REAL*nComputeNodeTotalParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
+                           , SIZE_REAL                                                              &
+                           , MPI_INFO_NULL                                                          &
+                           , MPI_COMM_LEADERS_SHARED                                                &
+                           , PartBC_Window(iLeader)                                                 &
+                           , iError)
+      ELSE
+        ! A process may elect to expose no memory by specifying size = 0
+        CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                          &
+                           , INT(0,MPI_ADDRESS_KIND)                                                &
+                           , SIZE_REAL                                                              &
+                           , MPI_INFO_NULL                                                          &
+                           , MPI_COMM_LEADERS_SHARED                                                &
+                           , PartData_Window(iLeader)                                               &
+                           , iError)
+        ! A process may elect to expose no memory by specifying size = 0
+        CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                          &
+                           , INT(0,MPI_ADDRESS_KIND)                                                &
+                           , SIZE_REAL                                                              &
+                           , MPI_INFO_NULL                                                          &
+                           , MPI_COMM_LEADERS_SHARED                                                &
+                           , PartBC_Window(iLeader)                                                 &
+                           , iError)
+      END IF ! iLeader.EQ.myLeaderGroupRank
+    END DO ! iLeader
+  END IF ! CN root
+END IF
 
 ! Walk along the linked list and fill the data arrays
 iPart = offsetnPart
 ! Allocate inverse mapping
-ALLOCATE(PEM2PartID(offsetnPart+1:offsetnPart+locnPart))
+ALLOCATE(PEM2PartID(1:nComputeNodeParts))
 PEM2PartID = -1
 ! Walk over all elements on local proc
 DO iElem = offsetElem+1,offsetElem+nElems
-  ! Set start of particle numbers in current element
-  PartInt_Shared(1,iElem) = iPart
-  ! Find all particles in current element
-  PartInt_Shared(2,iElem) = PartInt_Shared(1,iElem) + PEM%pNumber(iElem)
   ! Sum up particles and add properties to output array
-  pcount = PEM%pStart(iElem)
-  DO iPart = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
+  CNElemID = GetCNElemID(iElem)
+  pcount   = PEM%pStart(iElem)
+  ! PartData is CN-local ...
+  DO iPart = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
     PartData_Shared(1:PP_nVarPart,iPart) = PartState(:,pcount)
     PartData_Shared(PP_nVarPart+1,iPart) = PartSpecies(pcount)
-    PEM2PartID(iPart)                    = pcount
-
     ! Set the index to the next particle
-    pcount = PEM%pNext(pcount)
+  !   pcount = PEM%pNext(pcount)
+  ! END DO
+  ! ! ... but the PartID is global
+  ! pcount   = PEM%pStart(iElem)
+  ! DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
+    PEM2PartID(iPart)                    = pcount
   END DO
+
   ! Set counter to the end of particle number in the current element
   iPart = PartInt_Shared(2,iElem)
-  ! PartInt_Shared(2,iElem) = iPart
 END DO ! iElem = offsetElem+1,offsetElem+nElems
 
 ! De-allocate linked list and return to normal particle array mode
@@ -640,37 +911,98 @@ CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(PartData_Shared_Win,MPI_COMM_SHARED)
 
 IF (myComputeNodeRank.EQ.0) THEN
-  ! Arrays for the compute node to hold the part offsets
-  ALLOCATE(displsPartInt(   0:nLeaderGroupProcs-1),&
-           recvcountPartInt(0:nLeaderGroupProcs-1))
+  ! CAVE: particle numbers redefined after here
+  locnPart     = nComputeNodeParts
+  locnPartRecv = 0
+  CALL MPI_EXSCAN(locnPart,locnPartRecv,1,MPI_INTEGER,MPI_SUM,MPI_COMM_LEADERS_SHARED,iError)
+  offsetComputeNodeParts = locnPartRecv
 
-  displsPartInt(myLeaderGroupRank) = offsetnPart
-  CALL MPI_ALLGATHER(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,displsPartInt,1,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
-  DO iProc=1,nLeaderGroupProcs-1
-    recvcountPartInt(iProc-1) = displsPartInt(iProc)-displsPartInt(iProc-1)
-  END DO
-  recvcountPartInt(nLeaderGroupProcs-1) = nGlobalNbrOfParticles(3) - displsPartInt(nLeaderGroupProcs-1)
+  ! Last proc calculates the global number and broadcasts it
+  IF (myRank.EQ.nComputeNodeProcessors-1) locnPart = locnPartRecv + locnPart
+  CALL MPI_BCAST(locnPart,1,MPI_INTEGER,nLeaderGroupProcs-1,MPI_COMM_LEADERS_SHARED,iError)
+  nGlobalParts           = locnPart
 
-  ALLOCATE(MPI_COMM_LEADERS_REQUEST(1:2))
-  CALL MPI_IALLGATHERV(MPI_IN_PLACE   ,0                                                         ,MPI_DATATYPE_NULL    &
-                      ,PartInt_Shared ,PartIntSize*recvcountElem   ,PartIntSize*displsElem       ,MPI_INTEGER          &
-                      ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(1),iError)
-  CALL MPI_IALLGATHERV(MPI_IN_PLACE   ,0                                                         ,MPI_DATATYPE_NULL    &
-                      ,PartData_Shared,(PP_nVarPart+1)*recvcountPartInt,PP_nVarPart*displsPartInt,MPI_DOUBLE_PRECISION &
-                      ,MPI_COMM_LEADERS_SHARED,MPI_COMM_LEADERS_REQUEST(2),iError)
-  ! DEALLOCATE(displsPartInt)
-  ! DEALLOCATE(recvcountPartInt)
+  ! Communicate the offsetPartMPI
+  offsetPartMPI(myLeaderGroupRank) = offsetComputeNodeParts
+  CALL MPI_ALLGATHER(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,offsetPartMPI,1,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
+  offsetPartMPI(nLeaderGroupProcs) = nGlobalParts
 
-  ! Non-blocking but actually blocking
-  CALL MPI_WAITALL(1,MPI_COMM_LEADERS_REQUEST,MPI_STATUSES_IGNORE,iError)
-  DEALLOCATE(MPI_COMM_LEADERS_REQUEST)
+  ! Communicate the PartData_shared
+  DO iLeader = 0,nLeaderGroupProcs-1
+    ! ! Specify a window of existing memory that is exposed to RMA accesses
+    ! IF (iLeader.EQ.myLeaderGroupRank) THEN
+    !   ! Create an MPI Window object for one-sided communication
+    !   CALL MPI_WIN_CREATE( PartData_Shared                                                   &
+    !                      , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeParts,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
+    !                      , SIZE_REAL                                                         &
+    !                      , MPI_INFO_NULL                                                     &
+    !                      , MPI_COMM_LEADERS_SHARED                                           &
+    !                      , MPI_WINDOW(iLeader)                                               &
+    !                      , iError)
+    ! ELSE
+    !   ! A process may elect to expose no memory by specifying size = 0
+    !   CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                     &
+    !                      , INT(0,MPI_ADDRESS_KIND)                                           &
+    !                      , SIZE_REAL                                                         &
+    !                      , MPI_INFO_NULL                                                     &
+    !                      , MPI_COMM_LEADERS_SHARED                                           &
+    !                      , MPI_WINDOW(iLeader)                                               &
+    !                      , iError)
+    ! END IF ! iLeader.EQ.myLeaderGroupRank
+    !
+    ! Start an RMA exposure epoch
+    ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
+    ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
+    ! No local operations prior to this epoch, so give an assertion
+    CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+                      ,    PartData_Window(iLeader)                                          &
+                      ,    iError)
+
+  END DO ! iLeader
+
+  ! Loop over all remote elements and fill the PartData_Shared array
+  DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
+    ElemID   = GetGlobalElemID(iElem)
+    ElemProc = ELEMIPROC(ElemID)
+    CNRank   = INT(ElemProc/nComputeNodeProcessors)
+
+    ! Position in the RMA window is the ElemID minus the compute node offset
+    ASSOCIATE(firstPart       => PartInt_Shared(1,iElem)+1                                  &
+             ,lastPart        => PartInt_Shared(2,iElem)                                    &
+             ,offsetFirstPart => PartInt_Shared(3,iElem)  -offsetPartMPI(CNRank)            &
+             ,offsetLastPart  => PartInt_Shared(4,iElem)  -offsetPartMPI(CNRank)            &
+             ,nPart           => PartInt_Shared(4,iElem)  -PartInt_Shared(3,iElem))
+
+    IF (nPart.EQ.0) CYCLE
+    CALL MPI_GET(          PartData_Shared(:,firstPart)                            &
+                         , (PP_nVarPart+1)*nPart                                   &
+                         , MPI_DOUBLE_PRECISION                                    &
+                         , CNRank                                                  &
+                         , INT((PP_nVarPart+1)*offsetFirstPart,MPI_ADDRESS_KIND)   &
+                         , 2                                                       &
+                         , MPI_DOUBLE_PRECISION                                    &
+                         , PartData_Window(CNRank)                                 &
+                         , iError)
+    END ASSOCIATE
+  END DO ! iElem
+
+  DO iLeader = 0,nLeaderGroupProcs-1
+    ! Complete the epoch - this will block until MPI_Get is complete
+    CALL MPI_WIN_FENCE(    0                                                       &
+                      ,    PartData_Window(iLeader)                                &
+                      ,    iError)
+    ! All done with the window - tell MPI there are no more epochs
+    CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
+                      ,    PartData_Window(iLeader)                                &
+                      ,    iError)
+    ! Free up our window
+    ! CALL MPI_WIN_FREE(     MPI_WINDOW(iLeader)                                     &
+    !                   ,    iError)
+  END DO ! iLeader
 END IF ! myComputeNodeRank.EQ.0
 
 CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(PartData_Shared_Win,MPI_COMM_SHARED)
-
-! IPWRITE(*,*) 'PartInt_Shared(1,:):', PartInt_Shared(1,:)
-! IPWRITE(*,*) 'PartInt_Shared(2,:):', PartInt_Shared(2,:)
 
 END SUBROUTINE UpdateParticleShared
 
@@ -774,8 +1106,10 @@ SUBROUTINE FinalizeCollision()
 USE MOD_Globals
 USE MOD_Particle_Collision_Vars
 USE MOD_Particle_Vars           ,ONLY: doCalcPartCollision
+USE MOD_Particle_Vars           ,ONLY: offsetPartMPI
 #if USE_MPI
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,nLeaderGroupProcs
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -784,12 +1118,33 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+! MPI RMA communication
+INTEGER                        :: iLeader
 !===================================================================================================================================
 
 IF (.NOT.doCalcPartCollision) RETURN
 
-! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
+!
+SDEALLOCATE(offsetPartMPI)
+
 #if USE_MPI
+! Free MPI RMA windows
+IF (myComputeNodeRank.EQ.0) THEN
+  DO iLeader = 0,nLeaderGroupProcs-1
+    CALL MPI_WIN_FREE(     PartInt_Window(iLeader)                                 &
+                      ,    iError)
+    CALL MPI_WIN_FREE(     PartData_Window(iLeader)                                &
+                      ,    iError)
+    CALL MPI_WIN_FREE(     PartBC_Window(iLeader)                                  &
+                      ,    iError)
+  END DO ! iLeader
+
+  SDEALLOCATE(PartInt_Window)
+  SDEALLOCATE(PartData_Window)
+  SDEALLOCATE(PartBC_Window)
+END IF ! CN root
+
+! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
 ! IdentifyNeighborElements

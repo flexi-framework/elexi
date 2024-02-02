@@ -42,7 +42,9 @@ SUBROUTINE ComputeParticleCollisions(dtLoc)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Mesh_Readin              ,ONLY: ELEMIPROC
 USE MOD_Mesh_Vars                ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars                ,ONLY: nComputeNodeElems
 USE MOD_Particle_Collision_Vars
 USE MOD_Particle_Globals         ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides
@@ -50,11 +52,13 @@ USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID,GetGlobalElemID
 USE MOD_Particle_Vars            ,ONLY: PEM
 USE MOD_Particle_Vars            !,ONLY: doCalcPartCollision
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
-use mod_timedisc_vars
 #if USE_MPI
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars,          ONLY: myComputeNodeRank
-USE MOD_MPI_Shared_Vars,          ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeTotalElems
+USE MOD_MPI_Shared_Vars,          ONLY: MPI_COMM_SHARED!,MPI_COMM_LEADERS_SHARED
+USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank,nComputeNodeProcessors
+USE MOD_MPI_Shared_Vars          ,ONLY: nLeaderGroupProcs
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -75,6 +79,11 @@ REAL                          :: P1(3),P2(3),pColl(3)
 REAL                          :: a,b,c,delta,dtColl
 ! Neighbor particles
 LOGICAL,ALLOCATABLE           :: PartColl(:)
+! Communication
+INTEGER                       :: iLeader
+INTEGER                       :: ElemProc
+INTEGER                       :: CNRank
+! INTEGER                       :: MPI_WINDOW(   0:nLeaderGroupProcs)
 !===================================================================================================================================
 
 IF (.NOT.doCalcPartCollision) RETURN
@@ -86,12 +95,11 @@ IF (dtLoc.GT.1) CALL Abort(__STAMP__,'Time steps greater than 1 are unsupported 
 IF (myComputeNodeRank.EQ.0) PartBC_Shared = -1.
 CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
 
-! dtColl,dtBC,PartID
-
 ! loop over internal elements
 DO iElem = offsetElem+1,offsetElem+nElems
   ! skip if there is no particles inside the current element
-  IF (PartInt_Shared(2,iElem).EQ.PartInt_Shared(1,iElem)) CYCLE
+  CNElemID = GetCNElemID(iElem)
+  IF (PartInt_Shared(2,CNElemID).EQ.PartInt_Shared(1,CNElemID)) CYCLE
 
   SELECT CASE(TrackingMethod)
     CASE (TRIATRACKING)
@@ -99,9 +107,7 @@ DO iElem = offsetElem+1,offsetElem+nElems
       CALL Abort(__STAMP__,'TODO: TriaTracking')
     CASE (TRACING)
       ! loop over all particles in the element
-      DO iPart = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
-        CNElemID = GetCNElemID(iElem)
-
+      DO iPart = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
         CALL ComputeParticleTracingIntersection(   PartID    = iPart                , &
                                                    ElemID    = iELem                , &
                                                    CNElemID  = CNElemID             , &
@@ -113,9 +119,7 @@ DO iElem = offsetElem+1,offsetElem+nElems
       END DO ! iPart
     CASE (REFMAPPING)
       ! loop over all particles in the element
-      DO iPart = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
-        CNElemID = GetCNElemID(iElem)
-
+      DO iPart = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
         ASSOCIATE(offsetSide => ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID)           , &
                   nSides     => ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID))
         CALL ComputeParticleRefmappingIntersection(PartID    = iPart                , &
@@ -135,13 +139,78 @@ END DO ! iElem
 CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
 
 IF (myComputeNodeRank.EQ.0) THEN
-  ! ALLOCATE(MPI_COMM_LEADERS_REQUEST(1:2))
-  CALL MPI_ALLGATHERV(MPI_IN_PLACE   ,0                           ,MPI_DATATYPE_NULL    &
-                     ,PartBC_Shared,recvcountPartInt,displsPartInt,MPI_DOUBLE_PRECISION &
-                     ,MPI_COMM_LEADERS_SHARED,iError)
-  ! DEALLOCATE(MPI_COMM_LEADERS_REQUEST)
-  DEALLOCATE(displsPartInt)
-  DEALLOCATE(recvcountPartInt)
+  ! Communicate the PartBC_shared
+  DO iLeader = 0,nLeaderGroupProcs-1
+    ! Specify a window of existing memory that is exposed to RMA accesses
+    ! IF (iLeader.EQ.myLeaderGroupRank) THEN
+    !   ! Create an MPI Window object for one-sided communication
+    !   CALL MPI_WIN_CREATE( PartBC_Shared                                                     &
+    !                      , INT(SIZE_REAL*nComputeNodeParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
+    !                      , SIZE_REAL                                                         &
+    !                      , MPI_INFO_NULL                                                     &
+    !                      , MPI_COMM_LEADERS_SHARED                                           &
+    !                      , MPI_WINDOW(iLeader)                                               &
+    !                      , iError)
+    ! ELSE
+    !   ! A process may elect to expose no memory by specifying size = 0
+    !   CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                     &
+    !                      , INT(0,MPI_ADDRESS_KIND)                                           &
+    !                      , SIZE_REAL                                                         &
+    !                      , MPI_INFO_NULL                                                     &
+    !                      , MPI_COMM_LEADERS_SHARED                                           &
+    !                      , MPI_WINDOW(iLeader)                                               &
+    !                      , iError)
+    ! END IF ! iLeader.EQ.myLeaderGroupRank
+
+    ! Start an RMA exposure epoch
+    ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
+    ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
+    ! No local operations prior to this epoch, so give an assertion
+    CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+                      ,    PartBC_Window(iLeader)                                            &
+                      ,    iError)
+
+  END DO ! iLeader
+
+  ! Loop over all remote elements and fill the PartData_Shared array
+  DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
+    ElemID   = GetGlobalElemID(iElem)
+    ElemProc = ELEMIPROC(ElemID)
+    CNRank   = INT(ElemProc/nComputeNodeProcessors)
+
+    ! Position in the RMA window is the ElemID minus the compute node offset
+    ASSOCIATE(firstPart       => PartInt_Shared(1,iElem)+1                                  &
+             ,lastPart        => PartInt_Shared(2,iElem)                                    &
+             ,offsetFirstPart => PartInt_Shared(3,iElem)  -offsetPartMPI(CNRank)            &
+             ,offsetLastPart  => PartInt_Shared(4,iElem)  -offsetPartMPI(CNRank)            &
+             ,nPart           => PartInt_Shared(4,iElem)  -PartInt_Shared(3,iElem))
+
+    IF (nPart.EQ.0) CYCLE
+    CALL MPI_GET(          PartBC_Shared(firstPart)                                &
+                         , nPart                                                   &
+                         , MPI_DOUBLE_PRECISION                                    &
+                         , CNRank                                                  &
+                         , INT(offsetFirstPart,MPI_ADDRESS_KIND)                   &
+                         , 1                                                       &
+                         , MPI_DOUBLE_PRECISION                                    &
+                         , PartBC_Window(CNRank)                                   &
+                         , iError)
+    END ASSOCIATE
+  END DO ! iElem
+
+  DO iLeader = 0,nLeaderGroupProcs-1
+    ! Complete the epoch - this will block until MPI_Get is complete
+    CALL MPI_WIN_FENCE(    0                                                       &
+                      ,    PartBC_Window(iLeader)                                  &
+                      ,    iError)
+    ! All done with the window - tell MPI there are no more epochs
+    CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
+                      ,    PartBC_Window(iLeader)                                  &
+                      ,    iError)
+    ! Free up our window
+    ! CALL MPI_WIN_FREE(     MPI_WINDOW(iLeader)                                     &
+    !                   ,    iError)
+  END DO ! iLeader
 END IF ! myComputeNodeRank.EQ.0
 CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
 
@@ -149,13 +218,14 @@ CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
 ! > Count number of particles in own and neighbor elements
 nProcParts = 0
 DO iElem = 1,nProcNeighElems
-  ElemID = NeighElemsProc(iElem)
+  ElemID   = NeighElemsProc(iElem)
+  CNElemID = GetCNElemID(ElemID)
 
   ! > Map global offset to neighbor offset
-  offsetNeighElemPart(ElemID) = PartInt_Shared(1,ElemID) - nProcParts
+  offsetNeighElemPart(ElemID) = PartInt_Shared(1,CNElemID) - nProcParts
 
   !> Increment the counter by the current number of particles
-  nProcParts = nProcParts + PartInt_Shared(2,ElemID)-PartInt_Shared(1,ElemID)
+  nProcParts = nProcParts + PartInt_Shared(2,CNElemID)-PartInt_Shared(1,CNElemID)
 END DO
 
 ! > Allocate an array to hold the mapping
@@ -167,21 +237,23 @@ PartColl = .FALSE.
 
 ! loop over internal elements
 DO iElem = offsetElem+1,offsetElem+nElems
+  CNElemID = GetCNElemID(iElem)
+
   ! skip if there is no particles inside the current element
-  IF (PartInt_Shared(2,iElem).EQ.PartInt_Shared(1,iElem)) CYCLE
+  IF (PartInt_Shared(2,CNElemID).EQ.PartInt_Shared(1,CNElemID)) CYCLE
 
   ! loop over all particles in the element
-  DO iPart1 = PartInt_Shared(1,iElem)+1,PartInt_Shared(2,iElem)
+  DO iPart1 = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
     ! Ignore already collided particles
     IF (PartColl(iPart1 - offsetNeighElemPart(iElem))) CYCLE
 
     ! loop over neighbor elements (includes own element)
-PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Neigh_nElems(iElem)
+PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElemID)+Neigh_nElems(CNElemID)
       CNNeighElemID = CNElem2CNNeighElem(iCNNeighElem)
       NeighElemID   = GetGlobalElemID(CNNeighElemID)
 
       ! loop over all particles in the element
-      DO iPart2 = PartInt_Shared(1,NeighElemID)+1,PartInt_Shared(2,NeighElemID)
+      DO iPart2 = PartInt_Shared(1,CNNeighElemID)+1,PartInt_Shared(2,CNNeighElemID)
         ! Ignore already collided particles
         IF (PartColl(iPart2 - offsetNeighElemPart(NeighElemID))) CYCLE
 
@@ -232,14 +304,6 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(iElem)+1,Neigh_offsetElem(iElem)+Ne
         IF (DOT_PRODUCT(pColl - P2,N2).LE.0) CYCLE
         END ASSOCIATE
 
-        ! IPWRITE(*,*) 'dtColl 2:', dtColl
-        ! IPWRITE(*,*) 'Species:', PartSpecies(PEM2PartID(iPart1)),PartSpecies(PEM2PartID(iPart2))
-        ! IPWRITE(*,*) 'b,t:', b,t,dtLoc
-        ! IPWRITE(*,*) 'p1,p2:', p1,p2
-        ! IPWRITE(*,*) 'PartData_shared(PART_VELV,ipart1),PartData_shared(PART_VELV,ipart2):', PartData_shared(PART_VELV,ipart1),PartData_shared(PART_VELV,ipart2)
-        ! IPWRITE(*,*) 'PartInt_Shared(:,iElem):', PartInt_Shared(:,iElem),iElem
-        ! read *;
-
         ! collision found
         PartColl(iPart1 - offsetNeighElemPart(iElem      )) = .TRUE.
         PartColl(iPart2 - offsetNeighElemPart(NeighElemID)) = .TRUE.
@@ -263,6 +327,8 @@ DEALLOCATE( PEM%pStart   &
 ! Done with particle collisions. Deallocate mappings
 SDEALLOCATE(PEM2PartID)
 
+! stop 2
+
 END SUBROUTINE ComputeParticleCollisions
 
 
@@ -276,8 +342,9 @@ USE MOD_Globals_Vars            ,ONLY: PI
 USE MOD_Utils                   ,ONLY: ALMOSTZERO
 USE MOD_Particle_Collision_Vars
 USE MOD_Particle_Globals        ,ONLY: UNITVECTOR
-USE MOD_Particle_Output_Vars    ,ONLY: offsetnPart,locnPart
+! USE MOD_Particle_Output_Vars    ,ONLY: offsetnPart,locnPart
 USE MOD_Particle_Vars           ,ONLY: PartState,Species,LastPartPos,PDM
+USE MOD_Particle_Vars           ,ONLY: nComputeNodeParts
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -349,7 +416,8 @@ END IF
 ! Apply jump relation to momentum equation, i.e., update velocity of particles
 PartState(PART_VELV,LocPartID1) = PartState(PART_VELV,LocPartID1) + J / m1
 
-IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
+! IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
+IF (iPart2.LE.nComputeNodeParts) THEN
   LocPartID2 = PEM2PartID(iPart2)
   PartState(PART_VELV,LocPartID2) = PartState(PART_VELV,LocPartID2) - J / m2
 END IF
@@ -358,20 +426,23 @@ END IF
 #if USE_PARTROT
 Jxn_loc = CROSSPRODUCT(n_loc, J)
 PartState(PART_AMOMV,LocPartID1) = PartState(PART_AMOMV,LocPartID1) + Jxn_loc * 0.5 / (0.1 * m1 * PartState(PART_DIAM,LocPartID1))
-IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
+! IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
+IF (iPart2.LE.nComputeNodeParts) THEN
   PartState(PART_AMOMV,LocPartID2) = PartState(PART_AMOMV,LocPartID2) + Jxn_loc * 0.5 / (0.1 * m2 * PartState(PART_DIAM,LocPartID2))
 END IF
 #endif /*USE_PARTROT*/
 
 ! for LSERK algorithm
 PDM%IsNewPart(LocPartID1) = .TRUE.
-IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) &
+! IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) &
+IF (iPart2.LE.nComputeNodeParts) &
 PDM%IsNewPart(LocPartID2) = .TRUE.
 
 ! Update the particle's position at time tStage+dtloc
 PartState(PART_POSV,LocPartID1)   = P1_old + mdtColl * PartState(PART_VELV,LocPartID1)
 LastPartPos(PART_POSV,LocPartID1) = P1_old
-IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
+! IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
+IF (iPart2.LE.nComputeNodeParts) THEN
   LastPartPos(PART_POSV,LocPartID2) = P2_old
   PartState(  PART_POSV,LocPartID2) = P2_old + mdtColl * PartState(PART_VELV,LocPartID2)
 END IF

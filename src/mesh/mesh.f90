@@ -101,7 +101,7 @@ USE MOD_HDF5_Input
 USE MOD_ChangeBasisByDim   ,ONLY:ChangeBasisVolume
 USE MOD_Interpolation      ,ONLY:GetVandermonde
 USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone,NodeType,NodeTypeVISU
-! USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
+USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 USE MOD_Mesh_ReadIn,        ONLY:readMesh
 USE MOD_Prepare_Mesh,       ONLY:setLocalSideIDs,fillMeshInfo
 USE MOD_ReadInTools,        ONLY:GETLOGICAL,GETSTR,GETREAL,GETINT
@@ -512,8 +512,8 @@ SDEALLOCATE(ElemToTree)
 IF ((.NOT.postiMode).AND.(ALLOCATED(scaledJac))) DEALLOCATE(scaledJac)
 
 ! Write debug information
-! CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
-!
+CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
+
 ! ALLOCATE(ElemGlobalID(1:nElems))
 ! DO iElem = 1,nElems
 !   ElemGlobalID(iElem) = OffsetElem + iElem

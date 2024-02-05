@@ -246,12 +246,12 @@ nNeighElems      = 0
 DO iElem = firstElem,lastElem
   ElemID  = GetGlobalElemID(iElem)
 
-  OrigBoundsOfElemCenter(1:3) = (/    SUM(BoundsOfElem_Shared(1:2,1,iElem)),                                                   &
-                                      SUM(BoundsOfElem_Shared(1:2,2,iElem)),                                                   &
-                                      SUM(BoundsOfElem_Shared(1:2,3,iElem)) /) / 2.
-  OrigBoundsOfElemCenter(4) = VECNORM ((/ BoundsOfElem_Shared(2,1,iElem)-BoundsOfElem_Shared(1,1,iElem),                       &
-                                          BoundsOfElem_Shared(2,2,iElem)-BoundsOfElem_Shared(1,2,iElem),                       &
-                                          BoundsOfElem_Shared(2,3,iElem)-BoundsOfElem_Shared(1,3,iElem) /) / 2.)
+  OrigBoundsOfElemCenter(1:3) = (/    SUM(BoundsOfElem_Shared(1:2,1,ElemID)),                                                  &
+                                      SUM(BoundsOfElem_Shared(1:2,2,ElemID)),                                                  &
+                                      SUM(BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
+  OrigBoundsOfElemCenter(4) = VECNORM ((/ BoundsOfElem_Shared(2,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID),                     &
+                                          BoundsOfElem_Shared(2,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID),                     &
+                                          BoundsOfElem_Shared(2,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
 
   ! Check all periodic linear combinations
   DO iPeriodic = 0,GEO%nPeriodicVectors
@@ -400,12 +400,12 @@ currentCounter   = 0.      !< All neighbor elements on current proc
 DO iElem = firstElem,lastElem
   ElemID = GetGlobalElemID(iElem)
 
-  OrigBoundsOfElemCenter(1:3) = (/    SUM(BoundsOfElem_Shared(1:2,1,iElem)),                                                   &
-                                      SUM(BoundsOfElem_Shared(1:2,2,iElem)),                                                   &
-                                      SUM(BoundsOfElem_Shared(1:2,3,iElem)) /) / 2.
-  OrigBoundsOfElemCenter(4) = VECNORM ((/ BoundsOfElem_Shared(2,1,iElem)-BoundsOfElem_Shared(1,1,iElem),                       &
-                                          BoundsOfElem_Shared(2,2,iElem)-BoundsOfElem_Shared(1,2,iElem),                       &
-                                          BoundsOfElem_Shared(2,3,iElem)-BoundsOfElem_Shared(1,3,iElem) /) / 2.)
+  OrigBoundsOfElemCenter(1:3) = (/    SUM(BoundsOfElem_Shared(1:2,1,ElemID)),                                                  &
+                                      SUM(BoundsOfElem_Shared(1:2,2,ElemID)),                                                  &
+                                      SUM(BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
+  OrigBoundsOfElemCenter(4) = VECNORM ((/ BoundsOfElem_Shared(2,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID),                     &
+                                          BoundsOfElem_Shared(2,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID),                     &
+                                          BoundsOfElem_Shared(2,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
 
   ! Check all periodic linear combinations
   DO iPeriodic = 0,GEO%nPeriodicVectors

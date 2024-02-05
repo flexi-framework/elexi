@@ -86,7 +86,7 @@ USE MOD_Globals
 USE MOD_MPI_Shared
 USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,nComputeNodeTotalElems
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED,nLeaderGroupProcs
-USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_LEADERS_SHARED,myLeaderGroupRank
+USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_LEADERS_SHARED
 USE MOD_Particle_Collision_Vars
 USE MOD_Particle_Vars           ,ONLY: offsetPartMPI
 USE MOD_ReadInTools             ,ONLY: GETLOGICAL,GETREAL
@@ -99,8 +99,6 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER,PARAMETER              :: PartIntSize=4
 REAL                           :: StartT,EndT
-! MPI RMA communication
-INTEGER                        :: iLeader
 !===================================================================================================================================
 
 LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE COLLISIONS...'
@@ -126,46 +124,30 @@ CALL BARRIER_AND_SYNC(PartInt_Shared_Win,MPI_COMM_SHARED)
 
 IF (myComputeNodeRank.EQ.0) THEN
   ! Create MPI Window handles for one-sides communidation
-  ALLOCATE(PartInt_Window( 0:nLeaderGroupProcs-1))
-  ALLOCATE(PartData_Window(0:nLeaderGroupProcs-1))
-  ALLOCATE(PartBC_Window(  0:nLeaderGroupProcs-1))
+  ! ALLOCATE(PartInt_Window( 0:nLeaderGroupProcs-1))
+  ! ALLOCATE(PartData_Window(0:nLeaderGroupProcs-1))
+  ! ALLOCATE(PartBC_Window(  0:nLeaderGroupProcs-1))
 
   ! Create an MPI Window object for one-sided communication
-  DO iLeader = 0,nLeaderGroupProcs-1
-    ! Specify a window of existing memory that is exposed to RMA accesses
-    IF (iLeader.EQ.myLeaderGroupRank) THEN
-      ! Create an MPI Window object for one-sided communication
-      CALL MPI_WIN_CREATE( PartInt_Shared                                          &
-                         , INT(SIZE_INT*4*nComputeNodeTotalElems,MPI_ADDRESS_KIND) &
-                         , SIZE_INT                                                &
-                         , MPI_INFO_NULL                                           &
-                         , MPI_COMM_LEADERS_SHARED                                 &
-                         , PartInt_Window(iLeader)                                 &
-                         , iError)
-    ELSE
-      ! A process may elect to expose no memory by specifying size = 0
-      CALL MPI_WIN_CREATE( MPI_INFO_NULL                                           &
-                         , INT(0,MPI_ADDRESS_KIND)                                 &
-                         , SIZE_INT                                                &
-                         , MPI_INFO_NULL                                           &
-                         , MPI_COMM_LEADERS_SHARED                                 &
-                         , PartInt_Window(iLeader)                                 &
-                         , iError)
-    END IF ! iLeader.EQ.myLeaderGroupRank
-
-    ! Start an RMA exposure epoch
-    ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
-    ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
-    ! CALL MPI_WIN_POST(      MPI_GROUP_LEADERS_SHARED                               &
-    !                  ,      0                                                      &
-    !                  ,      MPI_WINDOW(iLeader)                                    &
-    !                  ,      iError)
-    ! No local operations prior to this epoch, so give an assertion
-    ! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                      &
-    !                   ,    PartInt_Window(iLeader)                                 &
-    !                   ,    iError)
-
-  END DO ! iLeader
+  !> Specify a window of existing memory that is exposed to RMA accesses
+  CALL MPI_WIN_CREATE( PartInt_Shared                                          &
+                     , INT(SIZE_INT*4*nComputeNodeTotalElems,MPI_ADDRESS_KIND) &
+                     , SIZE_INT                                                &
+                     , MPI_INFO_NULL                                           &
+                     , MPI_COMM_LEADERS_SHARED                                 &
+                     , PartInt_Window                                          &
+                     , iError)
+  !> Start an RMA exposure epoch
+  ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
+  ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
+  ! CALL MPI_WIN_POST(      MPI_GROUP_LEADERS_SHARED                             &
+  !                  ,      0                                                    &
+  !                  ,      MPI_WINDOW                                           &
+  !                  ,      iError)
+  ! No local operations prior to this epoch, so give an assertion
+  ! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                    &
+  !                   ,    PartInt_Window(                                       &
+  !                   ,    iError)
 END IF
 
 GETTIME(EndT)
@@ -610,7 +592,6 @@ INTEGER                        :: pcount
 INTEGER                        :: iPart,iElem
 ! Number of particles
 INTEGER                        :: locnPartRecv
-INTEGER                        :: iLeader
 INTEGER                        :: CNElemID,ElemID,ElemProc
 INTEGER                        :: CNRank,dispElemCN
 ! INTEGER                        :: MPI_WINDOW(   0:nLeaderGroupProcs)
@@ -670,40 +651,10 @@ CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 ! Useful guide
 ! > https://cvw.cac.cornell.edu/mpionesided/synchronization-calls/fence-synchronization
 IF (myComputeNodeRank.EQ.0) THEN
-  DO iLeader = 0,nLeaderGroupProcs-1
-  !   ! Specify a window of existing memory that is exposed to RMA accesses
-  !   IF (iLeader.EQ.myLeaderGroupRank) THEN
-  !     ! Create an MPI Window object for one-sided communication
-  !     CALL MPI_WIN_CREATE( PartInt_Shared                                          &
-  !                        , INT(SIZE_INT*4*nComputeNodeTotalElems,MPI_ADDRESS_KIND) &
-  !                        , SIZE_INT                                                &
-  !                        , MPI_INFO_NULL                                           &
-  !                        , MPI_COMM_LEADERS_SHARED                                 &
-  !                        , MPI_WINDOW(iLeader)                                     &
-  !                        , iError)
-  !   ELSE
-  !     ! A process may elect to expose no memory by specifying size = 0
-  !     CALL MPI_WIN_CREATE( MPI_INFO_NULL                                           &
-  !                        , INT(0,MPI_ADDRESS_KIND)                                 &
-  !                        , SIZE_INT                                                &
-  !                        , MPI_INFO_NULL                                           &
-  !                        , MPI_COMM_LEADERS_SHARED                                 &
-  !                        , MPI_WINDOW(iLeader)                                     &
-  !                        , iError)
-  !   END IF ! iLeader.EQ.myLeaderGroupRank
-  !
-  !   ! Start an RMA exposure epoch
-  !   ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
-  !   ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
-  !   ! CALL MPI_WIN_POST(      MPI_GROUP_LEADERS_SHARED                               &
-  !   !                  ,      0                                                      &
-  !   !                  ,      MPI_WINDOW(iLeader)                                    &
-  !   !                  ,      iError)
-    ! No local operations prior to this epoch, so give an assertion
-    CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                      &
-                      ,    PartInt_Window(iLeader)                                 &
-                      ,    iError)
-  END DO ! iLeader
+  ! No local operations prior to this epoch, so give an assertion
+  CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                      &
+                    ,    PartInt_Window                                          &
+                    ,    iError)
 
   ! Loop over all remote elements and fill the PartInt_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
@@ -720,26 +671,24 @@ IF (myComputeNodeRank.EQ.0) THEN
                          , INT(4*dispElemCN+2,MPI_ADDRESS_KIND)                    &
                          , 2                                                       &
                          , MPI_INTEGER                                             &
-                         , PartInt_Window(CNRank)                                  &
+                         , PartInt_Window                                          &
                          , iError)
     ! Add the PartInt to the CN-local (!) PartInt_Shared array
     PartInt_Shared(1,iElem) = PartInt_Shared(2,iElem-1)
     PartInt_Shared(2,iElem) = PartInt_Shared(1,iElem) + PartInt_Shared(4,iElem) - PartInt_Shared(3,iElem)
   END DO ! iElem
 
-  DO iLeader = 0,nLeaderGroupProcs-1
-    ! Complete the epoch - this will block until MPI_Get is complete
-    CALL MPI_WIN_FENCE(    0                                                       &
-                      ,    PartInt_Window(iLeader)                                 &
-                      ,    iError)
-    ! All done with the window - tell MPI there are no more epochs
-    CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
-                      ,    PartInt_Window(iLeader)                                 &
-                      ,    iError)
-    ! ! Free up our window
-    ! CALL MPI_WIN_FREE(     MPI_WINDOW(iLeader)                                     &
-    !                   ,    iError)
-  END DO ! iLeader
+  ! Complete the epoch - this will block until MPI_Get is complete
+  CALL MPI_WIN_FENCE(    0                                                       &
+                    ,    PartInt_Window                                          &
+                    ,    iError)
+  ! All done with the window - tell MPI there are no more epochs
+  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
+                    ,    PartInt_Window                                          &
+                    ,    iError)
+  ! ! Free up our window
+  ! CALL MPI_WIN_FREE(     MPI_WINDOW                                              &
+  !                   ,    iError)
 END IF ! myComputeNodeRank.EQ.0
 CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 
@@ -765,44 +714,23 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
 
   ! Create an MPI Window object for one-sided communication
   IF (myComputeNodeRank.EQ.0) THEN
-    DO iLeader = 0,nLeaderGroupProcs-1
-      ! Specify a window of existing memory that is exposed to RMA accesses
-      IF (iLeader.EQ.myLeaderGroupRank) THEN
-        ! Create an MPI Window object for one-sided communication
-        CALL MPI_WIN_CREATE( PartData_Shared                                                        &
-                           , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
-                           , SIZE_REAL                                                              &
-                           , MPI_INFO_NULL                                                          &
-                           , MPI_COMM_LEADERS_SHARED                                                &
-                           , PartData_Window(iLeader)                                               &
-                           , iError)
-        ! Create an MPI Window object for one-sided communication
-        CALL MPI_WIN_CREATE( PartBC_Shared                                                          &
-                           , INT(SIZE_REAL*nComputeNodeTotalParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
-                           , SIZE_REAL                                                              &
-                           , MPI_INFO_NULL                                                          &
-                           , MPI_COMM_LEADERS_SHARED                                                &
-                           , PartBC_Window(iLeader)                                                 &
-                           , iError)
-      ELSE
-        ! A process may elect to expose no memory by specifying size = 0
-        CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                          &
-                           , INT(0,MPI_ADDRESS_KIND)                                                &
-                           , SIZE_REAL                                                              &
-                           , MPI_INFO_NULL                                                          &
-                           , MPI_COMM_LEADERS_SHARED                                                &
-                           , PartData_Window(iLeader)                                               &
-                           , iError)
-        ! A process may elect to expose no memory by specifying size = 0
-        CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                          &
-                           , INT(0,MPI_ADDRESS_KIND)                                                &
-                           , SIZE_REAL                                                              &
-                           , MPI_INFO_NULL                                                          &
-                           , MPI_COMM_LEADERS_SHARED                                                &
-                           , PartBC_Window(iLeader)                                                 &
-                           , iError)
-      END IF ! iLeader.EQ.myLeaderGroupRank
-    END DO ! iLeader
+    !> Specify a window of existing memory that is exposed to RMA accesses
+    !> A process may elect to expose no memory by specifying size = 0
+    CALL MPI_WIN_CREATE( PartData_Shared                                                        &
+                       , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
+                       , SIZE_REAL                                                              &
+                       , MPI_INFO_NULL                                                          &
+                       , MPI_COMM_LEADERS_SHARED                                                &
+                       , PartData_Window                                                        &
+                       , iError)
+    ! Create an MPI Window object for one-sided communication
+    CALL MPI_WIN_CREATE( PartBC_Shared                                                          &
+                       , INT(SIZE_REAL*nComputeNodeTotalParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
+                       , SIZE_REAL                                                              &
+                       , MPI_INFO_NULL                                                          &
+                       , MPI_COMM_LEADERS_SHARED                                                &
+                       , PartBC_Window                                                          &
+                       , iError)
   END IF ! CN root
 ! Re-allocate the SHM window if it became too small
 ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
@@ -826,50 +754,30 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
   ! Create an MPI Window object for one-sided communication
   ! > Needs to be reallocated every single time as the number of particles changes
   IF (myComputeNodeRank.EQ.0) THEN
-    DO iLeader = 0,nLeaderGroupProcs-1
-      ! Free up our window
-      CALL MPI_WIN_FREE(     PartData_Window(iLeader)                                              &
-                        ,    iError)
-      CALL MPI_WIN_FREE(     PartBC_Window(iLeader)                                                &
-                        ,    iError)
+    !> Free up our window
+    CALL MPI_WIN_FREE(     PartData_Window                                                       &
+                      ,    iError)
+    CALL MPI_WIN_FREE(     PartBC_Window                                                         &
+                      ,    iError)
 
-      ! Specify a window of existing memory that is exposed to RMA accesses
-      IF (iLeader.EQ.myLeaderGroupRank) THEN
-        ! Create an MPI Window object for one-sided communication
-        CALL MPI_WIN_CREATE( PartData_Shared                                                        &
-                           , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
-                           , SIZE_REAL                                                              &
-                           , MPI_INFO_NULL                                                          &
-                           , MPI_COMM_LEADERS_SHARED                                                &
-                           , PartData_Window(iLeader)                                               &
-                           , iError)
-        ! Create an MPI Window object for one-sided communication
-        CALL MPI_WIN_CREATE( PartBC_Shared                                                          &
-                           , INT(SIZE_REAL*nComputeNodeTotalParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
-                           , SIZE_REAL                                                              &
-                           , MPI_INFO_NULL                                                          &
-                           , MPI_COMM_LEADERS_SHARED                                                &
-                           , PartBC_Window(iLeader)                                                 &
-                           , iError)
-      ELSE
-        ! A process may elect to expose no memory by specifying size = 0
-        CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                          &
-                           , INT(0,MPI_ADDRESS_KIND)                                                &
-                           , SIZE_REAL                                                              &
-                           , MPI_INFO_NULL                                                          &
-                           , MPI_COMM_LEADERS_SHARED                                                &
-                           , PartData_Window(iLeader)                                               &
-                           , iError)
-        ! A process may elect to expose no memory by specifying size = 0
-        CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                          &
-                           , INT(0,MPI_ADDRESS_KIND)                                                &
-                           , SIZE_REAL                                                              &
-                           , MPI_INFO_NULL                                                          &
-                           , MPI_COMM_LEADERS_SHARED                                                &
-                           , PartBC_Window(iLeader)                                                 &
-                           , iError)
-      END IF ! iLeader.EQ.myLeaderGroupRank
-    END DO ! iLeader
+    ! Specify a window of existing memory that is exposed to RMA accesses
+    !> Create an MPI Window object for one-sided communication
+    !> A process may elect to expose no memory by specifying size = 0
+    CALL MPI_WIN_CREATE( PartData_Shared                                                        &
+                       , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
+                       , SIZE_REAL                                                              &
+                       , MPI_INFO_NULL                                                          &
+                       , MPI_COMM_LEADERS_SHARED                                                &
+                       , PartData_Window                                                        &
+                       , iError)
+    ! Create an MPI Window object for one-sided communication
+    CALL MPI_WIN_CREATE( PartBC_Shared                                                          &
+                       , INT(SIZE_REAL*nComputeNodeTotalParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
+                       , SIZE_REAL                                                              &
+                       , MPI_INFO_NULL                                                          &
+                       , MPI_COMM_LEADERS_SHARED                                                &
+                       , PartBC_Window                                                          &
+                       , iError)
   END IF ! CN root
 END IF
 
@@ -897,7 +805,7 @@ DO iElem = offsetElem+1,offsetElem+nElems
   END DO
 
   ! Set counter to the end of particle number in the current element
-  iPart = PartInt_Shared(2,iElem)
+  iPart = PartInt_Shared(2,CNElemID)
 END DO ! iElem = offsetElem+1,offsetElem+nElems
 
 ! De-allocate linked list and return to normal particle array mode
@@ -928,37 +836,13 @@ IF (myComputeNodeRank.EQ.0) THEN
   offsetPartMPI(nLeaderGroupProcs) = nGlobalParts
 
   ! Communicate the PartData_shared
-  DO iLeader = 0,nLeaderGroupProcs-1
-    ! ! Specify a window of existing memory that is exposed to RMA accesses
-    ! IF (iLeader.EQ.myLeaderGroupRank) THEN
-    !   ! Create an MPI Window object for one-sided communication
-    !   CALL MPI_WIN_CREATE( PartData_Shared                                                   &
-    !                      , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeParts,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
-    !                      , SIZE_REAL                                                         &
-    !                      , MPI_INFO_NULL                                                     &
-    !                      , MPI_COMM_LEADERS_SHARED                                           &
-    !                      , MPI_WINDOW(iLeader)                                               &
-    !                      , iError)
-    ! ELSE
-    !   ! A process may elect to expose no memory by specifying size = 0
-    !   CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                     &
-    !                      , INT(0,MPI_ADDRESS_KIND)                                           &
-    !                      , SIZE_REAL                                                         &
-    !                      , MPI_INFO_NULL                                                     &
-    !                      , MPI_COMM_LEADERS_SHARED                                           &
-    !                      , MPI_WINDOW(iLeader)                                               &
-    !                      , iError)
-    ! END IF ! iLeader.EQ.myLeaderGroupRank
-    !
-    ! Start an RMA exposure epoch
-    ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
-    ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
-    ! No local operations prior to this epoch, so give an assertion
-    CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                      ,    PartData_Window(iLeader)                                          &
-                      ,    iError)
-
-  END DO ! iLeader
+  !> Start an RMA exposure epoch
+  ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
+  ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
+  ! No local operations prior to this epoch, so give an assertion
+  CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+                    ,    PartData_Window                                                   &
+                    ,    iError)
 
   ! Loop over all remote elements and fill the PartData_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
@@ -981,24 +865,22 @@ IF (myComputeNodeRank.EQ.0) THEN
                          , INT((PP_nVarPart+1)*offsetFirstPart,MPI_ADDRESS_KIND)   &
                          , 2                                                       &
                          , MPI_DOUBLE_PRECISION                                    &
-                         , PartData_Window(CNRank)                                 &
+                         , PartData_Window                                         &
                          , iError)
     END ASSOCIATE
   END DO ! iElem
 
-  DO iLeader = 0,nLeaderGroupProcs-1
-    ! Complete the epoch - this will block until MPI_Get is complete
-    CALL MPI_WIN_FENCE(    0                                                       &
-                      ,    PartData_Window(iLeader)                                &
-                      ,    iError)
-    ! All done with the window - tell MPI there are no more epochs
-    CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
-                      ,    PartData_Window(iLeader)                                &
-                      ,    iError)
-    ! Free up our window
-    ! CALL MPI_WIN_FREE(     MPI_WINDOW(iLeader)                                     &
-    !                   ,    iError)
-  END DO ! iLeader
+  !> Complete the epoch - this will block until MPI_Get is complete
+  CALL MPI_WIN_FENCE(    0                                                       &
+                    ,    PartData_Window                                         &
+                    ,    iError)
+  ! All done with the window - tell MPI there are no more epochs
+  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
+                    ,    PartData_Window                                         &
+                    ,    iError)
+  ! Free up our window
+  ! CALL MPI_WIN_FREE(     MPI_WINDOW                                              &
+  !                   ,    iError)
 END IF ! myComputeNodeRank.EQ.0
 
 CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
@@ -1109,7 +991,7 @@ USE MOD_Particle_Vars           ,ONLY: doCalcPartCollision
 USE MOD_Particle_Vars           ,ONLY: offsetPartMPI
 #if USE_MPI
 USE MOD_MPI_Shared_Vars         ,ONLY: MPI_COMM_SHARED
-USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank,nLeaderGroupProcs
+USE MOD_MPI_Shared_Vars         ,ONLY: myComputeNodeRank
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -1118,8 +1000,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-! MPI RMA communication
-INTEGER                        :: iLeader
 !===================================================================================================================================
 
 IF (.NOT.doCalcPartCollision) RETURN
@@ -1130,18 +1010,12 @@ SDEALLOCATE(offsetPartMPI)
 #if USE_MPI
 ! Free MPI RMA windows
 IF (myComputeNodeRank.EQ.0) THEN
-  DO iLeader = 0,nLeaderGroupProcs-1
-    CALL MPI_WIN_FREE(     PartInt_Window(iLeader)                                 &
+    CALL MPI_WIN_FREE(     PartInt_Window                                          &
                       ,    iError)
-    CALL MPI_WIN_FREE(     PartData_Window(iLeader)                                &
+    CALL MPI_WIN_FREE(     PartData_Window                                         &
                       ,    iError)
-    CALL MPI_WIN_FREE(     PartBC_Window(iLeader)                                  &
+    CALL MPI_WIN_FREE(     PartBC_Window                                           &
                       ,    iError)
-  END DO ! iLeader
-
-  SDEALLOCATE(PartInt_Window)
-  SDEALLOCATE(PartData_Window)
-  SDEALLOCATE(PartBC_Window)
 END IF ! CN root
 
 ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification

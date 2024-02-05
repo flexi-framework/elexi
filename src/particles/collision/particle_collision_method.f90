@@ -80,7 +80,6 @@ REAL                          :: a,b,c,delta,dtColl
 ! Neighbor particles
 LOGICAL,ALLOCATABLE           :: PartColl(:)
 ! Communication
-INTEGER                       :: iLeader
 INTEGER                       :: ElemProc
 INTEGER                       :: CNRank
 ! INTEGER                       :: MPI_WINDOW(   0:nLeaderGroupProcs)
@@ -140,37 +139,23 @@ CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
 
 IF (myComputeNodeRank.EQ.0) THEN
   ! Communicate the PartBC_shared
-  DO iLeader = 0,nLeaderGroupProcs-1
-    ! Specify a window of existing memory that is exposed to RMA accesses
-    ! IF (iLeader.EQ.myLeaderGroupRank) THEN
-    !   ! Create an MPI Window object for one-sided communication
-    !   CALL MPI_WIN_CREATE( PartBC_Shared                                                     &
-    !                      , INT(SIZE_REAL*nComputeNodeParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
-    !                      , SIZE_REAL                                                         &
-    !                      , MPI_INFO_NULL                                                     &
-    !                      , MPI_COMM_LEADERS_SHARED                                           &
-    !                      , MPI_WINDOW(iLeader)                                               &
-    !                      , iError)
-    ! ELSE
-    !   ! A process may elect to expose no memory by specifying size = 0
-    !   CALL MPI_WIN_CREATE( MPI_INFO_NULL                                                     &
-    !                      , INT(0,MPI_ADDRESS_KIND)                                           &
-    !                      , SIZE_REAL                                                         &
-    !                      , MPI_INFO_NULL                                                     &
-    !                      , MPI_COMM_LEADERS_SHARED                                           &
-    !                      , MPI_WINDOW(iLeader)                                               &
-    !                      , iError)
-    ! END IF ! iLeader.EQ.myLeaderGroupRank
+  !> Specify a window of existing memory that is exposed to RMA accesses
+  !> A process may elect to expose no memory by specifying size = 0
+  ! CALL MPI_WIN_CREATE( PartBC_Shared                                                     &
+  !                    , INT(SIZE_REAL*nComputeNodeParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
+  !                    , SIZE_REAL                                                         &
+  !                    , MPI_INFO_NULL                                                     &
+  !                    , MPI_COMM_LEADERS_SHARED                                           &
+  !                    , MPI_WINDOW                                                        &
+  !                    , iError)
 
-    ! Start an RMA exposure epoch
-    ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
-    ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
-    ! No local operations prior to this epoch, so give an assertion
-    CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                      ,    PartBC_Window(iLeader)                                            &
-                      ,    iError)
-
-  END DO ! iLeader
+  !> Start an RMA exposure epoch
+  ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
+  ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
+  ! No local operations prior to this epoch, so give an assertion
+  CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+                    ,    PartBC_Window                                                     &
+                    ,    iError)
 
   ! Loop over all remote elements and fill the PartData_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
@@ -179,44 +164,43 @@ IF (myComputeNodeRank.EQ.0) THEN
     CNRank   = INT(ElemProc/nComputeNodeProcessors)
 
     ! Position in the RMA window is the ElemID minus the compute node offset
-    ASSOCIATE(firstPart       => PartInt_Shared(1,iElem)+1                                  &
-             ,lastPart        => PartInt_Shared(2,iElem)                                    &
-             ,offsetFirstPart => PartInt_Shared(3,iElem)  -offsetPartMPI(CNRank)            &
-             ,offsetLastPart  => PartInt_Shared(4,iElem)  -offsetPartMPI(CNRank)            &
+    ASSOCIATE(firstPart       => PartInt_Shared(1,iElem)+1                                 &
+             ,lastPart        => PartInt_Shared(2,iElem)                                   &
+             ,offsetFirstPart => PartInt_Shared(3,iElem)  -offsetPartMPI(CNRank)           &
+             ,offsetLastPart  => PartInt_Shared(4,iElem)  -offsetPartMPI(CNRank)           &
              ,nPart           => PartInt_Shared(4,iElem)  -PartInt_Shared(3,iElem))
 
     IF (nPart.EQ.0) CYCLE
-    CALL MPI_GET(          PartBC_Shared(firstPart)                                &
-                         , nPart                                                   &
-                         , MPI_DOUBLE_PRECISION                                    &
-                         , CNRank                                                  &
-                         , INT(offsetFirstPart,MPI_ADDRESS_KIND)                   &
-                         , 1                                                       &
-                         , MPI_DOUBLE_PRECISION                                    &
-                         , PartBC_Window(CNRank)                                   &
+    CALL MPI_GET(          PartBC_Shared(firstPart)                                        &
+                         , nPart                                                           &
+                         , MPI_DOUBLE_PRECISION                                            &
+                         , CNRank                                                          &
+                         , INT(offsetFirstPart,MPI_ADDRESS_KIND)                           &
+                         , 1                                                               &
+                         , MPI_DOUBLE_PRECISION                                            &
+                         , PartBC_Window                                                   &
                          , iError)
     END ASSOCIATE
   END DO ! iElem
 
-  DO iLeader = 0,nLeaderGroupProcs-1
-    ! Complete the epoch - this will block until MPI_Get is complete
-    CALL MPI_WIN_FENCE(    0                                                       &
-                      ,    PartBC_Window(iLeader)                                  &
-                      ,    iError)
-    ! All done with the window - tell MPI there are no more epochs
-    CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
-                      ,    PartBC_Window(iLeader)                                  &
-                      ,    iError)
-    ! Free up our window
-    ! CALL MPI_WIN_FREE(     MPI_WINDOW(iLeader)                                     &
-    !                   ,    iError)
-  END DO ! iLeader
+  !> Complete the epoch - this will block until MPI_Get is complete
+  CALL MPI_WIN_FENCE(    0                                                                 &
+                    ,    PartBC_Window                                                     &
+                    ,    iError)
+  ! All done with the window - tell MPI there are no more epochs
+  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+                    ,    PartBC_Window                                                     &
+                    ,    iError)
+  ! Free up our window
+  ! CALL MPI_WIN_FREE(     MPI_WINDOW                                                        &
+  !                   ,    iError)
 END IF ! myComputeNodeRank.EQ.0
 CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
 
 ! Build a mapping from global particle IDs to neighbor particle IDs
 ! > Count number of particles in own and neighbor elements
 nProcParts = 0
+! FIXME: SOME COUNTERS HERE ARE WRONG!
 DO iElem = 1,nProcNeighElems
   ElemID   = NeighElemsProc(iElem)
   CNElemID = GetCNElemID(ElemID)

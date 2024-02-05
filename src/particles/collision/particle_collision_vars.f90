@@ -53,27 +53,27 @@ INTEGER,ALLOCPOINT,DIMENSION(:)          :: CNNeighElem2CNElem          !> Rever
 
 ! Shared particle arrays
 REAL   ,ALLOCPOINT,DIMENSION(:,:)        :: PartData_Shared             !>
-INTEGER,ALLOCATABLE,DIMENSION(:)         :: PartData_Window             !> MPI RMA window handle
 REAL   ,ALLOCPOINT,DIMENSION(:)          :: PartBC_Shared               !>
-INTEGER,ALLOCATABLE,DIMENSION(:)         :: PartBC_Window               !> MPI RMA window handle
 INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: PartInt_Shared              !> CN-local (!) PartInt array, 1:2 offset/last part on CN
                                                                         !>                             3:4 offset/last part global
-INTEGER,ALLOCATABLE,DIMENSION(:)         :: PartInt_Window              !> MPI RMA window handle
 
 #if USE_MPI
 ! Communication
-INTEGER,ALLOCATABLE :: displsPartInt(:)
-INTEGER,ALLOCATABLE :: recvcountPartInt(:)
+INTEGER,ALLOCATABLE                      :: displsPartInt(:)
+INTEGER,ALLOCATABLE                      :: recvcountPartInt(:)
 
-INTEGER             :: Neigh_nElems_Shared_Win
-INTEGER             :: Neigh_offsetElem_Shared_Win
-INTEGER             :: CNElem2CNNeighElem_Win
-INTEGER             :: CNNeighElem2CNElem_Win
+INTEGER                                  :: Neigh_nElems_Shared_Win     !> MPI SHM window handle
+INTEGER                                  :: Neigh_offsetElem_Shared_Win !> MPI SHM window handle
+INTEGER                                  :: CNElem2CNNeighElem_Win      !> MPI SHM window handle
+INTEGER                                  :: CNNeighElem2CNElem_Win      !> MPI SHM window handle
 
 ! Shared particle arrays
-INTEGER             :: PartData_Shared_Win
-INTEGER             :: PartBC_Shared_Win
-INTEGER             :: PartInt_Shared_Win
+INTEGER                                  :: PartData_Shared_Win
+INTEGER                                  :: PartBC_Shared_Win
+INTEGER                                  :: PartInt_Shared_Win
+INTEGER                                  :: PartData_Window             !> MPI RMA window handle
+INTEGER                                  :: PartBC_Window               !> MPI RMA window handle
+INTEGER                                  :: PartInt_Window              !> MPI RMA window handle
 #endif /*USE_MPI*/
 
 #endif /*PARTICLES_COUPLING == 4*/

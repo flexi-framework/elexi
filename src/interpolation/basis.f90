@@ -93,16 +93,15 @@ PUBLIC::PolynomialMassMatrix
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Build a 1D Vandermonde matrix from an orthonormal Legendre basis to a nodal basis and reverse
 !==================================================================================================================================
 SUBROUTINE buildLegendreVdm(N_In,xi_In,Vdm_Leg,sVdm_Leg)
 ! MODULES
-USE MOD_Globals,ONLY:Abort
-USE MOD_PreProc,ONLY:PP_RealTolerance
+USE MOD_Globals   ,ONLY:Abort
+USE MOD_PreProc   ,ONLY:PP_RealTolerance
 #ifndef VDM_ANALYTICAL
-USE MOD_Mathtools,ONLY:INVERSE
+USE MOD_Mathtools ,ONLY:INVERSE
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -135,15 +134,17 @@ END DO; END DO !j
 CALL BarycentricWeights(N_In,xi_In,wBary_loc)
 ! Compute first the inverse (by projection)
 CALL LegendreGaussNodesAndWeights(N_In,xGauss,wGauss)
-!Vandermonde on xGauss
+! Vandermonde on xGauss
 DO i=0,N_In; DO j=0,N_In
   CALL LegendrePolynomialAndDerivative(i,xGauss(j),Vdm_Leg_Gauss(i,j),dummy)
 END DO; END DO !j
-!Vdm_Leg_Gauss=TRANSPOSE(Vdm_Leg_Gauss)
+
+! Vdm_Leg_Gauss=TRANSPOSE(Vdm_Leg_Gauss)
 DO j=0,N_In
   Vdm_Leg_Gauss(:,j)=Vdm_Leg_Gauss(:,j)*wGauss(j)
 END DO
-!evaluate nodal basis (depends on NodeType, for Gauss: unity matrix)
+
+! evaluate nodal basis (depends on NodeType, for Gauss: unity matrix)
 CALL InitializeVandermonde(N_In,N_In,wBary_Loc,xi_In,xGauss,Vdm_Lag)
 sVdm_Leg=MATMUL(Vdm_Leg_Gauss,Vdm_Lag)
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
@@ -185,8 +186,8 @@ INTEGER            :: iXi
 DO iXi=0,N_Out
   CALL LagrangeInterpolationPolys(xi_Out(iXi),N_In,xi_In,wBary_In,Vdm(iXi,:)) !l(0:N_In)
 END DO
-END SUBROUTINE InitializeVandermonde
 
+END SUBROUTINE InitializeVandermonde
 
 
 !===================================================================================================================================
@@ -211,33 +212,33 @@ REAL    :: L_Nm1,L_Nm2 ! L_{N_in-2},L_{N_in-1}
 REAL    :: Lder_Nm1,Lder_Nm2 ! Lder_{N_in-2},Lder_{N_in-1}
 !==================================================================================================================================
 IF(N_in .EQ. 0)THEN
-  L=1.
-  Lder=0.
+  L    = 1.
+  Lder = 0.
 ELSEIF(N_in .EQ. 1) THEN
-  L=x
-  Lder=1.
+  L    = x
+  Lder = 1.
 ELSE ! N_in > 1
-  L_Nm2=1.
-  L_Nm1=x
-  Lder_Nm2=0.
-  Lder_Nm1=1.
+  L_Nm2 = 1.
+  L_Nm1 = x
+  Lder_Nm2 = 0.
+  Lder_Nm1 = 1.
   DO iLegendre=2,N_in
     L=(REAL(2*iLegendre-1)*x*L_Nm1 - REAL(iLegendre-1)*L_Nm2)/REAL(iLegendre)
     !Lder=Lder_Nm2 + REAL(2*iLegendre-1)*L_Nm1
     ! Higher accuracy, see https://en.wikipedia.org/wiki/Legendre_polynomials (Recurrence relations)
-    Lder=iLegendre*L_Nm1 + x*Lder_Nm1
-    L_Nm2=L_Nm1
-    L_Nm1=L
-    Lder_Nm2=Lder_Nm1
-    Lder_Nm1=Lder
+    Lder  = iLegendre*L_Nm1 + x*Lder_Nm1
+    L_Nm2 = L_Nm1
+    L_Nm1 = L
+    Lder_Nm2 = Lder_Nm1
+    Lder_Nm1 = Lder
   END DO !iLegendre=2,N_in
 END IF ! N_in
-!normalize
-L=L*SQRT(REAL(N_in)+0.5)
-Lder=Lder*SQRT(REAL(N_in)+0.5)
+
+! normalize
+L    = L*SQRT(REAL(N_in)+0.5)
+Lder = Lder*SQRT(REAL(N_in)+0.5)
+
 END SUBROUTINE LegendrePolynomialAndDerivative
-
-
 
 
 !==================================================================================================================================
@@ -258,15 +259,16 @@ REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)  !< Gauss point integration weights
 INTEGER                   :: iGP
 !==================================================================================================================================
 DO iGP=0,N_in
-  xGP(iGP)=-cos((2*iGP+1)/(2*REAL(N_in)+2)*PP_PI)
+  xGP(iGP)=-COS((2*iGP+1)/(2*REAL(N_in)+2)*PP_PI)
 END DO
+
 IF(PRESENT(wGP))THEN
   DO iGP=0,N_in
     wGP(iGP)=PP_PI/REAL(N_in+1)
   END DO
 END IF
-END SUBROUTINE ChebyshevGaussNodesAndWeights
 
+END SUBROUTINE ChebyshevGaussNodesAndWeights
 
 
 !==================================================================================================================================
@@ -287,15 +289,17 @@ REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)  !< Gauss point weights
 INTEGER            :: iGP
 !==================================================================================================================================
 DO iGP=0,N_in
-  xGP(iGP)=-COS(iGP/REAL(N_in)*PP_PI)
+  xGP(iGP) = -COS(iGP/REAL(N_in)*PP_PI)
 END DO
+
 IF(PRESENT(wGP))THEN
   DO iGP=0,N_in
-    wGP(iGP)=PP_PI/REAL(N_in)
+    wGP(iGP) = PP_PI/REAL(N_in)
   END DO
-  wGP(0)=wGP(0)*0.5
-  wGP(N_in)=wGP(N_in)*0.5
+  wGP(0)    = wGP(0)*0.5
+  wGP(N_in) = wGP(N_in)*0.5
 END IF
+
 END SUBROUTINE ChebyGaussLobNodesAndWeights
 
 
@@ -324,24 +328,23 @@ ELSE
   DO iGP=0,N_in
     xGP(iGP) = -COS(iGP*PP_PI/REAL(N_in))
   END DO
-  xGP(0)   =-1.
-  IF(MOD(N_in+1,2).EQ.1)THEN
-    xGP(N_in/2)=0.
-  END IF
-  xGP(N_in)= 1.
+  xGP(0)    = -1.
+  IF(MOD(N_in+1,2).EQ.1) xGP(N_in/2) = 0.
+  xGP(N_in) = 1.
   IF(PRESENT(wGP))THEN
-    wGP=1.
+    wGP = 1.
     DO iGP=0,N_in
       theta = REAL(iGP)*PP_PI/REAL(N_in)
       DO j=1,N_in/2
-        b=MERGE(1.,2.,2*j.EQ.N_in)
+        b = MERGE(1.,2.,2*j.EQ.N_in)
         wGP(iGP) = wGP(iGP) - b * COS(2.*REAL(j)*theta) / REAL(4*j*j-1)
       END DO
     END DO
-    wGP(1:N_in-1)=2.*wGP(1:N_in-1)
-    wGP=wGP/REAL(N_in)
+    wGP(1:N_in-1) = 2.*wGP(1:N_in-1)
+    wGP = wGP/REAL(N_in)
   END IF
 END IF
+
 END SUBROUTINE ClenshawCurtisNodesAndWeights
 
 
@@ -356,6 +359,7 @@ SUBROUTINE LegGaussRadauNodesAndWeights(N_in,xGP,wGP)
 !MODULES
 USE MOD_Preproc
 USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -367,16 +371,14 @@ REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)       !< Gauss point weights
 INTEGER,PARAMETER         :: nIter = 10        ! max. number of newton iterations
 REAL,PARAMETER            :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
 INTEGER                   :: iGP,iter
-REAL                      :: L_Np1,Lder_Np1    ! L_{N_in+1},Lder_{N_in+1}
+! REAL                      :: L_Np1,Lder_Np1    ! L_{N_in+1},Lder_{N_in+1}
 REAL                      :: q,qder,L          ! \f$ q=L_{N_in+1}-L_{N_in-1} \f$ ,qder is derivative, \f$ L=L_{N_in} \f$
 REAL                      :: dx                ! Newton step
 REAL                      :: xGP_init(1:N_in)  ! Initial guess for all inner nodes based on Hale and Townsend
 REAL                      :: rho,phi_k         ! temporary variables for evaluation of initial nodes positions
 !==================================================================================================================================
-xGP(0)=-1.
-IF(PRESENT(wGP))THEN
-  wGP(0)= 2./REAL((N_in+1)**2)
-END IF
+xGP(0) = -1.
+IF(PRESENT(wGP)) wGP(0) = 2./REAL((N_in+1)**2)
 
 ! Use initial guess by Hale and Townsend for roots of Jacobi polynomials of degree N_in-1 with alpha=0, beta=1 (page 18, bottom)
 rho = N_in+1
@@ -391,24 +393,25 @@ DO iGP=1,N_in
   ! Newton iteration
   DO iter=0,nIter
     CALL qAndLEvaluationRadau(N_in,xGP(iGP),q,qder,L)
-    dx=-q/qder
-    xGP(iGP)=xGP(iGP)+dx
+    dx       = - q/qder
+    xGP(iGP) = xGP(iGP)+dx
     IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
   END DO ! iter
+
   IF(iter.GT.nIter) THEN
-    SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for LGR point:'
+    SWRITE(UNIT_stdOut,'(A)') 'maximum iteration steps >10 in Newton iteration for LGR point:'
     xGP(iGP) = xGP_init(iGP)
     ! Newton iteration
     DO iter=0,nIter
-      SWRITE(*,*)'iter,x^i',iter,xGP(iGP)     !DEBUG
+      SWRITE(UNIT_stdOut,'(A,I0,F15.8)') 'iter,x^i',iter,xGP(iGP)     ! DEBUG
       CALL qAndLEvaluationRadau(N_in,xGP(iGP),q,qder,L)
-      dx=-q/qder
-      xGP(iGP)=xGP(iGP)+dx
+      dx       = -q/qder
+      xGP(iGP) = xGP(iGP)+dx
       IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
     END DO ! iter
-    CALL Abort(__STAMP__,&
-               'ERROR: Legendre Gauss Radau nodes could not be computed up to desired precision. Code stopped!')
+    CALL Abort(__STAMP__,'ERROR: Legendre Gauss Radau nodes could not be computed up to desired precision!')
   END IF ! (iter.GT.nIter)
+
   IF(PRESENT(wGP))THEN
     wGP(iGP)=(1.-xGP(iGP))/((N_In+1)*L)**2
   END IF
@@ -445,62 +448,65 @@ REAL                      :: cheb_tmp          ! temporary variable for evaluati
 ! REAL                      :: xGPtemp(0:N_in)
 !==================================================================================================================================
 IF(N_in .EQ. 0) THEN
-  xGP=0.
-  IF(PRESENT(wGP))wGP=2.
+  xGP = 0.
+  IF(PRESENT(wGP)) wGP = 2.
   RETURN
 ELSEIF(N_in.EQ.1)THEN
-  xGP(0)=-sqrt(1./3.)
-  xGP(N_in)=-xGP(0)
-  IF(PRESENT(wGP))wGP=1.
+  xGP(0)    = -sqrt(1./3.)
+  xGP(N_in) = -xGP(0)
+  IF(PRESENT(wGP)) wGP = 1.
   RETURN
 ELSE ! N_in>1
-  cheb_tmp=2.*atan(1.)/REAL(N_in+1) ! pi/(2N+2)
+  cheb_tmp = 2.*atan(1.)/REAL(N_in+1) ! pi/(2N+2)
   DO iGP=0,(N_in+1)/2-1 !since points are symmetric, only left side is computed
-    xGP(iGP)=-COS(cheb_tmp*REAL(2*iGP+1)) !initial guess
+    xGP(iGP) = -COS(cheb_tmp*REAL(2*iGP+1)) !initial guess
     ! Newton iteration
     DO iter=0,nIter
       ! CALL LegendrePolynomialAndDerivative(N_in+1,-COS(xGPtemp(iGP)),L_Np1,Lder_Np1)
       CALL LegendrePolynomialAndDerivative(N_in+1,xGP(iGP),L_Np1,Lder_Np1)
       ! dx=-L_Np1/(SIN(xGPtemp(iGP))*Lder_Np1)
-      dx=-L_Np1/Lder_Np1
-      xGP(iGP)=xGP(iGP)+dx
+      dx       = -L_Np1/Lder_Np1
+      xGP(iGP) = xGP(iGP)+dx
       ! xGPtemp(iGP)=xGPtemp(iGP)+dx
       ! xGP(iGP) = -COS(xGPtemp(iGP))
       IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
       ! IF(abs(dx).LT.Tol) EXIT
     END DO ! iter
+
     IF(iter.GT.nIter) THEN
-      SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for Legendre Gausspoint'
-      xGP(iGP)=-cos(cheb_tmp*REAL(2*iGP+1)) !initial guess
+      SWRITE(UNIT_stdOut,'(A)') 'maximum iteration steps >10 in Newton iteration for Legendre Gausspoint'
+      xGP(iGP) = -COS(cheb_tmp*REAL(2*iGP+1)) !initial guess
       ! Newton iteration
       DO iter=0,nIter
-        SWRITE(*,*)iter,xGP(iGP)    !DEBUG
+        SWRITE(UNIT_stdOut,'(I0,F15.8)') iter,xGP(iGP)    ! DEBUG
         CALL LegendrePolynomialAndDerivative(N_in+1,xGP(iGP),L_Np1,Lder_Np1)
-        dx=-L_Np1/Lder_Np1
-        xGP(iGP)=xGP(iGP)+dx
+        dx       = -L_Np1/Lder_Np1
+        xGP(iGP) = xGP(iGP)+dx
         IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
       END DO !iter
-      CALL Abort(__STAMP__,&
-                 'ERROR: Legendre Gauss nodes could not be computed up to desired precision. Code stopped!')
+      CALL Abort(__STAMP__,'ERROR: Legendre Gauss nodes could not be computed up to desired precision!')
     END IF ! (iter.GT.nIter)
+
     CALL LegendrePolynomialAndDerivative(N_in+1,xGP(iGP),L_Np1,Lder_Np1)
-    xGP(N_in-iGP)=-xGP(iGP)
+    xGP(N_in-iGP) = -xGP(iGP)
+
     IF(PRESENT(wGP))THEN
-      !wGP(iGP)=2./((1.-xGP(iGP)*xGP(iGP))*Lder_Np1*Lder_Np1) !if Legendre not normalized
-      wGP(iGP)=(2.*N_in+3)/((1.-xGP(iGP)*xGP(iGP))*Lder_Np1*Lder_Np1)
-      ! wGP(iGP)=(2.*N_in+3.)/(SIN(xGPtemp(iGP))*Lder_Np1)**2
-      wGP(N_in-iGP)=wGP(iGP)
+      ! wGP(iGP)      = 2./((1.-xGP(iGP)*xGP(iGP))*Lder_Np1*Lder_Np1) !if Legendre not normalized
+      wGP(iGP)      = (2.*N_in+3)/((1.-xGP(iGP)*xGP(iGP))*Lder_Np1*Lder_Np1)
+      ! wGP(iGP)      = (2.*N_in+3.)/(SIN(xGPtemp(iGP))*Lder_Np1)**2
+      wGP(N_in-iGP) = wGP(iGP)
     END IF
   END DO !iGP
 END IF ! N_in
+
 IF(mod(N_in,2) .EQ. 0) THEN
   xGP(N_in/2)=0.
   CALL LegendrePolynomialAndDerivative(N_in+1,xGP(N_in/2),L_Np1,Lder_Np1)
-  !IF(PRESENT(wGP))wGP(N_in/2)=2./(Lder_Np1*Lder_Np1) !if Legendre not normalized
-  IF(PRESENT(wGP)) wGP(N_in/2)=(2.*N_in+3)/(Lder_Np1*Lder_Np1)
+  ! IF(PRESENT(wGP)) wGP(N_in/2) = 2./(Lder_Np1*Lder_Np1) !if Legendre not normalized
+  IF(PRESENT(wGP)) wGP(N_in/2) = (2.*N_in+3)/(Lder_Np1*Lder_Np1)
 END IF ! (mod(N_in,2) .EQ. 0)
-END SUBROUTINE LegendreGaussNodesAndWeights
 
+END SUBROUTINE LegendreGaussNodesAndWeights
 
 
 !==================================================================================================================================
@@ -508,6 +514,7 @@ END SUBROUTINE LegendreGaussNodesAndWeights
 !> Recursive algorithm using the N_in-1 N_in-2 Legendre polynomials. Adapted from (Algorithm 24, Kopriva book)
 !==================================================================================================================================
 ELEMENTAL SUBROUTINE qAndLEvaluationRadau(N_in,x,q,qder,L)
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -523,10 +530,11 @@ REAL               :: L_Nm1,L_Nm2                     ! L_{N_in-2},L_{N_in-1}
 REAL               :: Lder_Nm1,Lder_Nm2               ! L_{N_in-2},L_{N_in-1}
 REAL               :: Lder
 !==================================================================================================================================
-L_Nm2=1.
-L_Nm1=x
-Lder_Nm2=0.
-Lder_Nm1=1.
+L_Nm2 = 1.
+L_Nm1 = x
+Lder_Nm2 = 0.
+Lder_Nm1 = 1.
+
 DO iLegendre=2,N_in
   L    = (REAL(2*iLegendre-1)*x*L_Nm1 - REAL(iLegendre-1)*L_Nm2)/REAL(iLegendre)
   Lder = Lder_Nm2 + REAL(2*iLegendre-1)*L_Nm1
@@ -535,13 +543,15 @@ DO iLegendre=2,N_in
   Lder_Nm2 = Lder_Nm1
   Lder_Nm1 = Lder
 END DO ! iLegendre
-L = REAL(2*N_in+1)/REAL(N_in+1)*x*L_Nm1 - REAL(N_in)/REAL(N_in+1)*L_Nm2
+
+L    = REAL(2*N_in+1)/REAL(N_in+1)*x*L_Nm1 - REAL(N_in)/REAL(N_in+1)*L_Nm2
 Lder = Lder_Nm2 + REAL(2*N_in+1)*L_Nm1
 
 q    = (L+L_Nm1)/(x+1.) ! Radau integration points are roots of q
 qder = ((Lder+Lder_Nm1)*(1.+x)-(L+L_Nm1))/(1.+x)**2
 
-L = L_Nm1 ! Value of Legendre poly. of degree N is returned!
+L    = L_Nm1 ! Value of Legendre poly. of degree N is returned!
+
 END SUBROUTINE qAndLEvaluationRadau
 
 
@@ -565,17 +575,19 @@ REAL,INTENT(OUT)   :: qder                            !< \f$ \partial/\partial\x
 INTEGER            :: iLegendre
 REAL               :: L_Nm1,L_Nm2                     ! L_{N_in-2},L_{N_in-1}
 !==================================================================================================================================
-L_Nm2=1.
-L_Nm1=x
+L_Nm2 = 1.
+L_Nm1 = x
+
 DO iLegendre=2,N_in
-  L=(REAL(2*iLegendre-1)*x*L_Nm1 - REAL(iLegendre-1)*L_Nm2)/REAL(iLegendre)
-  L_Nm2=L_Nm1
-  L_Nm1=L
+  L = (REAL(2*iLegendre-1)*x*L_Nm1 - REAL(iLegendre-1)*L_Nm2)/REAL(iLegendre)
+  L_Nm2 = L_Nm1
+  L_Nm1 = L
 END DO ! iLegendre
+
 q    = REAL(2*N_in+1)/REAL(N_in+1)*(x*L -L_Nm2) !L_{N_in+1}-L_{N_in-1} !L_Nm2 is L_Nm1, L_Nm1 was overwritten!
 qder = REAL(2*N_in+1)*L                         !Lder_{N_in+1}-Lder_{N_in-1} = (2N+1)*L
-END SUBROUTINE qAndLEvaluation
 
+END SUBROUTINE qAndLEvaluation
 
 
 !==================================================================================================================================
@@ -604,53 +616,58 @@ REAL                      :: q,qder,L         ! \f$ q=L_{N_in+1}-L_{N_in-1} \f$ 
 REAL                      :: dx               ! Newton step
 REAL                      :: cont1,cont2      !temporary variable for evaluation of parter nodes positions
 !==================================================================================================================================
-xGP(0)=-1.
-xGP(N_in)= 1.
+xGP(0)    = -1.
+xGP(N_in) = 1.
+
 IF(PRESENT(wGP))THEN
-  wGP(0)= 2./REAL(N_in*(N_in+1))
-  wGP(N_in)=wGP(0)
+  wGP(0)    = 2./REAL(N_in*(N_in+1))
+  wGP(N_in) = wGP(0)
 END IF
+
 IF(N_in.GT.1)THEN
-  cont1=PP_Pi/REAL(N_in) ! pi/N_in
-  cont2=3./(REAL(8*N_in)*PP_Pi) ! 3/(8*N_in*pi)
-  DO iGP=1,(N_in+1)/2-1 !since points are symmetric, only left side is computed
-    xGP(iGP)=-cos(cont1*(REAL(iGP)+0.25)-cont2/(REAL(iGP)+0.25)) !initial guess
+  cont1 = PP_Pi/REAL(N_in)        ! pi/N_in
+  cont2 = 3./(REAL(8*N_in)*PP_Pi) ! 3/(8*N_in*pi)
+  DO iGP=1,(N_in+1)/2-1 ! since points are symmetric, only left side is computed
+    xGP(iGP) = -COS(cont1*(REAL(iGP)+0.25)-cont2/(REAL(iGP)+0.25)) !initial guess
     ! Newton iteration
     DO iter=0,nIter
       CALL qAndLEvaluation(N_in,xGP(iGP),q,qder,L)
-      dx=-q/qder
-      xGP(iGP)=xGP(iGP)+dx
+      dx       = -q/qder
+      xGP(iGP) = xGP(iGP)+dx
       IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
     END DO ! iter
+
     IF(iter.GT.nIter) THEN
-      SWRITE(*,*) 'maximum iteration steps >10 in Newton iteration for LGL point:'
-      xGP(iGP)=-cos(cont1*(REAL(iGP)+0.25)-cont2/(REAL(iGP)+0.25)) !initial guess
+      SWRITE(UNIT_stdOut,'(A)') 'maximum iteration steps >10 in Newton iteration for LGL point:'
+      xGP(iGP) = -COS(cont1*(REAL(iGP)+0.25)-cont2/(REAL(iGP)+0.25)) ! initial guess
       ! Newton iteration
       DO iter=0,nIter
-        SWRITE(*,*)'iter,x^i',iter,xGP(iGP)     !DEBUG
+        SWRITE(UNIT_stdOut,'(A,I0,F15.8)') 'iter,x^i',iter,xGP(iGP)     ! DEBUG
         CALL qAndLEvaluation(N_in,xGP(iGP),q,qder,L)
-        dx=-q/qder
-        xGP(iGP)=xGP(iGP)+dx
+        dx       = -q/qder
+        xGP(iGP) = xGP(iGP)+dx
         IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
       END DO ! iter
-      CALL Abort(__STAMP__,&
-                 'ERROR: Legendre Gauss Lobatto nodes could not be computed up to desired precision. Code stopped!')
+      CALL Abort(__STAMP__,'ERROR: Legendre Gauss Lobatto nodes could not be computed up to desired precision!')
     END IF ! (iter.GT.nIter)
+
     CALL qAndLEvaluation(N_in,xGP(iGP),q,qder,L)
-    xGP(N_in-iGP)=-xGP(iGP)
+    xGP(N_in-iGP) = -xGP(iGP)
+
     IF(PRESENT(wGP))THEN
-      wGP(iGP)=wGP(0)/(L*L)
-      wGP(N_in-iGP)=wGP(iGP)
+      wGP(iGP)      = wGP(0)/(L*L)
+      wGP(N_in-iGP) = wGP(iGP)
     END IF
   END DO ! iGP
-END IF !(N_in.GT.1)
-IF(mod(N_in,2) .EQ. 0) THEN
-  xGP(N_in/2)=0.
-  CALL qAndLEvaluation(N_in,xGP(N_in/2),q,qder,L)
-  IF(PRESENT(wGP))wGP(N_in/2)=wGP(0)/(L*L)
-END IF ! (mod(N_in,2) .EQ. 0)
-END SUBROUTINE LegGaussLobNodesAndWeights
+END IF ! (N_in.GT.1)
 
+IF(mod(N_in,2).EQ.0) THEN
+  xGP(N_in/2) = 0.
+  CALL qAndLEvaluation(N_in,xGP(N_in/2),q,qder,L)
+  IF(PRESENT(wGP))wGP(N_in/2) = wGP(0)/(L*L)
+END IF ! (mod(N_in,2) .EQ. 0)
+
+END SUBROUTINE LegGaussLobNodesAndWeights
 
 
 !==================================================================================================================================
@@ -669,16 +686,16 @@ REAL,INTENT(OUT)   :: wBary(0:N_in)      !< barycentric weights
 ! LOCAL VARIABLES
 INTEGER            :: iGP,jGP
 !==================================================================================================================================
-wBary(:)=1.
+wBary(:) = 1.
 DO iGP=1,N_in
   DO jGP=0,iGP-1
-    wBary(jGP)=wBary(jGP)*(xGP(jGP)-xGP(iGP))
-    wBary(iGP)=wBary(iGP)*(xGP(iGP)-xGP(jGP))
+    wBary(jGP) = wBary(jGP)*(xGP(jGP)-xGP(iGP))
+    wBary(iGP) = wBary(iGP)*(xGP(iGP)-xGP(jGP))
   END DO ! jGP
 END DO ! iGP
-wBary(:)=1./wBary(:)
-END SUBROUTINE BarycentricWeights
+wBary(:) = 1./wBary(:)
 
+END SUBROUTINE BarycentricWeights
 
 
 !==================================================================================================================================
@@ -699,15 +716,16 @@ INTEGER            :: iGP,iLagrange
 REAL               :: wBary(0:N_in)
 !==================================================================================================================================
 CALL BarycentricWeights(N_in,xGP,wBary)
-D(:,:)=0.
+D(:,:) = 0.
 DO iLagrange=0,N_in
   DO iGP=0,N_in
     IF(iLagrange.NE.iGP)THEN
-      D(iGP,iLagrange)=wBary(iLagrange)/(wBary(iGP)*(xGP(iGP)-xGP(iLagrange)))
-      D(iGP,iGP)=D(iGP,iGP)-D(iGP,iLagrange)
+      D(iGP,iLagrange) = wBary(iLagrange)/(wBary(iGP)*(xGP(iGP)-xGP(iLagrange)))
+      D(iGP,iGP)       = D(iGP,iGP)-D(iGP,iLagrange)
     END IF ! (iLagrange.NE.iGP)
   END DO ! iGP
 END DO ! iLagrange
+
 END SUBROUTINE PolynomialDerivativeMatrix
 
 
@@ -729,12 +747,13 @@ LOGICAL         :: AlmostEqual      !< (OUT) TRUE if |x-y| < 2*PP_RealTolerance
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-AlmostEqual=.FALSE.
+AlmostEqual = .FALSE.
 IF((x.EQ.0.).OR.(y.EQ.0.)) THEN
-  IF(ABS(x-y).LE.2.*PP_RealTolerance) AlmostEqual=.TRUE.
+  IF(ABS(x-y).LE.2.*PP_RealTolerance) AlmostEqual = .TRUE.
 ELSE ! x, y not zero
-  IF((ABS(x-y).LE.PP_RealTolerance*ABS(x)).AND.((ABS(x-y).LE.PP_RealTolerance*ABS(y)))) AlmostEqual=.TRUE.
+  IF((ABS(x-y).LE.PP_RealTolerance*ABS(x)).AND.((ABS(x-y).LE.PP_RealTolerance*ABS(y)))) AlmostEqual = .TRUE.
 END IF ! x,y zero
+
 END FUNCTION ALMOSTEQUAL
 
 
@@ -761,33 +780,37 @@ INTEGER            :: iGP
 LOGICAL            :: xEqualGP         ! is x equal to a Gauss Point
 REAL               :: DummySum
 !============================================================================================================================
-xEqualGP=.FALSE.
+xEqualGP = .FALSE.
 DO iGP=0,N_in
-  L(iGP)=0.
+  L(iGP) = 0.
   IF(ALMOSTEQUAL(x,xGP(iGP))) THEN
-    L(iGP)=1.
-    xEqualGP=.TRUE.
+    L(iGP)   = 1.
+    xEqualGP = .TRUE.
   END IF
 END DO
 
 ! if x is equal to a Gauss point, L=(0,....,1,....0)
 IF(xEqualGP) RETURN
-DummySum=0.
+DummySum = 0.
 DO iGP=0, N_in
-  L(iGP)=wBary(iGP)/(x-xGP(iGP))
-  DummySum=DummySum+L(iGP)
+  L(iGP)   = wBary(iGP)/(x-xGP(iGP))
+  DummySum = DummySum+L(iGP)
 END DO
 
 DO iGP=0,N_in
-  L(iGP)=L(iGP)/DummySum
+  L(iGP) = L(iGP)/DummySum
 END DO
+
 END SUBROUTINE LagrangeInterpolationPolys
+
 
 !============================================================================================================================
 !> Computes the exact mass matrix for Gauss and Gauss-Lobatto nodes
 !> For details see paper 'Short note on the mass matrix for Gauss–Lobatto grid points' by Saul A.Teukolsky (JCP 2015)
 !============================================================================================================================
 SUBROUTINE PolynomialMassMatrix(N_in,xGP,wGP,M,Minv)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

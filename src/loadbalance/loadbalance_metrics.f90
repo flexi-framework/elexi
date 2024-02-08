@@ -75,7 +75,7 @@ IF (PerformLoadBalance.AND.(.NOT.UseH5IOLoadBalance)) THEN
           counts_recv  => INT(MPInElemRecv     ) ,&
           disp_recv    => INT(MPIoffsetElemRecv))
     ! Communicate Elem_xGP over MPI
-    MPI_LENGTH       = 3*(PP_N+1)**3
+    MPI_LENGTH       = 3*(PP_N+1)*(PP_N+1)*(PP_NZ+1)
     MPI_DISPLACEMENT = 0  ! 0*SIZEOF(MPI_SIZE)
     MPI_TYPE         = MPI_DOUBLE_PRECISION
     CALL MPI_TYPE_CREATE_STRUCT(1,MPI_LENGTH,MPI_DISPLACEMENT,MPI_TYPE,MPI_STRUCT,iError)
@@ -159,7 +159,7 @@ IF (PerformLoadBalance.AND.(.NOT.UseH5IOLoadBalance)) THEN
   GETTIME(StartT)
 
   ! volume data
-  ALLOCATE(       XCL_N_LB(  3,0:PP_N   ,0:PP_N   ,0:PP_N   ,nElems))
+  ALLOCATE(       XCL_N_LB(  3,0:PP_N   ,0:PP_N   ,0:PP_NZ  ,nElems))
   ASSOCIATE (&
           counts_send  => INT(MPInElemSend     ) ,&
           disp_send    => INT(MPIoffsetElemSend) ,&
@@ -178,7 +178,7 @@ IF (PerformLoadBalance.AND.(.NOT.UseH5IOLoadBalance)) THEN
   DEALLOCATE(XCL_N)
   CALL MOVE_ALLOC(XCL_N_LB,XCL_N)
 
-  ALLOCATE(      dXCL_N_LB(3,3,0:PP_N   ,0:PP_N   ,0:PP_N   ,nElems))
+  ALLOCATE(      dXCL_N_LB(3,3,0:PP_N   ,0:PP_N   ,0:PP_NZ  ,nElems))
   ASSOCIATE (&
           counts_send  => INT(MPInElemSend     ) ,&
           disp_send    => INT(MPIoffsetElemSend) ,&
@@ -237,14 +237,14 @@ IF (PerformLoadBalance.AND.(.NOT.UseH5IOLoadBalance)) THEN
   CALL MOVE_ALLOC(dXCL_NGeo_LB,dXCL_NGeo)
 #endif /*USE_PARTICLES*/
 
-  ALLOCATE(      JaCL_N_LB(3,3,0:PP_N   ,0:PP_N   ,0:PP_N   ,nElems))
+  ALLOCATE(      JaCL_N_LB(3,3,0:PP_N   ,0:PP_N   ,0:PP_NZ  ,nElems))
   ASSOCIATE (&
           counts_send  => INT(MPInElemSend     ) ,&
           disp_send    => INT(MPIoffsetElemSend) ,&
           counts_recv  => INT(MPInElemRecv     ) ,&
           disp_recv    => INT(MPIoffsetElemRecv))
     ! Communicate JaCL_N over MPI
-    MPI_LENGTH       = 3*3*(PP_N+1)**3
+    MPI_LENGTH       = 3*3*(PP_N+1)*(PP_N+1)*(PP_NZ+1)
     MPI_DISPLACEMENT = 0  ! 0*SIZEOF(MPI_SIZE)
     MPI_TYPE         = MPI_DOUBLE_PRECISION
     CALL MPI_TYPE_CREATE_STRUCT(1,MPI_LENGTH,MPI_DISPLACEMENT,MPI_TYPE,MPI_STRUCT,iError)

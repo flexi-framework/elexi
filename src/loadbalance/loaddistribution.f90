@@ -248,6 +248,7 @@ END IF ! nSpecies.GT.0
 ! Distribute PartsInElem to all procs (Every proc needs to get the information to arrive at the same timedisc)
 CALL MPI_BCAST(PartsInElem,nGlobalElems,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 
+#endif /*USE_PARTICLES*/
 ! No historical data and no particles in restart file
 IF (.NOT.ElemTimeExists .AND. ALL(PartsInElem(:).EQ.0) .AND. .NOT.postiMode) THEN
   ! Check if distribution method is ideal for pure DG FLEXI
@@ -259,9 +260,6 @@ IF (.NOT.ElemTimeExists .AND. ALL(PartsInElem(:).EQ.0) .AND. .NOT.postiMode) THE
     CALL clear_formatting()
   END IF
 ELSEIF (postiMode) THEN
-#else
-IF     (postiMode) THEN
-#endif /*USE_PARTICLES*/
   WeightDistributionMethod = -1
 ELSE
   ! ElemTime always exists during load balance, attempt to respect the user choice

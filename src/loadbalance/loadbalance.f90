@@ -90,9 +90,6 @@ CALL prms%CreateIntOption(     'LoadBalanceSample'            ,  "Define number 
                                                               ,  '1')
 CALL prms%CreateIntOption(     'LoadBalanceMaxSteps'          ,  'Define number of maximum load balacing steps that are allowed.' &
                                                               ,  '0')
-CALL prms%CreateIntOption(     'LoadBalanceInterval'          ,   'Intervall as multiple of analyze_dt at which loadbalancing ' //&
-                                                                  'is performed.\n'                                             //&
-                                                                  'DEFAULT: nWriteData')
 CALL prms%CreateRealOption(    'Load-DeviationThreshold'      ,  "Define threshold for dynamic load-balancing.\n"                //&
                                                                  "Restart performed if (Maxweight-Targetweight)/Targetweight >"  //&
                                                                  " defined value."                                                 &
@@ -147,12 +144,11 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_LoadBalance_Vars       ,ONLY: InitLoadBalanceIsDone,DoLoadBalance,UseH5IOLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLBSample,LoadBalanceSample
-USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceCounter
 USE MOD_LoadBalance_Vars       ,ONLY: nLoadBalance,nLoadBalanceSteps,DeviationThreshold
 USE MOD_ReadInTools            ,ONLY: GETLOGICAL,GETREAL,GETINT
 #if USE_LOADBALANCE
 USE MOD_Analyze_Vars           ,ONLY: nWriteData
-USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceMaxSteps,LoadBalanceInterval
+USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceMaxSteps
 USE MOD_LoadBalance_Vars       ,ONLY: tCurrent
 USE MOD_LoadBalance_Vars       ,ONLY: MPInElemSend,MPIoffsetElemSend,MPInElemRecv,MPIoffsetElemRecv
 USE MOD_LoadBalance_Vars       ,ONLY: ElemInfoRank_Shared,ElemInfoRank_Shared_Win
@@ -199,7 +195,6 @@ ELSE
   LoadBalanceSample    = GETINT    ('LoadBalanceSample')
   LoadBalanceMaxSteps  = GETINT    ('LoadBalanceMaxSteps')
   IF (LoadBalanceMaxSteps.LT.0) LoadBalanceMaxSteps = 0
-  LoadBalanceInterval  = GETINT    ('LoadBalanceInterval',tmpStr)
   DeviationThreshold   = GETREAL   ('Load-DeviationThreshold')
 #if USE_PARTICLES
   PerformPartWeightLB  = GETLOGICAL('PartWeightLoadBalance')
@@ -229,7 +224,6 @@ PerformPartWeightLB    = .FALSE.
 #endif /*USE_LOADBALANCE*/
 nLoadBalance           = 0
 nLoadBalanceSteps      = 0
-LoadBalanceCounter     = 0
 PerformLBSample        = .FALSE.
 
 #if USE_LOADBALANCE
@@ -316,7 +310,6 @@ USE MOD_Preproc
 USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,ProcTime,tCurrent,nLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: DeviationThreshold,PerformLoadBalance,LoadBalanceSample
 USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance,PerformLBSample,ElemTimeFieldTot,ElemTimeField
-USE MOD_LoadBalance_Vars       ,ONLY: LoadBalanceCounter,LoadBalanceInterval
 USE MOD_LoadDistribution       ,ONLY: WriteElemTimeStatistics
 USE MOD_Mesh_Vars              ,ONLY: nElems
 USE MOD_TimeDisc_Vars          ,ONLY: t
@@ -448,10 +441,6 @@ CALL WriteElemTimeStatistics(WriteHeader=.FALSE.,time=t)
 
 ! only check if imbalance is > a given threshold
 PerformLoadBalance = MERGE(.TRUE.,.FALSE.,CurrentImbalance.GT.DeviationThreshold)
-
-! only perform loadbalance if LoadBalanceInterval is reached
-LoadBalanceCounter = LoadBalanceCounter + 1
-PerformLoadBalance = MERGE(PerformLoadBalance,.FALSE.,LoadBalanceCounter.EQ.LoadBalanceInterval)
 
 ! Reset counters
 #if USE_PARTICLES

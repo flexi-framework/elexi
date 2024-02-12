@@ -19,7 +19,7 @@
 MODULE MOD_RecordPoints_Vars
 ! MODULES
 #if USE_MPI
-USE __MPI__
+USE mpi
 #endif
 
 IMPLICIT NONE
@@ -62,7 +62,7 @@ CHARACTER(LEN=255) :: StrVarNames(PP_nVar)    !< RP variables names for output
 INTEGER            :: myRPrank                !< rank within RP communicator
 INTEGER            :: RP_RootRank             !< rank of RP root on MPI_COMM_FLEXI
 INTEGER            :: RP_nProcs               !< number of procs with RPs
-MPI_TYPE_COMM      :: RP_COMM=MPI_COMM_NULL   !< MPI RP communicator
+INTEGER            :: RP_COMM=MPI_COMM_NULL   !< MPI RP communicator
 #endif /* USE_MPI */
 
 END MODULE MOD_recordPoints_Vars

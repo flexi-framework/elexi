@@ -95,10 +95,10 @@ USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                     :: nArgs_In
+INTEGER,INTENT(IN)            :: nArgs_In
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(*)
 #if USE_MPI
-MPI_TYPE_COMM,INTENT(IN),OPTIONAL      :: mpi_comm_loc
+INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

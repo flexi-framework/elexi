@@ -858,7 +858,7 @@ INTEGER             :: iElem,LocSideID,iNbProc
 INTEGER             :: iMortar,nMortars
 INTEGER             :: Flip_MINE(offsetMPISides_MINE(0)+1:offsetMPISides_MINE(nNBProcs))
 INTEGER             :: Flip_YOUR(offsetMPISides_YOUR(0)+1:offsetMPISides_YOUR(nNBProcs))
-MPI_TYPE_REQUEST    :: SendRequest(nNbProcs),RecRequest(nNbProcs)
+INTEGER             :: SendRequest(nNbProcs),RecRequest(nNbProcs)
 !==================================================================================================================================
 IF(nProcessors.EQ.1) RETURN
 ! fill MINE flip info

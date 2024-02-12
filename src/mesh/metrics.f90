@@ -252,11 +252,6 @@ REAL,ALLOCATABLE   :: scaledJacRef(:,:,:)
 REAL               :: SmallestscaledJacRef
 REAL,PARAMETER     :: scaledJacRefTol=0.01
 
-#if USE_MPI
-MPI_TYPE_REQUEST  :: MPIRequest_Geo(nNbProcs,2)
-REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
-#endif
-
 ! Output
 REAL              :: percent
 !==================================================================================================================================

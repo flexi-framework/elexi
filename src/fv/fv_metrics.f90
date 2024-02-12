@@ -94,11 +94,6 @@ REAL                                   :: FV_Ja_Face(3,3,0:PP_N,0:PP_NZ)
 REAL,DIMENSION(0:PP_N,0:NgeoRef)       :: Vdm_NgeoRef_N,Vdm_NgeoRef_FV
 REAL                                   :: FV_DetJac(1,0:PP_N,0:PP_N,0:PP_NZ)
 INTEGER                                :: flip, SideID, iMortar
-#if USE_MPI
-MPI_TYPE_REQUEST                       :: MPIRequest_Geo(nNbProcs,2)
-REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
-#endif /*USE_MPI*/
-! FV reconstruction
 #if FV_RECONSTRUCT
 INTEGER                                :: ijk(2),p,q,locSideID
 REAL                                   :: FV_dx_Face    (0:PP_N,0:PP_NZ,1:3)
@@ -108,16 +103,20 @@ REAL                                   :: tmp2(3,0:PP_N)
 REAL,DIMENSION(0:PP_N,0:PP_N)          :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
 #if !USE_PARTICLES
 REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_NZ):: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
-#endif /*!USE_PARTICLES*/
+#endif
 REAL                                   :: x0, xN
 REAL,POINTER                           :: FV_dx_P(:,:)
 #if USE_MPI
 MPI_TYPE_REQUEST                       :: MPIRequest(nNbProcs,2)
-#endif /*USE_MPI*/
+#endif
 #if PARABOLIC
 INTEGER                                :: d
-#endif /*PARABOLIC*/
-#endif /*FV_RECONSTRUCT*/
+#endif
+#endif
+#if USE_MPI
+MPI_TYPE_REQUEST                       :: MPIRequest_Geo(nNbProcs,2)
+REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
+#endif
 ! Timer
 REAL                                   :: StartT,EndT
 !==================================================================================================================================
@@ -259,7 +258,7 @@ Geo(1,:,:,:)   =SurfElem(  :,0:PP_NZ,1,firstMPISide_MINE:nSides)
 Geo(2:4,:,:,:) =NormVec (:,:,0:PP_NZ,1,firstMPISide_MINE:nSides)
 Geo(5:7,:,:,:) =TangVec1(:,:,0:PP_NZ,1,firstMPISide_MINE:nSides)
 Geo(8:10,:,:,:)=TangVec2(:,:,0:PP_NZ,1,firstMPISide_MINE:nSides)
-MPIRequest_Geo = MPI_REQUEST_NULL
+MPIRequest_Geo=MPI_REQUEST_NULL
 CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
 CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)

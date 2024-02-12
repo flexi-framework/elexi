@@ -43,6 +43,7 @@ PUBLIC :: FinalizeSurfCommunication
 
 CONTAINS
 
+
 SUBROUTINE InitSurfCommunication()
 !----------------------------------------------------------------------------------------------------------------------------------!
 !
@@ -58,10 +59,10 @@ USE MOD_Particle_Boundary_Vars  ,ONLY: nComputeNodeSurfSides,nComputeNodeSurfTot
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfOnNode,SurfSampSize,nSurfSample
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfMapping
 USE MOD_Particle_Boundary_Vars  ,ONLY: nSurfTotalSides
-! USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide
+!USE MOD_Particle_Boundary_Vars  ,ONLY: GlobalSide2SurfSide
 USE MOD_Particle_Boundary_Vars  ,ONLY: SurfSide2GlobalSide
 USE MOD_Particle_MPI_Vars       ,ONLY: SurfSendBuf,SurfRecvBuf
-! USE MOD_Particle_Vars           ,ONLY: nSpecies
+!USE MOD_Particle_Vars           ,ONLY: nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -70,16 +71,15 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !INTEGER                       :: msg_status(1:MPI_STATUS_SIZE)
 INTEGER                       :: iProc,color
-INTEGER                       :: LeaderID
-MPI_TYPE_GROUP                :: leadersGroup,surfGroup
+INTEGER                       :: leadersGroup,LeaderID,surfGroup
 INTEGER                       :: iSide
 INTEGER                       :: sendbuf,recvbuf
 INTEGER                       :: nSendSurfSidesTmp(0:nLeaderGroupProcs-1)
 INTEGER                       :: nRecvSurfSidesTmp(0:nLeaderGroupProcs-1)
-! INTEGER                       :: nSurfSidesLeader(1:2,0:nLeaderGroupProcs-1)
-MPI_TYPE_REQUEST              :: RecvRequest(0:nLeaderGroupProcs-1),SendRequest(0:nLeaderGroupProcs-1)
+!INTEGER                       :: nSurfSidesLeader(1:2,0:nLeaderGroupProcs-1)
+INTEGER                       :: RecvRequest(0:nLeaderGroupProcs-1),SendRequest(0:nLeaderGroupProcs-1)
 INTEGER                       :: SendSurfGlobalID(0:nLeaderGroupProcs-1,1:nComputeNodeSurfTotalSides)
-! INTEGER                       :: SampSizeAllocate
+!INTEGER                       :: SampSizeAllocate
 !===================================================================================================================================
 
 nRecvSurfSidesTmp = 0
@@ -126,17 +126,17 @@ END DO
 DO iProc = 0,nLeaderGroupProcs-1
   IF (iProc.EQ.myLeaderGroupRank) CYCLE
 
-  CALL MPI_WAIT(SendRequest(iProc),MPI_STATUS_IGNORE,IERROR)
+  CALL MPI_WAIT(SendRequest(iProc),MPISTATUS,IERROR)
   IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
-  CALL MPI_WAIT(RecvRequest(iProc),MPI_STATUS_IGNORE,IERROR)
+  CALL MPI_WAIT(RecvRequest(iProc),MPISTATUS,IERROR)
   IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO
 
 !--- Split communicator from MPI_COMM_LEADER_SHARED
 color = MERGE(1201,MPI_UNDEFINED,SurfOnNode)
 
-! create new SurfMesh communicator for SurfMesh communication. Pass 0 as rank to follow the original ordering
-CALL MPI_COMM_SPLIT(MPI_COMM_LEADERS_SHARED, color, 0, MPI_COMM_LEADERS_SURF, IERROR)
+! create new SurfMesh communicator for SurfMesh communication. Pass MPI_INFO_NULL as rank to follow the original ordering
+CALL MPI_COMM_SPLIT(MPI_COMM_LEADERS_SHARED, color, MPI_INFO_NULL, MPI_COMM_LEADERS_SURF, IERROR)
 
 ! Do not participate in remainder of communication if no surf sides on node
 IF (.NOT.SurfOnNode) RETURN
@@ -241,12 +241,12 @@ DO iProc = 0,nLeaderGroupProcs-1
   IF (iProc .EQ. myLeaderGroupRank) CYCLE
 
   IF (nSendSurfSidesTmp(iProc).NE.0) THEN
-    CALL MPI_WAIT(SendRequest(MPIRankSurfLeader(iProc)),MPI_STATUS_IGNORE,IERROR)
+    CALL MPI_WAIT(SendRequest(MPIRankSurfLeader(iProc)),MPIStatus,IERROR)
     IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
 
   IF (nRecvSurfSidesTmp(iProc).NE.0) THEN
-    CALL MPI_WAIT(RecvRequest(MPIRankSurfLeader(iProc)),MPI_STATUS_IGNORE,IERROR)
+    CALL MPI_WAIT(RecvRequest(MPIRankSurfLeader(iProc)),MPIStatus,IERROR)
     IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
 END DO
@@ -325,8 +325,8 @@ INTEGER                         :: iPos,p,q
 INTEGER                         :: iSpec,nShift,firstSpecies,lastSpecies
 INTEGER                         :: MessageSize,iSurfSide,SurfSideID
 INTEGER                         :: nValues
-MPI_TYPE_REQUEST                :: RecvRequestLeader(0:nSurfLeaders-1)          ,SendRequestLeader(0:nSurfLeaders-1)
-MPI_TYPE_REQUEST                :: RecvRequestShared(1:nComputeNodeProcessors-1),SendRequestShared!,ReduceRequestShared(6)
+INTEGER                         :: RecvRequestLeader(0:nSurfLeaders-1),SendRequestLeader(0:nSurfLeaders-1)
+INTEGER                         :: RecvRequestShared(1:nComputeNodeProcessors-1),SendRequestShared!,ReduceRequestShared(6)
 REAL                            :: SampWallTmp(1:SurfSampSize)
 REAL,ALLOCATABLE                :: SampWallStateTmp(:,:,:,:,:)
 !===================================================================================================================================
@@ -608,12 +608,12 @@ IF (myComputeNodeRank.EQ.0) THEN
     IF (iProc.EQ.mySurfRank) CYCLE
 
     IF (SurfMapping(iProc)%nSendSurfSides.NE.0) THEN
-      CALL MPI_WAIT(SendRequestLeader(iProc),MPI_STATUS_IGNORE,IERROR)
+      CALL MPI_WAIT(SendRequestLeader(iProc),MPIStatus,IERROR)
       IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error',IERROR)
     END IF
 
     IF (SurfMapping(iProc)%nRecvSurfSides.NE.0) THEN
-      CALL MPI_WAIT(RecvRequestLeader(iProc),MPI_STATUS_IGNORE,IERROR)
+      CALL MPI_WAIT(RecvRequestLeader(iProc),MPIStatus,IERROR)
       IF (IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error',IERROR)
     END IF
   END DO ! iProc

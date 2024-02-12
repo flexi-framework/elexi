@@ -23,9 +23,6 @@
 !> - support data structures and routines for mesh readin (provided by MOD_MeshReadin)
 !==================================================================================================================================
 MODULE MOD_Mesh_Vars
-#if USE_MPI
-USE __MPI__
-#endif /*USE_MPI*/
 ! MODULES
 IMPLICIT NONE
 PUBLIC
@@ -88,13 +85,13 @@ REAL,ALLOCPOINT,DIMENSION(:,:,:,:,:) :: TreeCoords_Shared
 REAL,ALLOCPOINT,DIMENSION(:,:,:)     :: xiMinMax_Shared
 #if USE_MPI
 ! integers to hold shared memory windows
-MPI_TYPE_WIN     :: ElemToTree_Shared_Win
-MPI_TYPE_WIN     :: ElemInfo_Shared_Win
-MPI_TYPE_WIN     :: SideInfo_Shared_Win
-MPI_TYPE_WIN     :: NodeInfo_Shared_Win
-MPI_TYPE_WIN     :: NodeCoords_Shared_Win
-MPI_TYPE_WIN     :: TreeCoords_Shared_Win
-MPI_TYPE_WIN     :: xiMinMax_Shared_Win
+INTEGER          :: ElemToTree_Shared_Win
+INTEGER          :: ElemInfo_Shared_Win
+INTEGER          :: SideInfo_Shared_Win
+INTEGER          :: NodeInfo_Shared_Win
+INTEGER          :: NodeCoords_Shared_Win
+INTEGER          :: TreeCoords_Shared_Win
+INTEGER          :: xiMinMax_Shared_Win
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Metrics on GaussPoints

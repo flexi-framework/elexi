@@ -1326,9 +1326,9 @@ REAL,PARAMETER                :: epsilonBC=1.e-3
 !==================================================================================================================================
 SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
 
-! #if USE_MPI
-! MPIRequest_BC = MPI_REQUEST_NULL
-! #endif /* USE_MPI */
+!#if USE_MPI
+!MPIRequest_BC = MPI_REQUEST_NULL
+!#endif /* USE_MPI */
 
 ! Read data from csv file and write to array
 IF(MPIRoot)THEN

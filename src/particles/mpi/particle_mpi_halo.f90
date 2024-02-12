@@ -93,7 +93,7 @@ LOGICAL                        :: ProcHasExchangeElem
 REAL                           :: MPI_halo_eps,MPI_halo_eps_velo,MPI_halo_diag,vec(1:3),deltaT
 INTEGER                        :: iStage,errType
 ! Non-symmetric particle exchange
-MPI_TYPE_REQUEST,ALLOCATABLE   :: SendRequest(:),RecvRequest(:)
+INTEGER,ALLOCATABLE            :: SendRequest(:),RecvRequest(:)
 LOGICAL,ALLOCATABLE            :: GlobalProcToRecvProc(:)
 LOGICAL,ALLOCATABLE            :: CommFlag(:)
 INTEGER                        :: nNonSymmetricExchangeProcs,nNonSymmetricExchangeProcsGlob
@@ -670,9 +670,9 @@ IF(CheckExchangeProcs)THEN
   DO iProc = 0,nProcessors_Global-1
     IF (iProc.EQ.myRank) CYCLE
 
-    CALL MPI_WAIT(RecvRequest(iProc),MPI_STATUS_IGNORE,IERROR)
+    CALL MPI_WAIT(RecvRequest(iProc),MPIStatus,IERROR)
     IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
-    CALL MPI_WAIT(SendRequest(iProc),MPI_STATUS_IGNORE,IERROR)
+    CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
     IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END DO
 

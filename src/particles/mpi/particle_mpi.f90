@@ -386,7 +386,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iPart,iPos,iProc,jPos
-! INTEGER                       :: recv_status_list(1:MPI_STATUS_SIZE,0:nExchangeProcessors-1)
+INTEGER                       :: recv_status_list(1:MPI_STATUS_SIZE,0:nExchangeProcessors-1)
 INTEGER                       :: MessageSize, nRecvParticles, nSendParticles
 INTEGER                       :: ALLOCSTAT
 !===================================================================================================================================
@@ -509,10 +509,9 @@ END DO ! iProc
 !--- Wait for all neighboring procs to acknowlege both our send and our recv request. Then every neighbor proc knows the number of
 !--- particles to communicate
 DO iProc=0,nExchangeProcessors-1
-  CALL MPI_WAIT(PartMPIExchange%SendRequest(1,iProc),MPI_STATUS_IGNORE,IERROR)
+  CALL MPI_WAIT(PartMPIExchange%SendRequest(1,iProc),MPIStatus,IERROR)
   IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
-  ! CALL MPI_WAIT(PartMPIExchange%RecvRequest(1,iProc),recv_status_list(:,iProc),IERROR)
-  CALL MPI_WAIT(PartMPIExchange%RecvRequest(1,iProc),MPI_STATUS_IGNORE,IERROR)
+  CALL MPI_WAIT(PartMPIExchange%RecvRequest(1,iProc),recv_status_list(:,iProc),IERROR)
   IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO ! iProc
 
@@ -639,7 +638,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iProc,iPos,nRecv,PartID,jPos
-! MPI_TYPE_STATUS               :: recv_status_list(1:MPI_STATUS_SIZE,0:nExchangeProcessors-1)
+INTEGER                       :: recv_status_list(1:MPI_STATUS_SIZE,0:nExchangeProcessors-1)
 INTEGER                       :: MessageSize,nRecvParticles
 !===================================================================================================================================
 
@@ -651,7 +650,7 @@ DO iProc=0,nExchangeProcessors-1
   ! skip proc if no particles are to be sent
   IF(SUM(PartMPIExchange%nPartsSend(:,iProc)).EQ.0) CYCLE
 
-  CALL MPI_WAIT(PartMPIExchange%SendRequest(2,iProc),MPI_STATUS_IGNORE,IERROR)
+  CALL MPI_WAIT(PartMPIExchange%SendRequest(2,iProc),MPIStatus,IERROR)
   IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO ! iProc
 
@@ -667,7 +666,7 @@ DO iProc=0,nExchangeProcessors-1
   MessageSize    = nRecvParticles*PartCommSize
 
   ! finish communication with iproc
-  CALL MPI_WAIT(PartMPIExchange%RecvRequest(2,iProc),MPI_STATUS_IGNORE,IERROR)
+  CALL MPI_WAIT(PartMPIExchange%RecvRequest(2,iProc),recv_status_list(:,iProc),IERROR)
 
   ! place particle information in correct arrays
   DO iPos=0,MessageSize-1,PartCommSize

@@ -22,14 +22,9 @@
 
 ! MPI data types
 #define MPI_TYPE_COMM    TYPE(mpi_comm)
-#define MPI_TYPE_DATA    TYPE(mpi_datatype)
-#define MPI_TYPE_GROUP   TYPE(mpi_group)
 #define MPI_TYPE_INFO    TYPE(mpi_info)
 #define MPI_TYPE_REQUEST TYPE(mpi_request)
 #define MPI_TYPE_STATUS  TYPE(mpi_status)
-
-! MPI SHM data types
-#define MPI_TYPE_WIN     TYPE(mpi_win)
 
 ! HDF5 still uses integers to handle communicators
 #define H5PSET_FAPL_MPIO_F_(list,comm,info,error) H5PSET_FAPL_MPIO_F(list,comm%mpi_val,info%mpi_val,error)
@@ -39,14 +34,9 @@
 
 ! MPI data types
 #define MPI_TYPE_COMM    INTEGER
-#define MPI_TYPE_DATA    INTEGER
-#define MPI_TYPE_GROUP   INTEGER
 #define MPI_TYPE_INFO    INTEGER
 #define MPI_TYPE_REQUEST INTEGER
 #define MPI_TYPE_STATUS  INTEGER
-
-! MPI SHM data types
-#define MPI_TYPE_WIN     INTEGER
 
 ! HDF5 still uses integers to handle communicators
 #define H5PSET_FAPL_MPIO_F_(list,comm,info,error) H5PSET_FAPL_MPIO_F(list,comm        ,info        ,error)

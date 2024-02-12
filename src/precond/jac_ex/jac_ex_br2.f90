@@ -177,6 +177,7 @@ DO iLocSide=2,5
 END DO!iLocSide
 END SUBROUTINE FillJacLiftingFlux
 
+
 !===================================================================================================================================
 !> Computes the Volume gradient Jacobian of the BR2 scheme dQprim/dUprim (Q= Grad U). This consists of the volume and surface
 !> integral of the lifting procedure. This get's complicated since we interpolate the volume CONSERVATIVE variables onto the
@@ -342,6 +343,7 @@ END SUBROUTINE JacLifting_VolGrad
 !===================================================================================================================================
 SUBROUTINE Build_BR2_SurfTerms()
 ! MODULES
+USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: sJ,ElemToSide,nElems
 USE MOD_Mesh_Vars          ,ONLY: nSides
@@ -358,11 +360,11 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: iElem,p,q,l,iLocSide,SideID,Flip
-REAL    :: RFace(0:PP_N,0:PP_NZ)
+INTEGER          :: iElem,p,q,l,iLocSide,SideID,Flip
+REAL             :: RFace(0:PP_N,0:PP_NZ)
 #if USE_MPI
-INTEGER :: MPIRequest_RPlus(nNbProcs,2)
-INTEGER :: MPIRequest_RMinus(nNbProcs,2)
+MPI_TYPE_REQUEST :: MPIRequest_RPlus( nNbProcs,2)
+MPI_TYPE_REQUEST :: MPIRequest_RMinus(nNbProcs,2)
 #endif
 !===================================================================================================================================
 ALLOCATE(R_Minus(0:PP_N,0:PP_NZ,1:nSides))
@@ -494,8 +496,8 @@ END DO !iElem
 
 #if USE_MPI
 !EXCHANGE R_Minus and R_Plus vice versa !!!!!
-MPIRequest_RPlus=0
-MPIRequest_RMinus=0
+MPIRequest_RPlus  = MPI_REQUEST_NULL
+MPIRequest_RMinus = MPI_REQUEST_NULL
 CALL StartReceiveMPIData(R_Plus,(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RPlus(:,RECV),SendID=2)   ! Recv MINE/Geo: slave->master
 CALL StartSendMPIData(   R_Plus,(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RPlus(:,SEND),SendID=2)   ! SEND YOUR/Geo: slave->master
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RPlus)

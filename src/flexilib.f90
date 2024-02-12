@@ -98,7 +98,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                     :: nArgs_In
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(*)
 #if USE_MPI
-INTEGER,INTENT(IN),OPTIONAL            :: mpi_comm_loc
+MPI_TYPE_COMM,INTENT(IN),OPTIONAL      :: mpi_comm_loc
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -122,12 +122,14 @@ IF(nArgs_In.EQ.0)THEN
 ELSE
   CALL ParseCommandlineArguments(Args_In(1:nArgs_In))
 END IF
+
 ! Check if the number of arguments is correct
 IF (nArgs.GT.2) THEN
   ! Print out error message containing valid syntax
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: flexi parameter.ini [restart.h5] or flexi --help'// &
   '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
 END IF
+
 ParameterFile = Args(1)
 IF (nArgs.GT.1) THEN
   RestartFile_loc = Args(2)
@@ -203,6 +205,7 @@ IF (doPrintHelp.GT.0) THEN
 #endif
   STOP
 END IF
+
 CALL prms%read_options(ParameterFile)
 
 CALL InitIOHDF5()
@@ -300,6 +303,7 @@ IF (doGenerateUnittestReferenceData) THEN
   CALL FinalizeFlexi()
   CALL EXIT()
 END IF
+
 END SUBROUTINE InitFlexi
 
 

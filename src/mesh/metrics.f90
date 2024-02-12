@@ -246,10 +246,16 @@ REAL    :: xiRef( 0:NGeoRef),wBaryRef( 0:NGeoRef)
 REAL    :: xiCL_N(0:PP_N)   ,wBaryCL_N(0:PP_N)
 REAL    :: xi0(3),dxi(3),length(3)
 
+! MeshCheckRef
 LOGICAL            :: meshCheckRef
 REAL,ALLOCATABLE   :: scaledJacRef(:,:,:)
 REAL               :: SmallestscaledJacRef
 REAL,PARAMETER     :: scaledJacRefTol=0.01
+
+#if USE_MPI
+MPI_TYPE_REQUEST  :: MPIRequest_Geo(nNbProcs,2)
+REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
+#endif
 
 ! Output
 REAL              :: percent

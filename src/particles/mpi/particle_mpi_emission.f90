@@ -360,7 +360,7 @@ DO iSpec = 1,nSpecies
     ! set communicator id
     Species(iSpec)%Init(iInit)%InitCOMM = nInitRegions
     ! create new emission communicator for emission communication. Pass MPI_INFO_NULL as rank to follow the original ordering
-    CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,MPI_INFO_NULL,PartMPI%InitGroup(nInitRegions)%COMM,iError)
+    CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,0,PartMPI%InitGroup(nInitRegions)%COMM,iError)
 
     ! Find my rank on the shared communicator, comm size and proc name
     IF (RegionOnProc) THEN
@@ -500,7 +500,8 @@ REAL,ALLOCATABLE              :: chunkState(:,:)
 ! MPI Communication
 INTEGER                       :: ALLOCSTAT,PartCommSize,ParticleIndexNbr
 INTEGER                       :: InitGroup,tProc
-INTEGER                       :: msg_status(1:MPI_STATUS_SIZE),messageSize
+! MPI_TYPE_STATUS               :: msg_status(1:MPI_STATUS_SIZE)
+INTEGER                       :: messageSize
 INTEGER                       :: nRecvParticles,nSendParticles
 REAL,ALLOCATABLE              :: recvPartPos(:)
 !===================================================================================================================================
@@ -711,9 +712,9 @@ END DO ! i = 1, chunkSize
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
-  CALL MPI_WAIT(PartMPIInsert%SendRequest(1,iProc),msg_status(:),IERROR)
+  CALL MPI_WAIT(PartMPIInsert%SendRequest(1,iProc),MPI_STATUS_IGNORE,IERROR)
   IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
-  CALL MPI_WAIT(PartMPIInsert%RecvRequest(1,iProc),msg_status(:),IERROR)
+  CALL MPI_WAIT(PartMPIInsert%RecvRequest(1,iProc),MPI_STATUS_IGNORE,IERROR)
   IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO
 
@@ -857,9 +858,9 @@ END DO ! i = 1, chunkSize
 DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
-  CALL MPI_WAIT(PartMPILocate%SendRequest(1,iProc),msg_status(:),IERROR)
+  CALL MPI_WAIT(PartMPILocate%SendRequest(1,iProc),MPI_STATUS_IGNORE,IERROR)
   IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
-  CALL MPI_WAIT(PartMPILocate%RecvRequest(1,iProc),msg_status(:),IERROR)
+  CALL MPI_WAIT(PartMPILocate%RecvRequest(1,iProc),MPI_STATUS_IGNORE,IERROR)
   IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
 END DO
 
@@ -908,11 +909,11 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
   IF (PartMPIInsert%nPartsSend(1,iProc).GT.0) THEN
-    CALL MPI_WAIT(PartMPIInsert%SendRequest(2,iProc),msg_status(:),IERROR)
+    CALL MPI_WAIT(PartMPIInsert%SendRequest(2,iProc),MPI_STATUS_IGNORE,IERROR)
     IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
   IF (PartMPIInsert%nPartsRecv(1,iProc).GT.0) THEN
-    CALL MPI_WAIT(PartMPIInsert%RecvRequest(2,iProc),msg_status(:),IERROR)
+    CALL MPI_WAIT(PartMPIInsert%RecvRequest(2,iProc),MPI_STATUS_IGNORE,IERROR)
     IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
 END DO
@@ -953,11 +954,11 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
   IF (iProc.EQ.PartMPI%InitGroup(InitGroup)%myRank) CYCLE
 
   IF (PartMPILocate%nPartsSend(1,iProc).GT.0) THEN
-    CALL MPI_WAIT(PartMPILocate%SendRequest(2,iProc),msg_status(:),IERROR)
+    CALL MPI_WAIT(PartMPILocate%SendRequest(2,iProc),MPI_STATUS_IGNORE,IERROR)
     IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
   IF (PartMPILocate%nPartsRecv(1,iProc).GT.0) THEN
-    CALL MPI_WAIT(PartMPILocate%RecvRequest(2,iProc),msg_status(:),IERROR)
+    CALL MPI_WAIT(PartMPILocate%RecvRequest(2,iProc),MPI_STATUS_IGNORE,IERROR)
     IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END IF
 END DO

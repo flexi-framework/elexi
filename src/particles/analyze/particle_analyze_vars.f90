@@ -11,12 +11,16 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
 
 !===================================================================================================================================
 ! Contains global variables used by the Analyze modules.
 !===================================================================================================================================
 MODULE MOD_Particle_Analyze_Vars
 ! MODULES
+#if USE_MPI
+USE __MPI__
+#endif /*USE_MPI*/
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -58,7 +62,7 @@ INTEGER                       :: RPP_nVarNames = 9
 INTEGER,ALLOCATABLE           :: RPP_Records(:)
 INTEGER,ALLOCATABLE           :: RPP_Records_Glob(:)
 #if USE_MPI
-INTEGER                       :: RPP_MPI_Request
+MPI_TYPE_REQUEST              :: RPP_MPI_Request
 #endif /*USE_MPI*/
 
 END MODULE MOD_Particle_Analyze_Vars

@@ -1192,7 +1192,7 @@ DO iVar=1,nVal
       DO iProc=1,nProcessors-1
         nParts_proc=nParts_glob(iProc+1)
         IF (nParts_proc.EQ.0) CYCLE
-        CALL MPI_RECV(buf(1:nParts_proc),nParts_proc,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
+        CALL MPI_RECV(buf(1:nParts_proc),nParts_proc,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPI_STATUS_IGNORE,iError)
         WRITE(ivtk) REAL(buf(1:nParts_proc),4)
       END DO !iProc
 #endif /*USE_MPI*/
@@ -1202,7 +1202,7 @@ DO iVar=1,nVal
       DO iProc=1,nProcessors-1
         nParts_proc=nParts_glob(iProc+1)
         IF (nParts_proc.EQ.0) CYCLE
-        CALL MPI_RECV(buf3(1:VarNamePartCombineLen(iVar),1:nParts_proc),nParts_proc*VarNamePartCombineLen(iVar),MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
+        CALL MPI_RECV(buf3(1:VarNamePartCombineLen(iVar),1:nParts_proc),nParts_proc*VarNamePartCombineLen(iVar),MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPI_STATUS_IGNORE,iError)
         WRITE(ivtk) REAL(buf3(1:VarNamePartCombineLen(iVar),1:nParts_proc),4)
       END DO !iProc
 #endif /*USE_MPI*/
@@ -1238,7 +1238,7 @@ IF(MPIRoot)THEN
   DO iProc=1,nProcessors-1
     nParts_proc=nParts_glob(iProc+1)
     IF (nParts_proc.GT.0) THEN
-      CALL MPI_RECV(buf2(:,1:nParts_proc),nParts_proc*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
+      CALL MPI_RECV(buf2(:,1:nParts_proc),nParts_proc*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPI_STATUS_IGNORE,iError)
       WRITE(ivtk) REAL(buf2(:,1:nParts_proc),4)
     END IF
   END DO !iProc

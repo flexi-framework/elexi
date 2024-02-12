@@ -19,6 +19,9 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Mesh_Vars
 ! MODULES
+#if USE_MPI
+USE __MPI__
+#endif /*USE_MPI*/
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -174,78 +177,78 @@ REAL,ALLOCPOINT    :: ElemVolume_Shared(:)
 #if USE_MPI
 ! integers to hold shared memory windows
 LOGICAL           :: CalcHaloInfo                          !> Output halo element information to ElemData
-INTEGER           :: ElemHaloInfo_Shared_Win
-INTEGER           :: FEMElemInfo_Shared_Win
-INTEGER           :: VertexInfo_Shared_Win
-INTEGER           :: VertexVol_Shared_Win
+MPI_TYPE_WIN      :: ElemHaloInfo_Shared_Win
+MPI_TYPE_WIN      :: FEMElemInfo_Shared_Win
+MPI_TYPE_WIN      :: VertexInfo_Shared_Win
+MPI_TYPE_WIN      :: VertexVol_Shared_Win
 
-INTEGER           :: ElemToBCSides_Shared_Win
-INTEGER           :: SideBCMetrics_Shared_Win
+MPI_TYPE_WIN      :: ElemToBCSides_Shared_Win
+MPI_TYPE_WIN      :: SideBCMetrics_Shared_Win
 
-INTEGER           :: ElemToBGM_Shared_Win
-INTEGER           :: FIBGM_nTotalElems_Shared_Win
-INTEGER           :: FIBGM_nElems_Shared_Win
-INTEGER           :: FIBGM_Element_Shared_Win
-INTEGER           :: FIBGM_offsetElem_Shared_Win
+MPI_TYPE_WIN      :: ElemToBGM_Shared_Win
+MPI_TYPE_WIN      :: FIBGM_nTotalElems_Shared_Win
+MPI_TYPE_WIN      :: FIBGM_nElems_Shared_Win
+MPI_TYPE_WIN      :: FIBGM_Element_Shared_Win
+MPI_TYPE_WIN      :: FIBGM_offsetElem_Shared_Win
 
-INTEGER           :: FIBGMToProc_Shared_Win
-INTEGER           :: FIBGMToProcFlag_Shared_Win
-INTEGER           :: FIBGMToProcExtent_Shared_Win
-INTEGER           :: FIBGMProcs_Shared_Win
+MPI_TYPE_WIN      :: FIBGMToProc_Shared_Win
+MPI_TYPE_WIN      :: FIBGMToProcFlag_Shared_Win
+MPI_TYPE_WIN      :: FIBGMToProcExtent_Shared_Win
+MPI_TYPE_WIN      :: FIBGMProcs_Shared_Win
 
-INTEGER           :: CNTotalElem2GlobalElem_Shared_Win
-INTEGER           :: GlobalElem2CNTotalElem_Shared_Win
-INTEGER           :: CNTotalSide2GlobalSide_Shared_Win
-INTEGER           :: GlobalSide2CNTotalSide_Shared_Win
+MPI_TYPE_WIN      :: CNTotalElem2GlobalElem_Shared_Win
+MPI_TYPE_WIN      :: GlobalElem2CNTotalElem_Shared_Win
+MPI_TYPE_WIN      :: CNTotalSide2GlobalSide_Shared_Win
+MPI_TYPE_WIN      :: GlobalSide2CNTotalSide_Shared_Win
 
-INTEGER           :: BoundsOfElem_Shared_Win
+MPI_TYPE_WIN      :: BoundsOfElem_Shared_Win
 
-INTEGER           :: XCL_NGeo_Shared_Win
-INTEGER           :: Elem_xGP_Shared_Win
-INTEGER           :: dXCL_NGeo_Shared_Win
-INTEGER           :: BezierControlPoints3D_Shared_Win
-INTEGER           :: BezierControlPoints3DElevated_Shared_Win
-INTEGER           :: ElemsJ_Shared_Win
-INTEGER           :: ElemEpsOneCell_Shared_Win
+MPI_TYPE_WIN      :: XCL_NGeo_Shared_Win
+MPI_TYPE_WIN      :: Elem_xGP_Shared_Win
+MPI_TYPE_WIN      :: dXCL_NGeo_Shared_Win
+MPI_TYPE_WIN      :: BezierControlPoints3D_Shared_Win
+MPI_TYPE_WIN      :: BezierControlPoints3DElevated_Shared_Win
+MPI_TYPE_WIN      :: ElemsJ_Shared_Win
+MPI_TYPE_WIN      :: ElemEpsOneCell_Shared_Win
 
-INTEGER           :: ElemBaryNGeo_Shared_Win
-INTEGER           :: ElemRadiusNGeo_Shared_Win
-INTEGER           :: ElemRadius2NGeo_Shared_Win
-INTEGER           :: XiEtaZetaBasis_Shared_Win
-INTEGER           :: slenXiEtaZetaBasis_Shared_Win
+MPI_TYPE_WIN      :: ElemBaryNGeo_Shared_Win
+MPI_TYPE_WIN      :: ElemRadiusNGeo_Shared_Win
+MPI_TYPE_WIN      :: ElemRadius2NGeo_Shared_Win
+MPI_TYPE_WIN      :: XiEtaZetaBasis_Shared_Win
+MPI_TYPE_WIN      :: slenXiEtaZetaBasis_Shared_Win
 
-INTEGER           :: ElemCurved_Shared_Win
-INTEGER           :: ConcaveElemSide_Shared_Win
-INTEGER           :: ElemNodeID_Shared_Win
-INTEGER           :: ElemSideNodeID_Shared_Win
-INTEGER           :: ElemMidPoint_Shared_Win
+MPI_TYPE_WIN      :: ElemCurved_Shared_Win
+MPI_TYPE_WIN      :: ConcaveElemSide_Shared_Win
+MPI_TYPE_WIN      :: ElemNodeID_Shared_Win
+MPI_TYPE_WIN      :: ElemSideNodeID_Shared_Win
+MPI_TYPE_WIN      :: ElemMidPoint_Shared_Win
 
-INTEGER           :: SideSlabNormals_Shared_Win
-INTEGER           :: SideSlabIntervals_Shared_Win
-INTEGER           :: BoundingBoxIsEmpty_Shared_Win
+MPI_TYPE_WIN      :: SideSlabNormals_Shared_Win
+MPI_TYPE_WIN      :: SideSlabIntervals_Shared_Win
+MPI_TYPE_WIN      :: BoundingBoxIsEmpty_Shared_Win
 
-INTEGER           :: SideType_Shared_Win
-INTEGER           :: SideDistance_Shared_Win
-INTEGER           :: SideNormVec_Shared_Win
+MPI_TYPE_WIN      :: SideType_Shared_Win
+MPI_TYPE_WIN      :: SideDistance_Shared_Win
+MPI_TYPE_WIN      :: SideNormVec_Shared_Win
 
-INTEGER           :: BaseVectors0_Shared_Win
-INTEGER           :: BaseVectors1_Shared_Win
-INTEGER           :: BaseVectors2_Shared_Win
-INTEGER           :: BaseVectors3_Shared_Win
-!INTEGER           :: BaseVectorsScale_Shared_Win
+MPI_TYPE_WIN      :: BaseVectors0_Shared_Win
+MPI_TYPE_WIN      :: BaseVectors1_Shared_Win
+MPI_TYPE_WIN      :: BaseVectors2_Shared_Win
+MPI_TYPE_WIN      :: BaseVectors3_Shared_Win
+! MPI_TYPE_WIN      :: BaseVectorsScale_Shared_Win
 
 ! Boundary sides
-INTEGER           :: BCSide2SideID_Shared_Win
-INTEGER           :: SideID2BCSide_Shared_Win
-INTEGER           :: BCSideMetrics_Shared_Win
+MPI_TYPE_WIN      :: BCSide2SideID_Shared_Win
+MPI_TYPE_WIN      :: SideID2BCSide_Shared_Win
+MPI_TYPE_WIN      :: BCSideMetrics_Shared_Win
 
 ! Shared arrays containing information for mesh on compute node
-INTEGER           :: ElemVolume_Shared_Win
-INTEGER           :: ElemMPVolumePortion_Shared_Win
-INTEGER           :: ElemCharLength_Shared_Win
-INTEGER           :: ElemCharLengthX_Shared_Win
-INTEGER           :: ElemCharLengthY_Shared_Win
-INTEGER           :: ElemCharLengthZ_Shared_Win
+MPI_TYPE_WIN      :: ElemVolume_Shared_Win
+MPI_TYPE_WIN      :: ElemMPVolumePortion_Shared_Win
+MPI_TYPE_WIN      :: ElemCharLength_Shared_Win
+MPI_TYPE_WIN      :: ElemCharLengthX_Shared_Win
+MPI_TYPE_WIN      :: ElemCharLengthY_Shared_Win
+MPI_TYPE_WIN      :: ElemCharLengthZ_Shared_Win
 
 #endif
 ! periodic sides

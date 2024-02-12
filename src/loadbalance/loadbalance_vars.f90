@@ -11,12 +11,16 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
 
 !===================================================================================================================================
 ! Variables needed for load balancing
 !===================================================================================================================================
 MODULE MOD_LoadBalance_Vars
 ! MODULES
+#if USE_MPI
+USE __MPI__
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
@@ -84,7 +88,7 @@ INTEGER,ALLOCATABLE                 :: MPIoffsetPartSend(:)
 INTEGER,ALLOCATABLE                 :: MPInPartRecv(:)
 INTEGER,ALLOCATABLE                 :: MPIoffsetPartRecv(:)
 INTEGER,POINTER                     :: ElemInfoRank_Shared(:) => NULL()
-INTEGER                             :: ElemInfoRank_Shared_Win
+MPI_TYPE_WIN                        :: ElemInfoRank_Shared_Win
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! general load balancing

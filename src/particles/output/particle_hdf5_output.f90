@@ -254,7 +254,8 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: FileName,DataSetName
 LOGICAL,INTENT(IN)             :: collective
-INTEGER,INTENT(IN)             :: offSetDim,communicator
+INTEGER,INTENT(IN)             :: offSetDim
+MPI_TYPE_COMM,INTENT(IN)       :: communicator
 INTEGER,INTENT(IN)             :: rank,nVal(rank),nValGlobal(rank),offset(rank)
 REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealArray(PRODUCT(nVal))
 INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray( PRODUCT(nVal))
@@ -263,7 +264,8 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray( PRODUCT(nVal))
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: color,OutPutCOMM,nOutPutProcs
+INTEGER                        :: color,nOutPutProcs
+MPI_TYPE_COMM                  :: OutPutCOMM
 LOGICAL                        :: DataOnProc,DoNotSplit,OutputCollective,OutputSingle
 !===================================================================================================================================
 
@@ -274,7 +276,7 @@ CALL MPI_ALLREDUCE(DataOnProc,DoNotSplit,1,MPI_LOGICAL,MPI_LAND,COMMUNICATOR,IER
 ! 2: if any proc has no data, split the communicator and write only with the new communicator
 IF (.NOT.DoNotSplit) THEN
   color = MERGE(87,MPI_UNDEFINED,DataOnProc)
-  CALL MPI_COMM_SPLIT(COMMUNICATOR,color,MPI_INFO_NULL,OutputCOMM,iError)
+  CALL MPI_COMM_SPLIT(COMMUNICATOR,color,0,OutputCOMM,iError)
 
   IF(DataOnProc) THEN
     CALL MPI_COMM_SIZE(OutputCOMM,nOutPutProcs,iError)
@@ -296,7 +298,7 @@ IF (.NOT.DoNotSplit) THEN
   ! MPI Barrier is required so procs don't open the datafile while the output procs are still writing
   CALL MPI_BARRIER(COMMUNICATOR,IERROR)
   ! Communicator was realized, also nullify variable
-  OutputCOMM = MPI_UNDEFINED
+  OutputCOMM = MPI_COMM_NULL
 
 ! 3: else write with all procs of the given communicator
 ! communicator_opt has to be the given communicator or else procs that are not in the given communicator might block the write out

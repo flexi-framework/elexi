@@ -262,6 +262,9 @@ END SUBROUTINE InitMPIInfo
 SUBROUTINE OpenDataFile(FileString,create,single,readOnly,communicatorOpt,userblockSize)
 ! MODULES
 USE MOD_Globals
+! #if USE_LOADBALANCE
+! USE MOD_LoadBalance_Vars, ONLY: PerformLoadBalance
+! #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

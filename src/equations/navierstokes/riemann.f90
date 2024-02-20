@@ -137,8 +137,9 @@ SUBROUTINE InitRiemann()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: GETINTFROMSTR
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -245,6 +246,7 @@ END SUBROUTINE InitRiemann
 SUBROUTINE Riemann_Side(Nloc,FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -337,6 +339,7 @@ END SUBROUTINE Riemann_Side
 SUBROUTINE Riemann_Point(FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -431,6 +434,7 @@ SUBROUTINE ViscousFlux_Side(Nloc,F,UPrim_L,UPrim_R, &
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
 USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -485,6 +489,7 @@ SUBROUTINE ViscousFlux_Point(F,UPrim_L,UPrim_R, &
                             )
 ! MODULES
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -535,6 +540,7 @@ USE MOD_EOS_Vars      ,ONLY: Kappa
 #ifdef SPLIT_DG
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -559,15 +565,21 @@ CALL SplitDGSurface_pointer(U_LL,U_RR,F)
 ! compute surface flux
 F = F - 0.5*LambdaMax*(U_RR(CONS) - U_LL(CONS))
 #endif /*SPLIT_DG*/
+
+! Remove compiler warning
+NO_OP(F_L)
+NO_OP(F_R)
 END SUBROUTINE Riemann_LF
 
 
+#ifndef SPLIT_DG
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer Riemann solver resolving contact discontinuity
 !=================================================================================================================================
 PPURE SUBROUTINE Riemann_HLLC(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: KappaM1!,kappa
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -633,7 +645,12 @@ ELSE
     F=F_R+Ssr*(U_Star-U_RR(CONS))
   END IF
 END IF ! subsonic case
+
+! Remove compiler warning
+NO_OP(F_L)
+NO_OP(F_R)
 END SUBROUTINE Riemann_HLLC
+#endif /*!SPLIT_DG*/
 
 
 !=================================================================================================================================
@@ -645,6 +662,7 @@ USE MOD_EOS_Vars  ,ONLY: kappaM1
 #ifdef SPLIT_DG
 USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -710,6 +728,10 @@ F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
              Alpha4*ABS(a(4))*r4 + &
              Alpha5*ABS(a(5))*r5)
 #endif /*SPLIT_DG*/
+
+! Remove compiler warning
+NO_OP(F_L)
+NO_OP(F_R)
 END SUBROUTINE Riemann_Roe
 
 
@@ -724,6 +746,7 @@ USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
 #ifdef SPLIT_DG
 USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -824,6 +847,10 @@ F= F - 0.5*(Alpha(1)*a(1)*r1 + &
             Alpha(4)*a(4)*r4 + &
             Alpha(5)*a(5)*r5)
 #endif /*SPLIT_DG*/
+
+! Remove compiler warning
+NO_OP(F_L)
+NO_OP(F_R)
 END SUBROUTINE Riemann_RoeEntropyFix
 
 
@@ -836,6 +863,7 @@ USE MOD_EOS_Vars  ,ONLY: kappaM1,kappa
 #ifdef SPLIT_DG
 USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -908,15 +936,21 @@ F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
              Alpha4*ABS(a(4))*r4 + &
              Alpha5*ABS(a(5))*r5)
 #endif /*SPLIT_DG*/
+
+! Remove compiler warning
+NO_OP(F_L)
+NO_OP(F_R)
 END SUBROUTINE Riemann_RoeL2
 
 
+#ifndef SPLIT_DG
 !=================================================================================================================================
 !> Standard Harten-Lax-Van-Leer Riemann solver without contact discontinuity
 !=================================================================================================================================
 PPURE SUBROUTINE Riemann_HLL(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars, ONLY: KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -969,6 +1003,7 @@ PPURE SUBROUTINE Riemann_HLLE(F_L,F_R,U_LL,U_RR,F)
 !=================================================================================================================================
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1019,6 +1054,7 @@ PPURE SUBROUTINE Riemann_HLLEM(F_L,F_R,U_LL,U_RR,F)
 !=================================================================================================================================
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1074,6 +1110,7 @@ ELSE
      (U_RR(EXT_CONS)-U_LL(EXT_CONS) - delta*(r2*Alpha(2)+r3*Alpha(3)+r4*Alpha(4))))/(Ssr-Ssl)
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLEM
+#endif /*!SPLIT_DG*/
 
 
 #ifdef SPLIT_DG
@@ -1083,6 +1120,7 @@ END SUBROUTINE Riemann_HLLEM
 PPURE SUBROUTINE Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1098,6 +1136,10 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
 !==================================================================================================================================
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+
+! Remove compiler warning
+NO_OP(F_L)
+NO_OP(F_R)
 END SUBROUTINE Riemann_FluxAverage
 
 
@@ -1108,6 +1150,7 @@ PPURE SUBROUTINE Riemann_CH(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,sKappaM1
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer,GetLogMean
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1152,6 +1195,9 @@ F(ENER)      = F(ENER)      - 0.5*LambdaMax*( &
          +rhoMean*uMean*(U_RR(EXT_VEL1)-U_LL(EXT_VEL1)) + rhoMean*vMean*(U_RR(EXT_VEL2)-U_LL(EXT_VEL2)) + rhoMean*wMean*(U_RR(EXT_VEL3)-U_LL(EXT_VEL3)) &
          +0.5*rhoMean*sKappaM1*(1./beta_RR - 1./beta_LL))
 
+! Remove compiler warning
+NO_OP(F_L)
+NO_OP(F_R)
 END SUBROUTINE Riemann_CH
 #endif /*SPLIT_DG*/
 
@@ -1161,6 +1207,7 @@ END SUBROUTINE Riemann_CH
 !==================================================================================================================================
 SUBROUTINE FinalizeRiemann()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES

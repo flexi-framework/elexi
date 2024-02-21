@@ -1,7 +1,7 @@
 [![logo](https://numericsresearchgroup.org/images/icons/flexi_particle.svg "FLEXI-PARTICLE")][flexi]
 
 [![license](https://img.shields.io/github/license/flexi-framework/flexi.svg?maxAge=2592000 "GPL-3.0 License")](LICENSE.md)
-[![doi](https://img.shields.io/badge/DOI-10.1016/j.camwa.2020.05.004-blue "DOI")](https://doi.org/10.1016/j.camwa.2020.05.004)
+[![doi](https://img.shields.io/badge/DOI-10.1016/j.cpc.2023.108762-blue "DOI")](https://doi.org/10.1016/j.cpc.2023.108762)
 [![youtube](https://img.shields.io/badge/YouTube-red?logo=youtube "YouTube")](https://www.youtube.com/@nrgiag8633)
 [![userguide](https://img.shields.io/badge/Userguide-silver "Userguide")][userguide]
 [![gallery](https://img.shields.io/badge/Gallery-teal "Gallery")][gallery]

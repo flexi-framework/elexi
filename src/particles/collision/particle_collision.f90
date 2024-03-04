@@ -104,6 +104,8 @@ REAL                           :: StartT,EndT
 LBWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLE COLLISIONS...'
 GETTIME(StartT)
 
+CollisionnLoc = 0
+
 ! initialize offset array
 IF (myComputeNodeRank.EQ.0) ALLOCATE(offsetPartMPI(0:nLeaderGroupProcs))
 

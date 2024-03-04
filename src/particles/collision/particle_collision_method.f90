@@ -431,6 +431,9 @@ IF (iPart2.LE.nComputeNodeParts) THEN
   PartState(  PART_POSV,LocPartID2) = P2_old + mdtColl * PartState(PART_VELV,LocPartID2)
 END IF
 
+! Count number of collisions, only count twice if both particles are on the local processor
+CollisionnLoc = CollisionnLoc + MERGE(2,1,iPart2.LE.nComputeNodeParts)
+
 #if USE_PARTTEMP
 ! TODO
 #endif

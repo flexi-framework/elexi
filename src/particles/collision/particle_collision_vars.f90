@@ -19,6 +19,8 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Collision_Vars
 ! MODULES
+USE MOD_Particle_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -56,6 +58,10 @@ REAL   ,ALLOCPOINT,DIMENSION(:,:)        :: PartData_Shared             !>
 REAL   ,ALLOCPOINT,DIMENSION(:)          :: PartBC_Shared               !>
 INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: PartInt_Shared              !> CN-local (!) PartInt array, 1:2 offset/last part on CN
                                                                         !>                             3:4 offset/last part global
+
+! Collision tracking
+INTEGER(KIND=IK)                        :: CollisionnGlob               !< Global number of occurred collisions
+INTEGER(KIND=IK)                        :: CollisionnLoc                !< Local  number of occurred collisions
 
 #if USE_MPI
 ! Communication

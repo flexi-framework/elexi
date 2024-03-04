@@ -275,6 +275,9 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Boundary_Vars    ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Vars    ,ONLY: PartStateBoundaryVecLength
 USE MOD_Particle_Boundary_Vars    ,ONLY: ImpactnGlob,ImpactnLoc,ImpactOffset
+#if PARTICLES_COUPLING == 4
+USE MOD_Particle_Collision_Vars   ,ONLY: CollisionnGlob,CollisionnLoc
+#endif /*PARTICLES_COUPLING == 4*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -283,7 +286,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 #if USE_MPI
 INTEGER(KIND=IK)               :: sendbuf(2),recvbuf(2)
-#endif
+#endif /*USE_MPI*/
 !==================================================================================================================================
 
 CALL CalcParticleNumber(.FALSE.)
@@ -306,12 +309,34 @@ ImpactnGlob  = sendbuf(1)
 #else
 ImpactOffset = 0
 ImpactnGlob  = PartStateBoundaryVecLength
-#endif
+#endif /*USE_MPI*/
+
+! Find amount of recorded collisions on current proc
+!>> Sum up collisions from the other procs
+#if PARTICLES_COUPLING == 4
+#if USE_MPI
+IF (MPIRoot) THEN
+  CALL MPI_REDUCE(CollisionnLoc,CollisionnGlob,1,MPI_INTEGER_INT_KIND,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  !>> Collisions are binary, divide by two
+  CollisionnGlob = CollisionnGlob / 2
+ELSE
+  CALL MPI_REDUCE(CollisionnLoc,0             ,1,MPI_INTEGER_INT_KIND,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
+#else
+CollisionnGlob = CollisionnLoc / 2
+#endif /*USE_MPI*/
+#endif /*PARTICLES_COUPLING == 4*/
 
 ! Output particle and impact information
 CALL DisplayNumberOfParticles(1)
 IF (doParticleImpactTrack .AND. MPIRoot) &
   WRITE(UNIT_stdOut,'(A14,ES16.7)')'#Impacts    : ', REAL(ImpactnGlob)
+#if PARTICLES_COUPLING == 4
+IF (MPIRoot) &
+  WRITE(UNIT_stdOut,'(A14,ES16.7)')'#Collisions : ', REAL(CollisionnGlob)
+! Every processor nullifies
+CollisionnLoc = 0
+#endif /*PARTICLES_COUPLING == 4*/
 
 END SUBROUTINE ParticleInformation
 

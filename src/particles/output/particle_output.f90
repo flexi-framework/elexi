@@ -63,6 +63,7 @@ USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem
 USE MOD_Particle_Analyze_Vars   ,ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
 USE MOD_Particle_Boundary_Vars  ,ONLY: doParticleReflectionTrack
 USE MOD_Particle_Output_Vars
+USE MOD_Particle_Operations     ,ONLY: RemoveParticle
 USE MOD_Particle_Tools          ,ONLY: UpdateNextFreePosition,GetOffsetAndGlobalNumberOfParts
 USE MOD_Particle_Vars           ,ONLY: PartDataSize,TurbPartDataSize
 USE MOD_Particle_Vars           ,ONLY: PDM,PEM,PartState,PartSpecies,PartReflCount,PartIndex,nSpecies
@@ -134,7 +135,7 @@ DO pcount = 1,PDM%ParticleVecLength
   IF (.NOT. PDM%ParticleInside(pcount)) CYCLE
   IF (ANY(IEEE_IS_NAN(PartState(:,pcount)))) THEN
     nInvalidPart = nInvalidPart + 1
-    PDM%ParticleInside(pcount) = .FALSE.
+    CALL RemoveParticle(iPart)
   END IF
 END DO
 

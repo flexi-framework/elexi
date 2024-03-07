@@ -84,6 +84,7 @@ USE MOD_Particle_Intersection       ,ONLY: ComputePlanarCurvedIntersection
 USE MOD_Particle_Intersection       ,ONLY: ComputeBiLinearIntersection
 USE MOD_Particle_Mesh_Tools         ,ONLY: GetGlobalElemID,GetCNElemID,GetCNSideID,GetGlobalNonUniqueSideID
 USE MOD_Particle_Mesh_Vars          ,ONLY: ElemRadiusNGeo
+USE MOD_Particle_Operations         ,ONLY: RemoveParticle
 USE MOD_Particle_Surfaces_Vars      ,ONLY: SideType
 USE MOD_Particle_Tracking_vars,      ONLY: ntracks,MeasureTrackTime, CountNbOfLostParts , NbrOfLostParticles
 USE MOD_Particle_Vars               ,ONLY: PEM,PDM
@@ -341,8 +342,8 @@ DO iPart = 1,PDM%ParticleVecLength
           IF (isCriticalParallelInFace) THEN
             IPWRITE(UNIT_stdOut,'(I0,A)')    ' Warning: Particle located inside of face and moves parallel to side. Undefined position.'
             IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Removing particle with id: ',iPart
-            PartIsDone                = .TRUE.
-            PDM%ParticleInside(iPart) = .FALSE.
+            PartIsDone = .TRUE.
+            CALL RemoveParticle(iPart)
             IF(CountNbOfLostParts) NbrOfLostParticles = NbrOfLostParticles + 1
             EXIT
           END IF

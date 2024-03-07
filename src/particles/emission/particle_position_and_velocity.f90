@@ -318,7 +318,7 @@ IF (doPartIndex) THEN
                   , IERROR)
 END IF
 #else
-! in the seriell case, particles are only emitted on the current proc
+! in the serial case, particles are only emitted on the current processor
 Species(FractNbr)%Init(iInit)%sumOfMatchedParticles = Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles
 ! Assign PartIndex
 IF (doPartIndex) Species(FractNbr)%Init(iInit)%nPartsPerProc = 0

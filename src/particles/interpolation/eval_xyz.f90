@@ -221,7 +221,7 @@ USE MOD_Mesh_Vars,             ONLY: NGeo
 USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,    ONLY: wBaryCL_NGeo,XiCL_NGeo
 USE MOD_Particle_Mesh_Vars,    ONLY: ElemCurved,wBaryCL_NGeo1,XiCL_NGeo1
-USE MOD_Particle_Vars,         ONLY: PDM,PartState,LastPartPos
+! USE MOD_Particle_Vars,         ONLY: PDM,PartState,LastPartPos
 #if USE_MPI
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
@@ -253,14 +253,15 @@ REAL                      :: Utmp(1:nVar)
 !===================================================================================================================================
 
 ! Sanity check the values
-IF (ANY(IEEE_IS_NAN(X_in))) THEN
-  WRITE(UNIT_stdOut,'(A,I0,A,I0)')        ' NaN detected for PartID ', PartID, ' on proc ',myRank
-  WRITE(UNIT_stdOut,'(A18,3(1X,E27.16))') ' LastPosition   ', LastPartPos(1:3,PartID)
-  WRITE(UNIT_stdOut,'(A18,3(1X,E27.16))') ' Velocity       ', PartState  (4:6,PartID)
-  WRITE(UNIT_stdOut,'(A)')                ' Removing particle ...'
-  PDM%ParticleInside(PartID) = .FALSE.
-  RETURN
-END IF
+! IF (ANY(IEEE_IS_NAN(X_in))) THEN
+!   WRITE(UNIT_stdOut,'(A,I0,A,I0)')        ' NaN detected for PartID ', PartID, ' on proc ',myRank
+!   WRITE(UNIT_stdOut,'(A18,3(1X,E27.16))') ' LastPosition   ', LastPartPos(1:3,PartID)
+!   WRITE(UNIT_stdOut,'(A18,3(1X,E27.16))') ' Velocity       ', PartState  (4:6,PartID)
+!   WRITE(UNIT_stdOut,'(A)')                ' Removing particle ...'
+!   ! Explicit removal to avoid circular dependency
+!   PDM%ParticleInside(PartID) = .FALSE.
+!   RETURN
+! END IF
 
 #if USE_MPI
 ASSOCIATE( XCL_NGeo  =>  XCL_NGeo_Shared    &

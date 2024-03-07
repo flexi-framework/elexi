@@ -165,7 +165,7 @@ CASE(1) !PartBound%OpenBC)
 #endif
                                         )
   END IF
-  CALL RemoveParticle(iPart,alpha=alpha)
+  CALL RemoveParticle(iPart,BCID=SideInfo_Shared(SIDE_BCID,SideID),alpha=alpha)
 !-----------------------------------------------------------------------------------------------------------------------------------
 CASE(2) !PartBound%ReflectiveBC)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -226,6 +226,7 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleReflectionTrack,doParticleIm
 USE MOD_Particle_Boundary_Vars     ,ONLY: WriteMacroSurfaceValues
 USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
 USE MOD_Particle_Globals
+USE MOD_Particle_Operations        ,ONLY: RemoveParticle
 USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars              ,ONLY: Pt_temp,PDM
 USE MOD_Utils                      ,ONLY: ALMOSTZERO
@@ -348,7 +349,7 @@ IF (LowVeloRemove) THEN
   IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.&
     (v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold)) THEN
     Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
-    PDM%ParticleInside(PartID) = .FALSE.
+    CALL RemoveParticle(PartID)
     IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') ' Low velocity particle removed after impact. Velocity after reflection:', v_magnitude
   END IF
 END IF
@@ -374,6 +375,7 @@ USE MOD_Particle_Boundary_Vars     ,ONLY: LowVeloRemove
 USE MOD_Particle_Boundary_Vars     ,ONLY: doParticleImpactTrack
 USE MOD_Particle_Boundary_Tracking ,ONLY: StoreBoundaryParticleProperties
 USE MOD_Particle_Fracture          ,ONLY: DiffuseReflectionFracture
+USE MOD_Particle_Operations        ,ONLY: RemoveParticle
 USE MOD_Particle_Vars              ,ONLY: PartState,LastPartPos,Species,PartSpecies,PartReflCount
 USE MOD_Particle_Vars              ,ONLY: PDM
 #if USE_PARTROT
@@ -729,7 +731,7 @@ IF (LowVeloRemove) THEN
   IF ((Species(PartSpecies(PartID))%LowVeloThreshold.NE.0).AND.&
     (v_magnitude.LT.Species(PartSpecies(PartID))%LowVeloThreshold)) THEN
     Species(PartSpecies(PartID))%LowVeloCounter = Species(PartSpecies(PartID))%LowVeloCounter + 1
-    PDM%ParticleInside(PartID) = .FALSE.
+    CALL RemoveParticle(PartID)
     IPWRITE(UNIT_stdOut,'(I0,A,F12.6)') ' Low velocity particle removed after impact. Velocity after reflection:', v_magnitude
   END IF
 END IF

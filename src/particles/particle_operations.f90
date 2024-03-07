@@ -93,7 +93,7 @@ IF (doPartIndex) PartIndex(newParticleID) = PartIndex(PartID)
 END SUBROUTINE CreateParticle
 
 
-SUBROUTINE RemoveParticle(PartID,alpha,crossedBC)
+SUBROUTINE RemoveParticle(PartID,BCID,alpha,crossedBC)
 !===================================================================================================================================
 !> Removes a single particle "PartID" by setting the required variables.
 !> If CalcPartBalance = T: adds/substracts the particle to/from the respective counter
@@ -105,9 +105,10 @@ USE MOD_Particle_Analyze_Vars   ,ONLY: CalcPartBalance,nPartOut,PartEkinOut
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER, INTENT(IN)           :: PartID
-REAL, INTENT(OUT),OPTIONAL    :: alpha                   !< if removed during tracking optional alpha can be set to -1
-LOGICAL, INTENT(OUT),OPTIONAL :: crossedBC               !< optional flag is needed if particle removed on BC interaction
+INTEGER,INTENT(IN)           :: PartID
+INTEGER,INTENT(IN) ,OPTIONAL :: BCID                    !< ID of the boundary the particle crossed
+REAL   ,INTENT(OUT),OPTIONAL :: alpha                   !< if removed during tracking optional alpha can be set to -1
+LOGICAL,INTENT(OUT),OPTIONAL :: crossedBC               !< optional flag is needed if particle removed on BC interaction
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! LOCAL VARIABLES
 INTEGER                       :: iSpec
@@ -117,7 +118,7 @@ PDM%ParticleInside(PartID) = .FALSE.
 
 iSpec = PartSpecies(PartID)
 ! Count the number of particles per species and the kinetic energy per species
-IF (CalcPartBalance) THEN
+IF (CalcPartBalance .AND. PRESENT(BCID)) THEN
   nPartOut(iSpec)    = nPartOut(iSpec) + 1
   PartEkinOut(iSpec) = PartEkinOut(iSpec) + CalcEkinPart(PartID)
 END IF ! CalcPartBalance

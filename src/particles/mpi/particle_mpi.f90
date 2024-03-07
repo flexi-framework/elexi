@@ -355,29 +355,30 @@ SUBROUTINE MPIParticleSend()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack,doParticlePathTrack
-USE MOD_Particle_MPI_Vars,        ONLY:PartMPIExchange,PartCommSize,PartSendBuf,PartRecvBuf,PartTargetProc
-USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors,ExchangeProcToGlobalProc
-USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex,doPartIndex
-USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp,nSpecies
-USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
-USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
+USE MOD_Particle_Analyze_Vars,    ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
+USE MOD_Particle_MPI_Vars,        ONLY: PartMPIExchange,PartCommSize,PartSendBuf,PartRecvBuf,PartTargetProc
+USE MOD_Particle_MPI_Vars,        ONLY: nExchangeProcessors,ExchangeProcToGlobalProc
+USE MOD_Particle_Operations,      ONLY: RemoveParticle
+USE MOD_Particle_Vars,            ONLY: PartSpecies,PEM,PDM,PartPosRef,PartIndex,doPartIndex
+USE MOD_Particle_Vars,            ONLY: PartState,Pt_temp,nSpecies
+USE MOD_Particle_Vars,            ONLY: TurbPartState!,TurbPt_temp
+USE MOD_Particle_Tracking_Vars,   ONLY: TrackingMethod
 ! Variables for impact tracking
-USE MOD_Particle_Vars,            ONLY:PartReflCount
+USE MOD_Particle_Vars,            ONLY: PartReflCount
 USE MOD_Particle_Boundary_Vars
 #if PARABOLIC
 #if USE_RW
 ! Variables for RW model
-USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
+USE MOD_Particle_RandomWalk_Vars, ONLY: nRWVars
 #endif
 ! Variables for SGS model
-USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
+USE MOD_Particle_SGS_Vars,        ONLY: nSGSVars
 #endif
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars,bIter,N_Basset,Fbdt!,FbCoeffm,Fbi
+USE MOD_Particle_Vars,            ONLY: durdt,nBassetVars,bIter,N_Basset,Fbdt!,FbCoeffm,Fbi
 #endif /* USE_BASSETFORCE */
 #if ANALYZE_RHS
-USE MOD_Particle_Vars,            ONLY:Pt_ext
+USE MOD_Particle_Vars,            ONLY: Pt_ext
 #endif /* ANALYZE_RHS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -498,7 +499,7 @@ DO iProc=0,nExchangeProcessors-1
       ! increment message position to next element, PartCommSize.EQ.jPos
       iPos=iPos+PartCommSize
       ! particle is ready for send, now it can deleted
-      PDM%ParticleInside(iPart) = .FALSE.
+      CALL RemoveParticle(iPart)
     END IF ! Particle is particle with target proc-id equals local proc id
   END DO  ! iPart
 

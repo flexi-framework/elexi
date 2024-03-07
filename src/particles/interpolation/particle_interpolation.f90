@@ -432,10 +432,10 @@ ELSE
       CALL EvaluateFieldAndGradAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID,PartID&
                                         ,gradUx(:,:,:,:),gradUy(:,:,:,:),gradUz(:,:,:,:),U_RHS(:,:,:,:),grad)
     ELSE
+#endif
       CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID,PartID)
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
     END IF
-#else
-    CALL EvaluateFieldAtPhysPos(PartState(1:3,PartID),nVar,PP_N,U    (:,:,:,:),nVar_out,field,ElemID,PartID)
 #endif
   END IF ! TrackingMethod.EQ.REFMAPPING
 #if FV_ENABLED

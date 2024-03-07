@@ -1253,6 +1253,7 @@ USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfFluxSideSize,TriaSurfaceFlux
 USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfMeshSubSideData
 USE MOD_Particle_Surfaces_Vars  ,ONLY: BCdata_auxSF
 USE MOD_Particle_Timedisc_Vars  ,ONLY: RKdtFrac
+USE MOD_Particle_Tools          ,ONLY: GetNextFreePosition
 USE MOD_Particle_Vars           ,ONLY: Species,nSpecies,PDM,PEM
 USE MOD_Particle_Vars           ,ONLY: PartState,LastPartPos,PartSpecies
 USE MOD_Particle_Vars           ,ONLY: DoSurfaceFlux,DoPoissonRounding,DoTimeDepInflow
@@ -1492,31 +1493,27 @@ DO iSpec = 1,nSpecies
         DO iPart = 1,PartInsSubSide
           ! Get free PDM postion
           IF ((iPart.EQ.1).OR.PDM%ParticleInside(ParticleIndexNbr)) &
-              ParticleIndexNbr = PDM%nextFreePosition(iPartTotal + 1 + PDM%CurrentNextFreePosition)
+              ParticleIndexNbr = GetNextFreePosition(iPartTotal+1)
 
-          IF (ParticleIndexNbr .NE. 0) THEN
-            PartState(1:3,ParticleIndexNbr) = particle_positions(3*(iPart-1)+1:3*(iPart-1)+3)
+          PartState(1:3,ParticleIndexNbr) = particle_positions(3*(iPart-1)+1:3*(iPart-1)+3)
 
-            IF (Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal.AND.(.NOT.TriaSurfaceFlux)) THEN
-              ! use velo as dummy-storage for xi!
-              PartState(4:5,ParticleIndexNbr) = particle_xis(2*(iPart-1)+1:2*(iPart-1)+2)
-            END IF
+          IF (Species(iSpec)%Surfaceflux(iSF)%VeloIsNormal.AND.(.NOT.TriaSurfaceFlux)) THEN
+            ! use velo as dummy-storage for xi!
+            PartState(4:5,ParticleIndexNbr) = particle_xis(2*(iPart-1)+1:2*(iPart-1)+2)
+          END IF
 
-            ! shift LastPartPos minimal into cell for fail-safe tracking
-            LastPartPos(   1:3,ParticleIndexNbr) = PartState(1:3,ParticleIndexNbr)
-            PDM%ParticleInside(ParticleIndexNbr) = .TRUE.
-            PDM%IsNewPart(     ParticleIndexNbr) = .TRUE.
-            PEM%Element(       ParticleIndexNbr) = globElemID
-            ! needed when ParticlePush is not executed, e.g. "delay"
-            PEM%LastElement(   ParticleIndexNbr) = globElemID
-            iPartTotal = iPartTotal + 1
+          ! shift LastPartPos minimal into cell for fail-safe tracking
+          LastPartPos(   1:3,ParticleIndexNbr) = PartState(1:3,ParticleIndexNbr)
+          PDM%ParticleInside(ParticleIndexNbr) = .TRUE.
+          PDM%IsNewPart(     ParticleIndexNbr) = .TRUE.
+          PEM%Element(       ParticleIndexNbr) = globElemID
+          ! needed when ParticlePush is not executed, e.g. "delay"
+          PEM%LastElement(   ParticleIndexNbr) = globElemID
+          iPartTotal = iPartTotal + 1
 
 #if CODE_ANALYZE
-            CALL AnalyzePartPos(ParticleIndexNbr)
+          CALL AnalyzePartPos(ParticleIndexNbr)
 #endif /*CODE_ANALYZE*/
-          ELSE
-            CALL Abort(__STAMP__,'ERROR in ParticleSurfaceflux: ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
-          END IF
         END DO
 
         DEALLOCATE(particle_positions)
@@ -1545,14 +1542,16 @@ DO iSpec = 1,nSpecies
     IF (CalcPartBalance) THEN
       nPartIn(iSpec) = nPartIn(iSpec) + NbrOfParticle
       DO iPart = 1,NbrOfParticle
-        PositionNbr = PDM%nextFreePosition(iPart + PDM%CurrentNextFreePosition)
-        IF (PositionNbr.NE.0) PartEkinIn(PartSpecies(PositionNbr)) =  PartEkinIn(PartSpecies(PositionNbr)) + CalcEkinPart(PositionNbr)
+        PositionNbr = GetNextFreePosition(iPart)
+        PartEkinIn(PartSpecies(PositionNbr)) =  PartEkinIn(PartSpecies(PositionNbr)) + CalcEkinPart(PositionNbr)
       END DO ! iPart
     END IF ! CalcPartBalance
 
     ! instead of an UpdateNextfreePosition we update the particleVecLength only
-    PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
-    PDM%ParticleVecLength       = PDM%ParticleVecLength       + NbrOfParticle
+    IF(iPartTotal.GT.0) THEN
+      PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + NbrOfParticle
+      PDM%ParticleVecLength       = MAX(PDM%ParticleVecLength,GetNextFreePosition(0))
+    END IF
 
     MeasurePauseTime_SURFFLUX() !  LoadBalance
 
@@ -1864,6 +1863,7 @@ USE MOD_Particle_Globals        ,ONLY: VECNORM
 USE MOD_Particle_Surfaces       ,ONLY: CalcNormAndTangTriangle,CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars  ,ONLY: SurfMeshSubSideData,TriaSurfaceFlux
 USE MOD_Particle_Vars
+USE MOD_Particle_Tools          ,ONLY: GetNextFreePosition
 USE MOD_TimeDisc_Vars           ,ONLY: t
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1958,37 +1958,33 @@ END IF ! .NOT.VeloIsNormal
 SELECT CASE(TRIM(velocityDistribution))
   CASE('constant')
     DO i = NbrOfParticle-PartIns+1,NbrOfParticle
-      PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
-      IF (PositionNbr .NE. 0) THEN
-        !-- In case of side-normal velocities: calc n-vector at particle position, xi was saved in PartState(4:5)
-        IF (Species(FractNbr)%Surfaceflux(iSF)%VeloIsNormal .AND. TriaSurfaceFlux) THEN
-          vec_nIn(1:3) = SurfMeshSubSideData(iSample,jSample,BCSideID)%vec_nIn(1:3)
-          vec_t1 (1:3) = 0. ! dummy
-          vec_t2 (1:3) = 0. ! dummy
-        ELSE IF (Species(FractNbr)%Surfaceflux(iSF)%VeloIsNormal) THEN
-          CALL CalcNormAndTangBezier(nVec=vec_nIn(1:3),xi=PartState(4,PositionNbr),eta=PartState(5,PositionNbr),SideID=SideID )
-          vec_nIn(1:3) = -vec_nIn(1:3)
-          vec_t1 (1:3) = 0. ! dummy
-          vec_t2 (1:3) = 0. ! dummy
-        ELSE
-          vec_nIn(1:3) = VeloVecIC(1:3)
-        END IF ! VeloIsNormal
+      PositionNbr = GetNextFreePosition(i)
+      !-- In case of side-normal velocities: calc n-vector at particle position, xi was saved in PartState(4:5)
+      IF (Species(FractNbr)%Surfaceflux(iSF)%VeloIsNormal .AND. TriaSurfaceFlux) THEN
+        vec_nIn(1:3) = SurfMeshSubSideData(iSample,jSample,BCSideID)%vec_nIn(1:3)
+        vec_t1 (1:3) = 0. ! dummy
+        vec_t2 (1:3) = 0. ! dummy
+      ELSE IF (Species(FractNbr)%Surfaceflux(iSF)%VeloIsNormal) THEN
+        CALL CalcNormAndTangBezier(nVec=vec_nIn(1:3),xi=PartState(4,PositionNbr),eta=PartState(5,PositionNbr),SideID=SideID )
+        vec_nIn(1:3) = -vec_nIn(1:3)
+        vec_t1 (1:3) = 0. ! dummy
+        vec_t2 (1:3) = 0. ! dummy
+      ELSE
+        vec_nIn(1:3) = VeloVecIC(1:3)
+      END IF ! VeloIsNormal
 
-        !-- build complete velo-vector
-        Vec3D(1:3) = vec_nIn(1:3) * Species(FractNbr)%Surfaceflux(iSF)%VeloIC
-        PartState(4:6,PositionNbr) = Vec3D(1:3)
-      END IF ! PositionNbr .NE. 0
+      !-- build complete velo-vector
+      Vec3D(1:3) = vec_nIn(1:3) * Species(FractNbr)%Surfaceflux(iSF)%VeloIC
+      PartState(4:6,PositionNbr) = Vec3D(1:3)
     END DO ! i = ...NbrOfParticle
 
   CASE('fluid')
     DO i = NbrOfParticle-PartIns+1,NbrOfParticle
-      PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
-      IF (PositionNbr .NE. 0) THEN
-        vec_nIn(1:3) = VeloVecIC(1:3)
-        !-- build complete velo-vector
-        Vec3D(1:3) = vec_nIn(1:3) * VeloIC
-        PartState(4:6,PositionNbr) = Vec3D(1:3)
-      END IF ! PositionNbr .NE. 0
+      PositionNbr  = GetNextFreePosition(i)
+      vec_nIn(1:3) = VeloVecIC(1:3)
+      !-- build complete velo-vector
+      Vec3D(1:3)   = vec_nIn(1:3) * VeloIC
+      PartState(4:6,PositionNbr) = Vec3D(1:3)
 
     END DO ! i = ...NbrOfParticle
 

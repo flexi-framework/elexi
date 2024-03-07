@@ -477,8 +477,10 @@ USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI,PartMPIInsert,PartMPILocate
 USE MOD_Particle_MPI_Vars      ,ONLY: EmissionSendBuf,EmissionRecvBuf
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef,Species
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
-!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Particle_Tools         ,ONLY: GetNextFreePosition
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)            :: chunkSize
 INTEGER,INTENT(IN)            :: DimSend
@@ -788,20 +790,15 @@ DO i = 1, chunkSize
     ! Located particle on local proc.
     ELSE
       ! Get the next free position in the PDM array
-      ParticleIndexNbr = PDM%nextFreePosition(mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
-      IF (ParticleIndexNbr.NE.0) THEN
-        ! Fill the PartState manually to avoid a second localization
-        PartState(1:DimSend,ParticleIndexNbr) = particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+DimSend)
-        PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
-        IF (TrackingMethod.EQ.REFMAPPING) THEN
-          CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),ElemID)
-        END IF ! TrackingMethod.EQ.REFMAPPING
-        PEM%Element(ParticleIndexNbr)         = ElemID
-      ELSE
-        IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
-        IPWRITE(UNIT_stdOut,'(I0,A)')      " Increase value for [Part-maxParticleNumber]!"
-        CALL Abort(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
-      END IF
+      ParticleIndexNbr = GetNextFreePosition(mySumOfMatchedParticles + 1)
+      ! Fill the PartState manually to avoid a second localization
+      PartState(1:DimSend,ParticleIndexNbr) = particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+DimSend)
+      PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
+      IF (TrackingMethod.EQ.REFMAPPING) THEN
+        CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),ElemID)
+      END IF ! TrackingMethod.EQ.REFMAPPING
+      PEM%Element(ParticleIndexNbr)         = ElemID
+
       mySumOfMatchedParticles = mySumOfMatchedParticles + 1
       PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
     END IF ! ElemID.EQ.-1
@@ -930,20 +927,15 @@ DO i = 1,TotalNbrOfRecvParts
   IF (ElemInfo_Shared(ELEM_RANK,ElemID).NE.myRank) CYCLE
 
   ! Find a free position in the PDM array
-  ParticleIndexNbr = PDM%nextFreePosition(mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
-  IF (ParticleIndexNbr.NE.0) THEN
-     ! Fill the PartState manually to avoid a second localization
-     PartState(1:3,ParticleIndexNbr) = recvPartPos(DimSend*(i-1)+1:DimSend*(i-1)+3)
-     PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
-     IF (TrackingMethod.EQ.REFMAPPING) THEN
-       CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),ElemID)
-     END IF ! TrackingMethod.EQ.REFMAPPING
-     PEM%Element(ParticleIndexNbr)         = ElemID
-  ELSE
-    IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
-    IPWRITE(UNIT_stdOut,'(I0,A)')      " Increase value for [Part-maxParticleNumber]!"
-    CALL Abort(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
-  END IF
+  ParticleIndexNbr = GetNextFreePosition(mySumOfMatchedParticles + 1)
+  ! Fill the PartState manually to avoid a second localization
+  PartState(1:3,ParticleIndexNbr) = recvPartPos(DimSend*(i-1)+1:DimSend*(i-1)+3)
+  PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
+  IF (TrackingMethod.EQ.REFMAPPING) THEN
+    CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),ElemID)
+  END IF ! TrackingMethod.EQ.REFMAPPING
+  PEM%Element(ParticleIndexNbr)         = ElemID
+
   mySumOfMatchedParticles = mySumOfMatchedParticles + 1
   PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
 END DO
@@ -969,24 +961,18 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
 
   DO i = 1,PartMPILocate%nPartsRecv(1,iProc)
     ! Find a free position in the PDM array
-    ParticleIndexNbr = PDM%nextFreePosition(mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
-    IF (ParticleIndexNbr.NE.0) THEN
-      ! Fill the PartState manually to avoid a second localization
-      PartState(1:3,ParticleIndexNbr) = EmissionRecvBuf(iProc)%content(PartCommSize*(i-1)+1:PartCommSize*(i-1)+3)
-      IF (TrackingMethod.EQ.REFMAPPING) THEN
-        PartPosRef(1:3,ParticleIndexNbr) = EmissionRecvBuf(iProc)%content(PartCommSize*(i-1)+4:PartCommSize*(i-1)+6)
-      END IF ! TrackingMethod.EQ.REFMAPPING
-      PEM%Element(ParticleIndexNbr) = INT(EmissionRecvBuf(iProc)%content(PartCommSize*(i)),KIND=4)
+    ParticleIndexNbr = GetNextFreePosition(mySumOfMatchedParticles + 1)
+    ! Fill the PartState manually to avoid a second localization
+    PartState(1:3,ParticleIndexNbr) = EmissionRecvBuf(iProc)%content(PartCommSize*(i-1)+1:PartCommSize*(i-1)+3)
+    IF (TrackingMethod.EQ.REFMAPPING) THEN
+      PartPosRef(1:3,ParticleIndexNbr) = EmissionRecvBuf(iProc)%content(PartCommSize*(i-1)+4:PartCommSize*(i-1)+6)
+    END IF ! TrackingMethod.EQ.REFMAPPING
+    PEM%Element(ParticleIndexNbr) = INT(EmissionRecvBuf(iProc)%content(PartCommSize*(i)),KIND=4)
 
-      PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
-!      IF (TrackingMethod.EQ.REFMAPPING) THEN
-!        CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),PEM%Element(ParticleIndexNbr))
-!      END IF ! TrackingMethod.EQ.REFMAPPING
-    ELSE
-      IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
-      IPWRITE(UNIT_stdOut,'(I0,A)')           " Increase value for [Part-maxParticleNumber]!"
-      CALL Abort(__STAMP__,'ERROR in ParticleMPIEmission:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
-    END IF
+    PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
+!     IF (TrackingMethod.EQ.REFMAPPING) THEN
+!       CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),PEM%Element(ParticleIndexNbr))
+!     END IF ! TrackingMethod.EQ.REFMAPPING
     mySumOfMatchedParticles = mySumOfMatchedParticles + 1
     PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
   END DO

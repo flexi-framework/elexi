@@ -117,11 +117,17 @@ CALL prms%CreateIntOption(          'NbrOfRegions'             , 'Number of regi
                                                                , '0')
 
 
-CALL prms%CreateRealOption(         'Part-MaxParticleNumber'   , 'Maximum number of Particles for the whole simulation. '        //&
+CALL prms%CreateRealOption(         'Part-MaxParticleNumber'   , 'Maximum allowed number of Particles for the whole simulation. '//&
                                                                  'Note that this property is a global value and will be divided '//&
                                                                  'by the number of processors before it is used for '            //&
-                                                                 'processor-local array allocation sizes during initialization.'   &
-                                                               , '1.')
+                                                                 'processor-local array allocation sizes during initialization. '//&
+                                                                 '0 corresponds to no limit!')
+CALL prms%CreateRealOption(         'Part-MaxPartNumIncrease'  , 'How much shall the PDM%MaxParticleNumber be increased if it '  //&
+                                                                 'is full'                                                         &
+                                                               , '0.1')
+CALL prms%CreateLogicalOption(      'Part-RearrangePartIDs'    , 'Rearrange PartIDs in the process of reducing maxPartNum to '   //&
+                                                                 'allow lower memory usage'                                        &
+                                                               , '.TRUE.')
 CALL prms%CreateIntOption(          'Part-NumberOfRandomSeeds' , 'Number of random seeds for particle random number generator'     &
                                                                , '0')
 CALL prms%CreateIntOption(          'Part-RandomSeed[$]'       , 'Seed [$] for Random Number Generator'                            &
@@ -633,6 +639,7 @@ LOGICAL,INTENT(IN),OPTIONAL      :: doLoadBalance_opt
 ! LOCAL VARIABLES
 REAL              :: maxParticleNumberGlobal,maxParticleNumberUniform
 INTEGER           :: minParticleNumberLocal,maxParticleNumberLocal,sumParticleNumberLocal
+CHARACTER(32)     :: hilf
 !===================================================================================================================================
 
 IF(ParticlesInitIsDone)THEN
@@ -645,18 +652,21 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES...'
 CALL InitElemVolumes()
 
 ! Read global number of particles as datatype real to allow number inputs in the format of, e.g., 5e6
+WRITE(UNIT=hilf,FMT='(I0)') HUGE(PDM%maxAllowedParticleNumber)
 maxParticleNumberGlobal  = GETREAL('Part-MaxParticleNumber')
+PDM%MaxPartNumIncrease   = GETREAL('Part-MaxPartNumIncrease','0.1')
+PDM%RearrangePartIDs     = GETLOGICAL('Part-RearrangePartIDs','.TRUE.')
 ! Divide by number of processors, but use at least 2 (at least one next free position in the case of MPI)
 maxParticleNumberUniform = MAX(maxParticleNumberGlobal/nProcessors,2.)
 ! Increase the max particle number according to the local volume to account for element size differences
 IF (maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).GT. HUGE(INT(1,KIND=4)) .OR. &
     maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).LT.-HUGE(INT(1,KIND=4)))     &
   CALL CollectiveStop(__STAMP__,'maxParticleNumber too big for current number of processors. Decrease maxParticleNumber or increase nProcs!')
-PDM%maxParticleNumber    = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)))
+PDM%maxAllowedParticleNumber = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)))
 
-minParticleNumberLocal = PDM%maxParticleNumber
-maxParticleNumberLocal = PDM%maxParticleNumber
-sumParticleNumberLocal = PDM%maxParticleNumber
+minParticleNumberLocal = PDM%maxAllowedParticleNumber
+maxParticleNumberLocal = PDM%maxAllowedParticleNumber
+sumParticleNumberLocal = PDM%maxAllowedParticleNumber
 #if USE_MPI
 IF (MPIRoot) THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,minParticleNumberLocal,1,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,iERROR)
@@ -671,7 +681,7 @@ END IF
 CALL PrintOption('Particle NUMBER (Min/Max/Glob)','CALC',IntArrayOpt=(/minParticleNumberLocal &
                                                                       ,maxParticleNumberLocal &
                                                                       ,sumParticleNumberLocal/))
-
+PDM%maxParticleNumber    = 1
 nGlobalNbrOfParticles    = 0
 nGlobalNbrOfParticles(4) = HUGE(nGlobalNbrOfParticles(4))
 

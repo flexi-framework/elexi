@@ -14,16 +14,21 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-! Contains tools for particles
+! Contains tools for particle related operations. This routine uses MOD_Particle_Boundary_Tools, but not vice versa!
 !===================================================================================================================================
 MODULE MOD_Particle_Tools
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE UpdateNextFreePosition
   MODULE PROCEDURE UpdateNextFreePosition
+END INTERFACE
+
+INTERFACE GetNextFreePosition
+  MODULE PROCEDURE GetNextFreePosition
 END INTERFACE
 
 INTERFACE DiceUnitVector
@@ -38,10 +43,21 @@ INTERFACE GetOffsetAndGlobalNumberOfParts
   MODULE PROCEDURE GetOffsetAndGlobalNumberOfParts
 END INTERFACE
 
+INTERFACE IncreaseMaxParticleNumber
+  MODULE PROCEDURE IncreaseMaxParticleNumber
+END INTERFACE
+
+INTERFACE ReduceMaxParticleNumber
+  MODULE PROCEDURE ReduceMaxParticleNumber
+END INTERFACE
+
 PUBLIC :: UpdateNextFreePosition
+PUBLIC :: GetNextFreePosition
 PUBLIC :: DiceUnitVector
 ! PUBLIC :: StoreLostParticleProperties
 PUBLIC :: GetOffsetAndGlobalNumberOfParts
+PUBLIC :: IncreaseMaxParticleNumber
+PUBLIC :: ReduceMaxParticleNumber
 !===================================================================================================================================
 
 CONTAINS
@@ -124,6 +140,101 @@ PDM%nextFreePosition(counter+1:PDM%maxParticleNumber) = 0
 IF (counter+1.GT.PDM%MaxParticleNumber) PDM%nextFreePosition(PDM%MaxParticleNumber) = 0
 
 END SUBROUTINE UpdateNextFreePosition
+
+
+FUNCTION GetNextFreePosition(Offset)
+!===================================================================================================================================
+!> Returns the next free position in the particle vector, if no space is available it increases the maximum particle number
+!> ATTENTION: If optional argument is used, the PDM%CurrentNextFreePosition will not be updated
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Particle_Vars        ,ONLY: PDM
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,OPTIONAL,INTENT(IN) :: Offset
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+INTEGER                     :: GetNextFreePosition
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                     :: i
+!===================================================================================================================================
+IF (PRESENT(Offset)) THEN
+  IF (PDM%CurrentNextFreePosition+Offset.GT.PDM%MaxParticleNumber) THEN
+    CALL IncreaseMaxParticleNumber()
+
+    IF (PDM%CurrentNextFreePosition.GT.PDM%MaxParticleNumber) THEN
+      ! This only happens if PDM%CurrentNextFreePosition+Offset is way off (which shouldn't happen)
+      IPWRITE(UNIT_stdOut,'(A)') "WARNING: PDM%CurrentNextFreePosition+Offset is way off in particle_tools.f90 GetNextFreePosition(Offset), 1"
+      CALL IncreaseMaxParticleNumber(CEILING((PDM%CurrentNextFreePosition+Offset)*(1+PDM%MaxPartNumIncrease)-PDM%MaxParticleNumber))
+    END IF
+  END IF
+
+  GetNextFreePosition = PDM%nextFreePosition(PDM%CurrentNextFreePosition+Offset)
+  ! If next free position is equal 0, determine how much more particles are needed to get a position within the particle vector
+  IF (GetNextFreePosition.EQ.0) THEN
+    CALL IncreaseMaxParticleNumber()
+
+    GetNextFreePosition = PDM%nextFreePosition(PDM%CurrentNextFreePosition+Offset)
+    IF (GetNextFreePosition.EQ.0) THEN
+      ! This only happens if PDM%CurrentNextFreePosition+Offset is way off (which shouldn't happen)
+      IPWRITE(UNIT_stdOut,'(A)') "WARNING: PDM%CurrentNextFreePosition+Offset is way off in particle_tools.f90 GetNextFreePosition(Offset), 2"
+      IF (PDM%nextFreePosition(1).EQ.0) THEN
+        i = 0
+      ELSE
+        i = PDM%CurrentNextFreePosition+Offset
+        DO WHILE(PDM%nextFreePosition(i).EQ.0.AND.i.GT.0)
+          i = i - 1
+        END DO
+      END IF
+      ! Increase the maxpartnum + margin
+      CALL IncreaseMaxParticleNumber(CEILING((PDM%CurrentNextFreePosition+Offset-i)*(1+PDM%MaxPartNumIncrease)+PDM%maxParticleNumber*PDM%MaxPartNumIncrease))
+      GetNextFreePosition = PDM%nextFreePosition(PDM%CurrentNextFreePosition+Offset)
+    END IF
+  END IF
+ELSE
+  PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + 1
+  IF(PDM%CurrentNextFreePosition.GT.PDM%MaxParticleNumber) THEN
+    CALL IncreaseMaxParticleNumber()
+
+    IF (PDM%CurrentNextFreePosition.GT.PDM%MaxParticleNumber) THEN
+      ! This only happens if PDM%CurrentNextFreePosition is way off (which shouldn't happen)
+      IPWRITE(UNIT_stdOut,'(A)') "WARNING: PDM%CurrentNextFreePosition is way off in particle_tools.f90 GetNextFreePosition(), 1"
+      CALL IncreaseMaxParticleNumber(CEILING((PDM%CurrentNextFreePosition)*(1+PDM%MaxPartNumIncrease)-PDM%MaxParticleNumber))
+    END IF
+  END IF
+
+  GetNextFreePosition = PDM%nextFreePosition(PDM%CurrentNextFreePosition)
+  ! If next free position is equal 0, determine how much more particles are needed to get a position within the particle vector
+  IF(GetNextFreePosition.EQ.0) THEN
+    CALL IncreaseMaxParticleNumber()
+    GetNextFreePosition = PDM%nextFreePosition(PDM%CurrentNextFreePosition)
+    IF (GetNextFreePosition.EQ.0) THEN
+      ! This only happens if PDM%CurrentNextFreePosition is way off (which shouldn't happen)
+      IPWRITE(UNIT_stdOut,'(A)') "WARNING: PDM%CurrentNextFreePosition is way off in particle_tools.f90 GetNextFreePosition(), 2"
+      IF (PDM%nextFreePosition(1).EQ.0) THEN
+        i = 0
+      ELSE
+        i = PDM%CurrentNextFreePosition
+        DO WHILE(PDM%nextFreePosition(i).EQ.0.AND.i.GT.0)
+          i = i - 1
+        END DO
+      END IF
+      ! Increase the maxpartnum + margin
+      CALL IncreaseMaxParticleNumber(CEILING((PDM%CurrentNextFreePosition-i)*(1+PDM%MaxPartNumIncrease)+PDM%maxParticleNumber*PDM%MaxPartNumIncrease))
+      GetNextFreePosition = PDM%nextFreePosition(PDM%CurrentNextFreePosition)
+    END IF
+  END IF
+
+  IF(PDM%ParticleInside(GetNextFreePosition)) CALL Abort(__STAMP__,'This Particle is already in use',IntInfo=GetNextFreePosition)
+  IF(GetNextFreePosition.GT.PDM%ParticleVecLength) PDM%ParticleVecLength = GetNextFreePosition
+END IF
+IF(GetNextFreePosition.EQ.0) CALL Abort(__STAMP__,'This should not happen, PDM%MaxParticleNumber reached',IntInfo=PDM%MaxParticleNumber)
+
+END FUNCTION GetNextFreePosition
 
 
 FUNCTION DiceUnitVector()
@@ -337,5 +448,283 @@ IF(GetMinMaxNbrOfParticles)THEN
 END IF ! GetMinMaxNbrOfParticles
 
 END SUBROUTINE GetOffsetAndGlobalNumberOfParts
+
+
+SUBROUTINE IncreaseMaxParticleNumber(Amount)
+!===================================================================================================================================
+! Increases MaxParticleNumber and increases size of all depended arrays
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Array_Operations            ,ONLY: ChangeSizeArray
+USE MOD_Particle_Interpolation_Vars ,ONLY: FieldAtParticle
+USE MOD_Particle_Vars
+#if USE_MPI
+USE MOD_Particle_MPI_Vars           ,ONLY: PartTargetProc
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN),OPTIONAL :: Amount
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                       :: NewSize,i,ii
+!===================================================================================================================================
+IF (PRESENT(Amount)) THEN
+  IF (Amount.EQ.0) RETURN
+  NewSize = PDM%MaxParticleNumber+Amount
+  IF (NewSize.GT.PDM%maxAllowedParticleNumber) &
+    CALL Abort(__STAMP__,'More Particles needed than allowed in PDM%maxAllowedParticleNumber',IntInfo=NewSize)
+ELSE
+  NewSize = MAX(CEILING(PDM%MaxParticleNumber*(1+PDM%MaxPartNumIncrease)),PDM%MaxParticleNumber+1)
+  IF (PDM%MaxParticleNumber.GE.PDM%maxAllowedParticleNumber) &
+    CALL Abort(__STAMP__,'More Particles needed than allowed in PDM%maxAllowedParticleNumber',IntInfo=NewSize)
+  NewSize = MIN(NewSize,PDM%maxAllowedParticleNumber)
+END IF
+
+IF(ALLOCATED(PEM%Element))        CALL ChangeSizeArray(PEM%Element       ,PDM%maxParticleNumber,NewSize)
+IF(ALLOCATED(PEM%lastElement))    CALL ChangeSizeArray(PEM%lastElement   ,PDM%maxParticleNumber,NewSize)
+! IF(ALLOCATED(PEM%pNext))          CALL ChangeSizeArray(PEM%pNext         ,PDM%maxParticleNumber,NewSize)
+
+IF(ALLOCATED(PDM%ParticleInside)) CALL ChangeSizeArray(PDM%ParticleInside,PDM%maxParticleNumber,NewSize,.FALSE.)
+IF(ALLOCATED(PDM%IsNewPart))      CALL ChangeSizeArray(PDM%IsNewPart     ,PDM%maxParticleNumber,NewSize,.FALSE.)
+
+IF(ALLOCATED(PartState))          CALL ChangeSizeArray(PartState         ,PDM%maxParticleNumber,NewSize,0.)
+IF(ALLOCATED(TurbPartState))      CALL ChangeSizeArray(TurbPartState     ,PDM%maxParticleNumber,NewSize,0.)
+IF(ALLOCATED(LastPartPos))        CALL ChangeSizeArray(LastPartPos       ,PDM%maxParticleNumber,NewSize)
+IF(ALLOCATED(PartPosRef))         CALL ChangeSizeArray(PartPosRef        ,PDM%maxParticleNumber,NewSize,-888.)
+IF(ALLOCATED(PartReflCount))      CALL ChangeSizeArray(PartReflCount     ,PDM%maxParticleNumber,NewSize,0)
+IF(ALLOCATED(PartSpecies))        CALL ChangeSizeArray(PartSpecies       ,PDM%maxParticleNumber,NewSize,0)
+IF(ALLOCATED(PartIndex))          CALL ChangeSizeArray(PartIndex         ,PDM%maxParticleNumber,NewSize,0)
+
+IF(ALLOCATED(Pt))                 CALL ChangeSizeArray(Pt                ,PDM%maxParticleNumber,NewSize,0.)
+IF(ALLOCATED(Pt_temp))            CALL ChangeSizeArray(Pt_temp           ,PDM%maxParticleNumber,NewSize,0.)
+IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize)
+
+#if USE_MPI
+IF(ALLOCATED(PartTargetProc))     CALL ChangeSizeArray(PartTargetProc    ,PDM%maxParticleNumber,NewSize)
+#endif
+
+IF(ALLOCATED(PDM%nextFreePosition)) THEN
+  CALL ChangeSizeArray(PDM%nextFreePosition,PDM%maxParticleNumber,NewSize,0)
+
+  ! Search for first entry where new poition is available
+  i = 1
+  DO WHILE(PDM%nextFreePosition(i).NE.0)
+    i = i+1
+  END DO
+  i = i-1
+  ! Fill the free spots with the new entrys
+  DO ii = 1,NewSize-PDM%MaxParticleNumber
+    PDM%nextFreePosition(i+ii) = ii+PDM%MaxParticleNumber
+  END DO
+END IF
+
+PDM%MaxParticleNumber = NewSize
+
+END SUBROUTINE IncreaseMaxParticleNumber
+
+
+SUBROUTINE ReduceMaxParticleNumber()
+!===================================================================================================================================
+! Reduces MaxParticleNumber and increases size of all depended arrays
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Array_Operations            ,ONLY: ChangeSizeArray
+USE MOD_Particle_Interpolation_Vars ,ONLY: FieldAtParticle
+USE MOD_Particle_Vars
+#if USE_MPI
+USE MOD_Particle_MPI_Vars           ,ONLY: PartTargetProc
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                       :: NewSize,i,ii,nPart
+!===================================================================================================================================
+
+nPart = 0
+DO i = 1,PDM%ParticleVecLength
+  IF (PDM%ParticleInside(i)) nPart = nPart + 1
+END DO
+
+! Reduce Arrays only for at least PDM%maxParticleNumber*PDM%MaxPartNumIncrease free spots
+IF (nPart.GE.PDM%maxParticleNumber/(1.+PDM%MaxPartNumIncrease)**2) RETURN
+
+! Maintain nPart*PDM%MaxPartNumIncrease free spots
+Newsize = MAX(CEILING(nPart*(1.+PDM%MaxPartNumIncrease)),1)
+IF (Newsize.EQ.PDM%maxParticleNumber) RETURN
+
+IF (.NOT.PDM%RearrangePartIDs) THEN
+  ! Search for highest occupied particle index and set Newsize to this Value
+  i = PDM%maxParticleNumber
+  DO WHILE(.NOT.PDM%ParticleInside(i).OR.i.EQ.NewSize)
+    i = i-1
+  END DO
+  NewSize = i
+ELSE
+  ! Rearrange particles with IDs>NewSize to lower IDs
+  DO i = NewSize+1,PDM%maxParticleNumber
+    IF (PDM%ParticleInside(i)) THEN
+      PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + 1
+      ii = PDM%nextFreePosition(PDM%CurrentNextFreePosition)
+      IF(ii.EQ.0.OR.ii.GT.NewSize) THEN
+        CALL UpdateNextFreePosition()
+        PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + 1
+        ii = PDM%nextFreePosition(PDM%CurrentNextFreePosition)
+        IF (ii.EQ.0.OR.ii.GT.NewSize) CALL Abort(__STAMP__,'Error in particle re-arrange!')
+      END IF
+      IF (PDM%ParticleVecLength.LT.ii) PDM%ParticleVecLength = ii
+      CALL ChangePartID(i,ii)
+    END IF
+  END DO
+END IF
+
+IF(ALLOCATED(PEM%Element))        CALL ChangeSizeArray(PEM%Element       ,PDM%maxParticleNumber,NewSize)
+IF(ALLOCATED(PEM%lastElement))    CALL ChangeSizeArray(PEM%lastElement   ,PDM%maxParticleNumber,NewSize)
+! IF(ALLOCATED(PEM%pNext))          CALL ChangeSizeArray(PEM%pNext         ,PDM%maxParticleNumber,NewSize)
+
+IF(ALLOCATED(PDM%ParticleInside)) CALL ChangeSizeArray(PDM%ParticleInside,PDM%maxParticleNumber,NewSize,.FALSE.)
+IF(ALLOCATED(PDM%IsNewPart))      CALL ChangeSizeArray(PDM%IsNewPart     ,PDM%maxParticleNumber,NewSize,.FALSE.)
+
+IF(ALLOCATED(PartState))          CALL ChangeSizeArray(PartState         ,PDM%maxParticleNumber,NewSize,0.)
+IF(ALLOCATED(TurbPartState))      CALL ChangeSizeArray(TurbPartState     ,PDM%maxParticleNumber,NewSize,0.)
+IF(ALLOCATED(LastPartPos))        CALL ChangeSizeArray(LastPartPos       ,PDM%maxParticleNumber,NewSize)
+IF(ALLOCATED(PartPosRef))         CALL ChangeSizeArray(PartPosRef        ,PDM%maxParticleNumber,NewSize,-888.)
+IF(ALLOCATED(PartReflCount))      CALL ChangeSizeArray(PartReflCount     ,PDM%maxParticleNumber,NewSize,0)
+IF(ALLOCATED(PartSpecies))        CALL ChangeSizeArray(PartSpecies       ,PDM%maxParticleNumber,NewSize,0)
+IF(ALLOCATED(PartIndex))          CALL ChangeSizeArray(PartIndex         ,PDM%maxParticleNumber,NewSize,0)
+
+IF(ALLOCATED(Pt))                 CALL ChangeSizeArray(Pt                ,PDM%maxParticleNumber,NewSize,0.)
+IF(ALLOCATED(Pt_temp))            CALL ChangeSizeArray(Pt_temp           ,PDM%maxParticleNumber,NewSize,0.)
+IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize)
+
+#if USE_MPI
+IF(ALLOCATED(PartTargetProc))     CALL ChangeSizeArray(PartTargetProc    ,PDM%maxParticleNumber,NewSize)
+#endif
+
+IF(ALLOCATED(PDM%nextFreePosition)) THEN
+  CALL ChangeSizeArray(PDM%nextFreePosition,PDM%maxParticleNumber,NewSize,0)
+
+  ! Set all NextFreePositions to zero which points to a partID>NewSize
+  DO i = 1,NewSize
+    IF(PDM%nextFreePosition(i).GT.NewSize) PDM%nextFreePosition(i) = 0
+  END DO
+END IF
+
+IF (PDM%ParticleVecLength.GT.NewSize) PDM%ParticleVecLength = NewSize
+PDM%MaxParticleNumber = NewSize
+
+CALL UpdateNextFreePosition()
+
+END SUBROUTINE ReduceMaxParticleNumber
+
+
+SUBROUTINE ChangePartID(OldID,NewID)
+!===================================================================================================================================
+! Change PartID from OldID to NewID
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars                   ,ONLY: nElems,offsetElem
+USE MOD_Particle_Interpolation_Vars ,ONLY: FieldAtParticle
+USE MOD_Particle_Vars
+#if USE_MPI
+USE MOD_Particle_MPI_Vars           ,ONLY: PartTargetProc
+#endif /*USE_MPI*/
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)        :: OldID
+INTEGER,INTENT(IN)        :: NewID
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                   :: i,TempPartID,LocElemID
+!===================================================================================================================================
+
+IF(ALLOCATED(PEM%Element))     PEM%Element(NewID)     = PEM%Element(OldID)
+IF(ALLOCATED(PEM%lastElement)) PEM%lastElement(NewID) = PEM%lastElement(OldID)
+IF(ALLOCATED(PEM%pNext)) THEN
+  PEM%pNext(NewID) = PEM%pNext(OldID)
+  ! Update pNext onto this particle
+  LocElemID  = PEM%Element(OldID) - offsetElem
+  ! Ignore mapping for particle to be sent
+  IF (LocElemID.GE.1 .AND. LocElemID.LE.nElems) THEN
+    TempPartID = PEM%pStart(LocElemID)
+    IF (TempPartID.EQ.OldID) THEN
+      PEM%pStart(LocElemID) = NewID
+    ELSE
+      DO i=1,PEM%pNumber(LocElemID)
+        IF(PEM%pNext(TempPartID).EQ.OldID) THEN
+          PEM%pNext(TempPartID) = NewID
+          EXIT
+        END IF
+        TempPartID = PEM%pNext(TempPartID)
+      END DO
+    END IF
+  END IF
+END IF
+
+IF(ALLOCATED(PDM%ParticleInside)) THEN
+  PDM%ParticleInside(NewID) = PDM%ParticleInside(OldID)
+  PDM%ParticleInside(OldID) = .FALSE.
+END IF
+IF(ALLOCATED(PDM%IsNewPart)) THEN
+  PDM%IsNewPart(NewID)      = PDM%IsNewPart(OldID)
+  PDM%IsNewPart(OldID)      = .FALSE.
+END IF
+
+IF(ALLOCATED(PartState)) THEN
+  PartState(:,NewID)        = PartState(:,OldID)
+  PartState(:,OldID)        = 0.
+END IF
+IF(ALLOCATED(TurbPartState)) THEN
+  TurbPartState(:,NewID)    = TurbPartState(:,OldID)
+  TurbPartState(:,OldID)    = 0.
+END IF
+IF(ALLOCATED(LastPartPos)) THEN
+  LastPartPos(:,NewID)      = LastPartPos(:,OldID)
+END IF
+IF(ALLOCATED(PartPosRef)) THEN
+  PartPosRef(:,NewID)       = PartPosRef(:,OldID)
+  PartPosRef(:,OldID)       = -888.
+END IF
+IF(ALLOCATED(PartReflCount)) THEN
+  PartReflCount(NewID)      = PartReflCount(OldID)
+  PartReflCount(OldID)      = 0
+END IF
+IF(ALLOCATED(PartSpecies)) THEN
+  PartSpecies(NewID)        = PartSpecies(OldID)
+  PartSpecies(OldID)        = 0
+END IF
+IF(ALLOCATED(PartIndex)) THEN
+  PartIndex(NewID)          = PartIndex(OldID)
+  PartIndex(OldID)          = 0
+END IF
+
+IF(ALLOCATED(Pt)) THEN
+  Pt(:,NewID)               = Pt(:,OldID)
+  Pt(:,OldID)               = 0.
+END IF
+IF(ALLOCATED(Pt_temp)) THEN
+  Pt_temp(:,NewID)          = Pt_temp(:,OldID)
+  Pt_temp(:,OldID)          = 0.
+END IF
+IF(ALLOCATED(FieldAtParticle)) THEN
+  FieldAtParticle(:,NewID)  = FieldAtParticle(:,OldID)
+END IF
+
+#if USE_MPI
+IF(ALLOCATED(PartTargetProc)) PartTargetProc(NewID) = PartTargetProc(OldID)
+#endif
+
+END SUBROUTINE ChangePartID
+
 
 END MODULE MOD_Particle_Tools

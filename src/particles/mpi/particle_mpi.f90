@@ -134,19 +134,19 @@ SUBROUTINE InitParticleCommSize()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Analyze_Vars,    ONLY:doParticleDispersionTrack,doParticlePathTrack
-USE MOD_Particle_Boundary_Vars,   ONLY:doParticleReflectionTrack
+USE MOD_Particle_Analyze_Vars,    ONLY: doParticleDispersionTrack,doParticlePathTrack
+USE MOD_Particle_Boundary_Vars,   ONLY: doParticleReflectionTrack
 USE MOD_Particle_MPI_Vars
-USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
-USE MOD_Particle_Vars,            ONLY:PDM,doPartIndex
+USE MOD_Particle_Tracking_Vars,   ONLY: TrackingMethod
+USE MOD_Particle_Vars,            ONLY: PDM,doPartIndex
 #if PARABOLIC
 #if USE_RW
-USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
+USE MOD_Particle_RandomWalk_Vars, ONLY: nRWVars
 #endif
-USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars!,SGSinUse
+USE MOD_Particle_SGS_Vars,        ONLY: nSGSVars!,SGSinUse
 #endif
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,            ONLY:nBassetVars,N_Basset!,FbCoeffm
+USE MOD_Particle_Vars,            ONLY: nBassetVars,N_Basset!,FbCoeffm
 #endif /* USE_BASSETFORCE */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -608,29 +608,30 @@ SUBROUTINE MPIParticleRecv()
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Particle_Analyze_Vars,    ONLY:PartPath,doParticleDispersionTrack,doParticlePathTrack
-USE MOD_Particle_MPI_Vars,        ONLY:PartMPIExchange,PartCommSize,PartRecvBuf,PartSendBuf
-USE MOD_Particle_MPI_Vars,        ONLY:nExchangeProcessors
-USE MOD_Particle_Vars,            ONLY:PartSpecies,PEM,PDM,PartPosRef,PartIndex,doPartIndex
-USE MOD_Particle_Vars,            ONLY:PartState,Pt_temp,nSpecies
-USE MOD_Particle_Vars,            ONLY:TurbPartState!,TurbPt_temp
-USE MOD_Particle_Tracking_Vars,   ONLY:TrackingMethod
+USE MOD_Particle_Analyze_Vars,    ONLY: PartPath,doParticleDispersionTrack,doParticlePathTrack
+USE MOD_Particle_MPI_Vars,        ONLY: PartMPIExchange,PartCommSize,PartRecvBuf,PartSendBuf
+USE MOD_Particle_MPI_Vars,        ONLY: nExchangeProcessors
+USE MOD_Particle_Vars,            ONLY: PartSpecies,PEM,PDM,PartPosRef,PartIndex,doPartIndex
+USE MOD_Particle_Vars,            ONLY: PartState,Pt_temp,nSpecies
+USE MOD_Particle_Vars,            ONLY: TurbPartState!,TurbPt_temp
+USE MOD_Particle_Tools,           ONLY: GetNextFreePosition
+USE MOD_Particle_Tracking_Vars,   ONLY: TrackingMethod
 ! variables for impact tracking
-USE MOD_Particle_Vars,            ONLY:PartReflCount
+USE MOD_Particle_Vars,            ONLY: PartReflCount
 USE MOD_Particle_Boundary_Vars
 #if PARABOLIC
 #if USE_RW
 ! Variables for RW model
-USE MOD_Particle_RandomWalk_Vars, ONLY:nRWVars
+USE MOD_Particle_RandomWalk_Vars, ONLY: nRWVars
 #endif
 ! Variables for SGS model
-USE MOD_Particle_SGS_Vars,        ONLY:nSGSVars
+USE MOD_Particle_SGS_Vars,        ONLY: nSGSVars
 #endif
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,            ONLY:durdt,nBassetVars,N_Basset,bIter,Fbdt!,FbCoeffm,Fbi
+USE MOD_Particle_Vars,            ONLY: durdt,nBassetVars,N_Basset,bIter,Fbdt!,FbCoeffm,Fbi
 #endif /* USE_BASSETFORCE */
 #if ANALYZE_RHS
-USE MOD_Particle_Vars,            ONLY:Pt_ext
+USE MOD_Particle_Vars,            ONLY: Pt_ext
 #endif /* ANALYZE_RHS */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -675,9 +676,7 @@ DO iProc=0,nExchangeProcessors-1
     nRecv  = nRecv+1
 
     ! particles get a local ID on each proc, therefore put it at the next free position
-    PartID = PDM%nextFreePosition(nRecv+PDM%CurrentNextFreePosition)
-    IF(PartID.EQ.0) &
-      CALL Abort(__STAMP__,' Error in ParticleExchange_parallel. Corrupted list: PIC%nextFreePosition', nRecv)
+    PartID = GetNextFreePosition(nRecv)
 
     !>> position and velocity in physical space
     PartState(1:PP_nVarPart,PartID)   = PartRecvBuf(iProc)%content(1+iPos:PP_nVarPart+iPos)
@@ -765,15 +764,9 @@ DO iProc=0,nExchangeProcessors-1
   END DO
 END DO ! iProc
 
-
-PDM%ParticleVecLength       = PDM%ParticleVecLength + PartMPIExchange%nMPIParticles
-PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + PartMPIExchange%nMPIParticles
-IF(PDM%ParticleVecLength.GT.PDM%MaxParticleNumber)THEN
-  WRITE(  UNIT_stdOut,'(A)')         ""
-  IPWRITE(UNIT_stdOut,'(I0,A,I0)')   " PDM%ParticleVecLength = ", PDM%ParticleVecLength
-  IPWRITE(UNIT_stdOut,'(I0,A,I0,A)') " PDM%MaxParticleNumber = ", PDM%MaxParticleNumber," for current processor"
-  IPWRITE(UNIT_stdOut,'(I0,A)')      " Increase value for [Part-maxParticleNumber]!"
-  CALL Abort(__STAMP__,' ParticleVecLegnth > MaxParticleNumber due to MPI-communication!')
+IF (PartMPIExchange%nMPIParticles.GT.0) THEN
+  PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + PartMPIExchange%nMPIParticles
+  PDM%ParticleVecLength = MAX(PDM%ParticleVecLength,GetNextFreePosition(0))
 END IF
 
 ! deallocate send,receive buffer
@@ -795,10 +788,10 @@ SUBROUTINE FinalizeParticleMPI()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Particle_MPI_Vars,        ONLY:PartMPI,PartMPIExchange,ParticleMPIInitIsDone
-USE MOD_Particle_MPI_Vars,        ONLY:PartSendBuf,PartRecvBuf
-USE MOD_Particle_MPI_Vars,        ONLY:ExchangeProcToGlobalProc,GlobalProcToExchangeProc,PartTargetProc
-USE MOD_Particle_Vars,            ONLY:Species,nSpecies
+USE MOD_Particle_MPI_Vars,        ONLY: PartMPI,PartMPIExchange,ParticleMPIInitIsDone
+USE MOD_Particle_MPI_Vars,        ONLY: PartSendBuf,PartRecvBuf
+USE MOD_Particle_MPI_Vars,        ONLY: ExchangeProcToGlobalProc,GlobalProcToExchangeProc,PartTargetProc
+USE MOD_Particle_Vars,            ONLY: Species,nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

@@ -144,14 +144,18 @@ SUBROUTINE SetParticlePosition(FractNbr,iInit,NbrOfParticle)
 !===================================================================================================================================
 ! modules
 USE MOD_Globals
-USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,doPartIndex
-USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
+USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionPoint
 USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionEquidistLine,SetParticlePositionLine
 USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionPlane,SetParticlePositionDisk,SetParticlePositionCross,SetParticlePositionCircle
 USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionCuboidCylinder,SetParticlePositionSphere
 ! USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionSinDeviation
 USE MOD_Particle_Emission_Tools,ONLY: SetParticlePositionGaussian,SetParticlePositionFromFile
+USE MOD_Particle_Localization  ,ONLY: SinglePointToElement
+USE MOD_Particle_Tools         ,ONLY: GetNextFreePosition,IncreaseMaxParticleNumber
+USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
+USE MOD_Particle_Vars          ,ONLY: Species,PDM,PEM,PartState,doPartIndex
+USE MOD_Particle_Vars          ,ONLY: PartPosRef
 #if USE_MPI
 USE MOD_Particle_MPI_Emission  ,ONLY: SendEmissionParticlesToProcs
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
@@ -168,6 +172,7 @@ INTEGER,INTENT(INOUT)                    :: NbrOfParticle
 !!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE                         :: particle_positions(:)
+INTEGER,ALLOCATABLE                      :: AcceptedParts(:)
 INTEGER                                  :: i,ParticleIndexNbr,allocStat,nChunks, chunkSize
 INTEGER                                  :: DimSend
 #if USE_MPI
@@ -274,22 +279,34 @@ IF (PartMPI%InitGroup(InitGroup)%nProcs.GT.1) THEN
 ! Finish emission on local proc
 ELSE
 #endif /*USE_MPI*/
+  ParticleIndexNbr = 1
+  ALLOCATE(AcceptedParts(0:chunkSize))
+  AcceptedParts    = -1
+  AcceptedParts(0) = 0
+
+  DO i = 1,chunkSize
+    AcceptedParts(i) = SinglePointToElement(particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+DimSend),doHALO=.FALSE.)
+    IF (AcceptedParts(i).NE.-1) AcceptedParts(0) = AcceptedParts(0) + 1
+  END DO
+
   Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles = 0
-  DO i=1,chunkSize
+  IF (Species(FractNbr)%Init(iInit)%ParticleEmissionType.EQ.0) CALL IncreaseMaxParticleNumber(AcceptedParts(0))
+
+  DO i = 1,chunkSize
     ! Find a free position in the PDM array
-    ParticleIndexNbr = PDM%nextFreePosition(Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
-    IF (ParticleIndexNbr.NE.0) THEN
+    IF(AcceptedParts(i).NE.-1) THEN
+      Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles = Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles + 1
+
+      ParticleIndexNbr = GetNextFreePosition(Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles)
+
       PartState(1:DimSend,ParticleIndexNbr) = particle_positions(DimSend*(i-1)+1:DimSend*(i-1)+DimSend)
-      PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
-      CALL LocateParticleInElement(ParticleIndexNbr,doHALO=.FALSE.)
-      IF (PDM%ParticleInside(ParticleIndexNbr)) THEN
-        Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles = Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles + 1
-        PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
-      END IF
-    ELSE
-      CALL Abort(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
+      PDM%ParticleInside(ParticleIndexNbr)  = .TRUE.
+      PDM%IsNewPart(ParticleIndexNbr)       = .TRUE.
+      PEM%Element(ParticleIndexNbr)         = AcceptedParts(i)
+      IF(TrackingMethod.EQ.REFMAPPING) CALL GetPositionInRefElem(PartState(1:DimSend,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),AcceptedParts(i))
     END IF
   END DO
+  DEALLOCATE(AcceptedParts)
 #if USE_MPI
 END IF
 #endif /*USE_MPI*/
@@ -344,27 +361,28 @@ SUBROUTINE SetParticleVelocity(FractNbr,iInit,NbrOfParticle,init_or_sf)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Particle_Globals,        ONLY: RandNormal
-USE MOD_DG_Vars,                 ONLY: U
-USE MOD_Eval_xyz,                ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
+USE MOD_DG_Vars,                     ONLY: U
+USE MOD_Eval_xyz,                    ONLY: EvaluateFieldAtPhysPos,EvaluateFieldAtRefPos
+USE MOD_Particle_Globals,            ONLY: RandNormal
 USE MOD_Particle_Interpolation_Vars, ONLY: DoInterpolation,FieldAtParticle
-USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
-USE MOD_Particle_Vars,           ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount
-USE MOD_Mesh_Vars,               ONLY: offsetElem
+USE MOD_Particle_Tracking_Vars,      ONLY: TrackingMethod
+USE MOD_Particle_Vars,               ONLY: PartState,PDM,PEM,Species,PartPosRef,PartReflCount
+USE MOD_Particle_Tools,              ONLY: GetNextFreePosition
+USE MOD_Mesh_Vars,                   ONLY: offsetElem
 #if USE_RW
-USE MOD_DG_Vars,                 ONLY: UTurb
-USE MOD_Restart_Vars,            ONLY: RestartTurb
-USE MOD_Equation_Vars,           ONLY: nVarTurb
+USE MOD_DG_Vars,                     ONLY: UTurb
+USE MOD_Restart_Vars,                ONLY: RestartTurb
+USE MOD_Equation_Vars,               ONLY: nVarTurb
 ! USE MOD_Particle_Interpolation_Vars, ONLY: TurbFieldAtParticle
-USE MOD_Particle_Vars,           ONLY: TurbPartState
+USE MOD_Particle_Vars,               ONLY: TurbPartState
 #endif /* USE_RW */
 #if FV_ENABLED
-USE MOD_Eval_xyz,                ONLY: EvaluateField_FV
-USE MOD_FV_Vars,                 ONLY: FV_Elems
+USE MOD_Eval_xyz,                    ONLY: EvaluateField_FV
+USE MOD_FV_Vars,                     ONLY: FV_Elems
 #endif /* FV_ENABLED */
-USE MOD_StringTools,             ONLY: STRICMP
+USE MOD_StringTools,                 ONLY: STRICMP
 #if USE_BASSETFORCE
-USE MOD_Particle_Vars,           ONLY: durdt,bIter
+USE MOD_Particle_Vars,               ONLY: durdt,bIter
 #endif /* USE_BASSETFORCE */
 !IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -434,8 +452,8 @@ SELECT CASE(TRIM(velocityDistribution))
 CASE('random')
   i = 1
   DO WHILE (i .LE. NbrOfParticle)
-    PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
-    IF (PositionNbr .ne. 0) THEN
+    PositionNbr = GetNextFreePosition(i)
+    IF (PositionNbr.GT.0) THEN
       CALL RANDOM_NUMBER(RandVal)
       RandVal(:) = RandVal(:) - 0.5
       RandVal(:) = RandVal(:)/SQRT(RandVal(1)**2+RandVal(2)**2+RandVal(3)**2)
@@ -456,8 +474,8 @@ CASE('random')
 CASE('constant')
   i = 1
   DO WHILE (i .le. NbrOfParticle)
-    PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
-    IF (PositionNbr .ne. 0) THEN
+    PositionNbr = GetNextFreePosition(i)
+    IF (PositionNbr.GT.0) THEN
       PartState(4:6,PositionNbr) = VeloVecIC(1:3) * VeloIC
       ! New particles have not been reflected
       PartReflCount(PositionNbr) = 0
@@ -476,8 +494,8 @@ CASE('constant')
 CASE('constant_turbulent')
   i = 1
   DO WHILE (i .le. NbrOfParticle)
-    PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
-    IF (PositionNbr .ne. 0) THEN
+    PositionNbr = GetNextFreePosition(i)
+    IF (PositionNbr.GT.0) THEN
       ! Get Gaussian distribution for 2D/3D
       RandVal(:) = 0.
       DO j = 1,PP_dim
@@ -501,8 +519,8 @@ CASE('constant_turbulent')
 CASE('radial_constant')
   i = 1
   DO WHILE (i .le. NbrOfParticle)
-    PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
-    IF (PositionNbr .ne. 0) THEN
+    PositionNbr = GetNextFreePosition(i)
+    IF (PositionNbr.GT.0) THEN
       Radius(1:3) = PartState(1:3,PositionNbr) - BasePointIC(1:3)
       ! Unity radius
       Radius(1:3) = Radius(1:3) / SQRT(Radius(1)**2+Radius(2)**2+Radius(3)**2)
@@ -523,8 +541,8 @@ CASE('radial_constant')
 CASE('load_from_file')
   i = 1
   DO WHILE (i .LE. NbrOfParticle)
-    PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
-    IF (PositionNbr .NE. 0) THEN
+    PositionNbr = GetNextFreePosition(i)
+    IF (PositionNbr.GT.0) THEN
       globminDistance = 1.e-3
       Radius(1) = SQRT((PartState(2,PositionNbr)-BasePointIC(2))**2 + (PartState(3,PositionNbr)-BasePointIC(3))**2)
       DO j=1,Species(FractNbr)%Init(iInit)%nPartField
@@ -563,9 +581,9 @@ CASE('fluid')
 
   ! Interpolate fluid and field to particle
   DO WHILE (i .LE. NbrOfParticle)
-    PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
+    PositionNbr = GetNextFreePosition(i)
     ! Valid particle which got recently position
-    IF (PositionNbr .NE. 0) THEN
+    IF (PositionNbr.GT.0) THEN
 
       ! Return if no interpolation is wanted
       IF (.NOT.DoInterpolation) RETURN

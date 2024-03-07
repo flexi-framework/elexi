@@ -62,6 +62,7 @@ USE MOD_Mesh_Vars,                  ONLY: nElems,offsetElem
 USE MOD_Particle_Mesh_Tools,        ONLY: GetCNElemID
 ! Particles
 USE MOD_Particle_Tools,             ONLY: UpdateNextFreePosition,GetOffsetAndGlobalNumberOfParts
+USE MOD_Particle_Tools,             ONLY: IncreaseMaxParticleNumber
 USE MOD_Particle_Vars,              ONLY: PartState,PartSpecies,PEM,PDM,Species,nSpecies
 USE MOD_Particle_Vars,              ONLY: PartInt,PartData,TurbPartData
 USE MOD_Particle_Vars,              ONLY: PartDataSize,TurbPartDataSize
@@ -133,6 +134,7 @@ IF(PartIntExists)THEN
     LastElemInd  = offsetElem+nElems
     locnPart     = PartInt(ELEM_LastPartInd,LastElemInd)-PartInt(ELEM_FirstPartInd,FirstElemInd)
     offsetnPart  = PartInt(ELEM_FirstPartInd,FirstElemInd)
+    CALL IncreaseMaxParticleNumber(INT(locnPart))
 
     ! Loop over all particles on local proc and fill the PartState
     IF (locnPart.GT.0) THEN
@@ -436,6 +438,8 @@ IF(PartIntExists)THEN
       END DO ! iPart = 1, TotalNbrOfMissingParticlesSum
 
       PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfFoundParts
+
+      ! IF(PDM%ParticleVecLength.GT.PDM%maxParticleNumber) CALL IncreaseMaxParticleNumber(PDM%ParticleVecLength*CEILING(1+0.5*PDM%MaxPartNumIncrease)-PDM%maxParticleNumber)
 
       ! Combine number of found particles to make sure none are lost completely or found twice
       IF(MPIRoot)THEN

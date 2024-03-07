@@ -51,7 +51,7 @@ USE MOD_Globals
 USE MOD_Particle_Localization  ,ONLY: LocateParticleInElement
 USE MOD_Particle_Vars          ,ONLY: doPartIndex,PartIndex
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PartState,sumOfMatchedParticlesSpecies,PartSpecies,PartReflCount
-USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition,GetNextFreePosition
 #if USE_MPI
 USE MOD_Particle_MPI_Vars      ,ONLY: PartMPI
 #endif /*USE_MPI*/
@@ -87,7 +87,7 @@ END IF
 #endif /*USE_MPI*/
 
 ! Find a free position in the PDM array
-ParticleIndexNbr = PDM%nextFreePosition(Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles + 1 + PDM%CurrentNextFreePosition)
+ParticleIndexNbr = GetNextFreePosition(Species(FractNbr)%Init(iInit)%mySumOfMatchedParticles + 1)
 IF (ParticleIndexNbr.NE.0) THEN
   PartState(PART_POSV,ParticleIndexNbr) = Particle_state(PART_POSV)
   PDM%ParticleInside( ParticleIndexNbr) = .TRUE.

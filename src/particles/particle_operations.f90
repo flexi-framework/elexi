@@ -45,6 +45,7 @@ SUBROUTINE CreateParticle(SpeciesIn,PartStateIn,ElemID,PartID,LastPartPosIn,Last
 USE MOD_Globals
 USE MOD_Particle_Vars          ,ONLY: PDM,PEM,PartState,PartPosRef,LastPartPos,PartSpecies
 USE MOD_Particle_Vars          ,ONLY: doPartIndex,PartIndex,PartReflCount!,Species
+USE MOD_Particle_Tools         ,ONLY: GetNextFreePosition
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_Eval_xyz               ,ONLY: GetPositionInRefElem
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -61,11 +62,7 @@ INTEGER, INTENT(OUT),OPTIONAL :: NewPartID
 ! LOCAL VARIABLES
 INTEGER :: newParticleID
 !===================================================================================================================================
-newParticleID               = PDM%nextFreePosition(1 + PDM%CurrentNextFreePosition)
-PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + 1
-IF (newParticleID.GT.PDM%ParticleVecLength) PDM%ParticleVecLength = PDM%ParticleVecLength + 1
-IF (newParticleID.GT.PDM%MaxParticleNumber) &
-  CALL Abort(__STAMP__,'CreateParticle: newParticleID.GT.PDM%MaxParticleNumber. newParticleID=',newParticleID)
+newParticleID = GetNextFreePosition()
 
 PartSpecies(newParticleID)             = SpeciesIn
 LastPartPos(1:3,newParticleID)         = LastPartPosIn(1:3)

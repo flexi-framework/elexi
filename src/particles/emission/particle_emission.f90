@@ -47,7 +47,7 @@ USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists,EmissionTime
 USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PDM,PEM,doPartIndex,PartIndex,sumOfMatchedParticlesSpecies
 USE MOD_Particle_Emission_Tools,ONLY: SetParticleMass
 USE MOD_Particle_Pos_and_Velo  ,ONLY: SetParticlePosition,SetParticleVelocity
-USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition,GetNextFreePosition
 USE MOD_Restart_Vars           ,ONLY: DoRestart,RestartTime
 #if USE_PARTTEMP
 USE MOD_Particle_Pos_and_Velo  ,ONLY: SetParticleTemperature
@@ -113,13 +113,6 @@ DO i=1,nSpecies
   END DO
 END DO
 
-! Check if requested to insert more particles than the particle array can hold
-IF (insertParticles.GT.PDM%maxParticleNumber) THEN
-  IPWRITE(UNIT_stdOut,'(I0,A40,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
-  IPWRITE(UNIT_stdOut,'(I0,A40,I0)') ' To be inserted particles: ',insertParticles
-  CALL Abort(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
-END IF
-
 DO i = 1,nSpecies
   DO iInit = Species(i)%StartnumberOfInits, Species(i)%NumberOfInits
     IF(doPartIndex) Species(i)%Init(iInit)%nPartsPerProc = 0
@@ -145,7 +138,7 @@ DO i = 1,nSpecies
     LBWRITE(UNIT_stdOut,'(A,I0,A)') ' Set particle mass for species ',i,' ... '
     CALL SetParticleMass(i,NbrOfParticle)
     ! update number of particles on proc and find next free position in particle array
-    PDM%ParticleVecLength = PDM%ParticleVecLength + NbrOfParticle
+    IF(NbrOfParticle.GT.0) PDM%ParticleVecLength = MAX(PDM%ParticleVecLength,GetNextFreePosition(NbrOfParticle))
     CALL UpdateNextFreePosition()
 
 #if USE_MPI
@@ -195,8 +188,8 @@ USE MOD_Globals
 USE MOD_Restart_Vars           ,ONLY: RestartTime
 USE MOD_Particle_Emission_Tools,ONLY: SamplePoissonDistri
 USE MOD_Particle_Emission_Tools,ONLY: SetParticleMass
-USE MOD_Particle_Pos_and_Velo      ,ONLY: SetParticlePosition,SetParticleVelocity
-USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Pos_and_Velo  ,ONLY: SetParticlePosition,SetParticleVelocity
+USE MOD_Particle_Tools         ,ONLY: UpdateNextFreePosition,GetNextFreePosition
 USE MOD_Particle_Analyze_Tools ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
 USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists,EmissionTime
@@ -394,7 +387,7 @@ DO i = 1,nSpecies
       IF (NbrOfParticle.GT.0) THEN
         nPartIn(i) = nPartIn(i) + NbrOfParticle
         DO iPart = 1,NbrOfParticle
-            PositionNbr = PDM%nextFreePosition(iPart+PDM%CurrentNextFreePosition)
+            PositionNbr = GetNextFreePosition(iPart)
             IF (PositionNbr.NE.0) PartEkinIn(PartSpecies(PositionNbr)) = PartEkinIn(PartSpecies(PositionNbr)) + &
                                                                          CalcEkinPart(PositionNbr)
         END DO ! iPart
@@ -459,7 +452,7 @@ SUBROUTINE DetermineInitialParticleNumber()
 ! MODULES
 USE MOD_Globals
 USE MOD_Particle_Mesh_Vars  ,ONLY: LocalVolume
-USE MOD_Particle_Vars       ,ONLY: PDM,Species,nSpecies
+USE MOD_Particle_Vars       ,ONLY: Species,nSpecies
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -502,12 +495,6 @@ DO iSpec=1,nSpecies
     insertParticles = insertParticles + INT(Species(iSpec)%Init(iInit)%initialParticleNumber,8)
   END DO
 END DO
-
-IF (insertParticles.GT.PDM%maxParticleNumber) THEN
-  IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' Maximum particle number : ',PDM%maxParticleNumber
-  IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' To be inserted particles: ',INT(insertParticles,4)
-  CALL Abort(__STAMP__,'Number of to be inserted particles per init-proc exceeds max. particle number! ')
-END IF
 
 END SUBROUTINE DetermineInitialParticleNumber
 

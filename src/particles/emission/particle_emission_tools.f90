@@ -151,7 +151,8 @@ SUBROUTINE SetParticleMass(FractNbr,NbrOfParticle)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals,          ONLY: Abort
-USE MOD_Particle_Vars,    ONLY: PDM,PartSpecies,Species,PartState,doRandomPartDiam
+USE MOD_Particle_Vars,    ONLY: PartSpecies,Species,PartState,doRandomPartDiam
+USE MOD_Particle_Tools,   ONLY: GetNextFreePosition
 #if USE_SPHERICITY
 USE MOD_Particle_Vars,    ONLY: doRandomSphericity
 #endif
@@ -171,30 +172,26 @@ REAL                                     :: randnum
 !===================================================================================================================================
 
 DO i = 1,NbrOfParticle
-  PositionNbr = PDM%nextFreePosition(i+PDM%CurrentNextFreePosition)
-  IF (PositionNbr.NE.0) THEN
-    PartSpecies(PositionNbr) = FractNbr
-    IF (doRandomPartDiam) THEN
-      CALL RANDOM_NUMBER(randnum)
-      randnum = randnum*2.-1.
-      PartState(PART_DIAM, PositionNbr) = (Species(FractNbr)%DiameterIC * Species(FractNbr)%ScalePartDiam + FLOOR(randnum * &
-                   Species(FractNbr)%PartDiamVarianceIC*Species(FractNbr)%ScalePartDiam))/Species(FractNbr)%ScalePartDiam
-    ELSE
-      PartState(PART_DIAM, PositionNbr) = Species(FractNbr)%DiameterIC
-    END IF
-#if USE_SPHERICITY
-    IF (doRandomSphericity) THEN
-      CALL RANDOM_NUMBER(randnum)
-      randnum = randnum*2.-1.
-      PartState(PART_SPHE, PositionNbr) = (Species(FractNbr)%SphericityIC * 100 + FLOOR(randnum * &
-                                           Species(FractNbr)%PartSpheVarianceIC*100))*0.01
-    ELSE
-      PartState(PART_SPHE, PositionNbr) = Species(FractNbr)%SphericityIC
-    END IF
-#endif
+  PositionNbr = GetNextFreePosition(i)
+  PartSpecies(PositionNbr) = FractNbr
+  IF (doRandomPartDiam) THEN
+    CALL RANDOM_NUMBER(randnum)
+    randnum = randnum*2.-1.
+    PartState(PART_DIAM, PositionNbr) = (Species(FractNbr)%DiameterIC * Species(FractNbr)%ScalePartDiam + FLOOR(randnum * &
+                 Species(FractNbr)%PartDiamVarianceIC*Species(FractNbr)%ScalePartDiam))/Species(FractNbr)%ScalePartDiam
   ELSE
-    CALL Abort(__STAMP__,'ERROR in SetParticlePosition:ParticleIndexNbr.EQ.0 - maximum nbr of particles reached?')
+    PartState(PART_DIAM, PositionNbr) = Species(FractNbr)%DiameterIC
   END IF
+#if USE_SPHERICITY
+  IF (doRandomSphericity) THEN
+    CALL RANDOM_NUMBER(randnum)
+    randnum = randnum*2.-1.
+    PartState(PART_SPHE, PositionNbr) = (Species(FractNbr)%SphericityIC * 100 + FLOOR(randnum * &
+                                         Species(FractNbr)%PartSpheVarianceIC*100))*0.01
+  ELSE
+    PartState(PART_SPHE, PositionNbr) = Species(FractNbr)%SphericityIC
+  END IF
+#endif
 END DO
 
 END SUBROUTINE SetParticleMass
@@ -270,6 +267,8 @@ USE MOD_Particle_Mesh_Vars     ,ONLY: LocalVolume
 USE MOD_Particle_Mesh_Vars     ,ONLY: BoundsOfElem_Shared,ElemVolume_Shared
 USE MOD_Particle_Tracking      ,ONLY: ParticleInsideCheck
 USE MOD_Particle_Vars          ,ONLY: Species,PDM,PEM,PartState
+USE MOD_Particle_Tools         ,ONLY: GetNextFreePosition
+USE MOD_Particle_Tools         ,ONLY: IncreaseMaxParticleNumber
 #if USE_MPI
 USE MOD_Mesh_Vars              ,ONLY: offsetComputeNodeElem
 #endif /*USE_MPI*/
@@ -300,9 +299,7 @@ offsetElemCNProc = 0
 #endif  /*USE_MPI*/
 
 IF (UseExactPartNum) THEN
-  IF(chunkSize.GE.PDM%maxParticleNumber) &
-    CALL Abort(__STAMP__, &
-               'ERROR in SetCellLocalParticlePosition: Maximum particle number reached! max. particles needed: ',chunksize)
+  IF (Species(iSpec)%Init(iInit)%ParticleEmissionType.EQ.0) CALL IncreaseMaxParticleNumber(chunkSize)
 
   CellChunkSize(:) = 0
   CALL IntegerDivide(chunkSize,nElems,ElemVolume_Shared(1+offsetElemCNProc:nElems+offsetElemCNProc),CellChunkSize(:))
@@ -310,9 +307,7 @@ ELSE
   ! numerical PartDensity is needed
   PartDens      = Species(iSpec)%Init(iInit)%PartDensity
   chunkSize_tmp = INT(PartDens * LocalVolume)
-  IF(chunkSize_tmp.GE.PDM%maxParticleNumber) &
-    CALL Abort(__STAMP__, &
-    'ERROR in SetCellLocalParticlePosition: Maximum particle number during sanity check! max. particles needed: ',chunkSize_tmp)
+  IF (Species(iSpec)%Init(iInit)%ParticleEmissionType.EQ.0) CALL IncreaseMaxParticleNumber(chunkSize_tmp)
 END IF
 
 iChunkSize       = 1
@@ -328,25 +323,20 @@ DO iElem = 1,nElems
     END IF
 
     DO iPart = 1,nPart
-      ParticleIndexNbr = PDM%nextFreePosition(iChunkSize + PDM%CurrentNextFreePosition)
-      IF (ParticleIndexNbr .NE. 0) THEN
-        InsideFlag = .FALSE.
+      ParticleIndexNbr = GetNextFreePosition(iChunkSize)
+      InsideFlag       = .FALSE.
 
-        DO WHILE(.NOT.InsideFlag)
-          CALL RANDOM_NUMBER(RandomPos)
-          RandomPos  = Bounds(1,:) + RandomPos*(Bounds(2,:)-Bounds(1,:))
-          InsideFlag = ParticleInsideCheck(RandomPos,ParticleIndexNbr,iElem+offsetElem)
-        END DO
+      DO WHILE(.NOT.InsideFlag)
+        CALL RANDOM_NUMBER(RandomPos)
+        RandomPos  = Bounds(1,:) + RandomPos*(Bounds(2,:)-Bounds(1,:))
+        InsideFlag = ParticleInsideCheck(RandomPos,ParticleIndexNbr,iElem+offsetElem)
+      END DO
 
-        PartState(     1:3,ParticleIndexNbr) = RandomPos(1:3)
-        PDM%ParticleInside(ParticleIndexNbr) = .TRUE.
-        PDM%IsNewPart(     ParticleIndexNbr) = .TRUE.
-        PEM%Element(       ParticleIndexNbr) = iElem+offsetElem
-        iChunkSize = iChunkSize + 1
-      ELSE
-        CALL Abort(__STAMP__ &
-            ,'ERROR in SetCellLocalParticlePosition: Maximum particle number reached during inserting! --> ParticleIndexNbr.EQ.0')
-      END IF
+      PartState(     1:3,ParticleIndexNbr) = RandomPos(1:3)
+      PDM%ParticleInside(ParticleIndexNbr) = .TRUE.
+      PDM%IsNewPart(     ParticleIndexNbr) = .TRUE.
+      PEM%Element(       ParticleIndexNbr) = iElem+offsetElem
+      iChunkSize = iChunkSize + 1
     END DO
   END ASSOCIATE
 END DO

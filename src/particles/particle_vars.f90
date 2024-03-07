@@ -275,7 +275,10 @@ TYPE(tParticleElementMapping)            :: PEM
 TYPE tParticleDataManagement
   INTEGER                                :: CurrentNextFreePosition          ! Index of nextfree index in nextFreePosition-Array
   INTEGER                                :: maxParticleNumber                ! Maximum Number of all Particles
+  INTEGER                                :: maxAllowedParticleNumber         ! Maximum allowed number of PDM%maxParticleNumber
+  LOGICAL                                :: RearrangePartIDs                 ! Rearrange PartIDs during shrinking maxPartNum
   INTEGER                                :: ParticleVecLength=0              ! Vector Length for Particle Push Calculation
+  REAL                                   :: MaxPartNumIncrease               ! How much shall the PDM%MaxParticleNumber be incresed if it is full
   INTEGER , ALLOCATABLE                  :: PartInit(:)                      ! (1:NParts), initial emission condition number
                                                                              ! the calculation area
   INTEGER ,ALLOCATABLE                   :: nextFreePosition(:)  ! =>NULL()  ! next_free_Position(1:max_Particle_Number)

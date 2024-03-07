@@ -254,7 +254,7 @@ USE MOD_Lifting_Vars
 #if USE_MPI
 USE MOD_MPI_Vars
 USE MOD_MPI                 ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-USE MOD_Mesh_Vars,           ONLY: nSides
+USE MOD_Mesh_Vars           ,ONLY: nSides
 #endif /*USE_MPI*/
 #if FV_ENABLED
 USE MOD_FV_Vars             ,ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems_Sum
@@ -284,7 +284,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
 #endif /*USE_LOADBALANCE*/
 #if USE_PARTICLES
-USE MOD_Particle_Tools      ,ONLY: UpdateNextFreePosition
+USE MOD_Particle_Tools      ,ONLY: UpdateNextFreePosition,ReduceMaxParticleNumber
 USE MOD_Particle_TimeDisc   ,ONLY: ParticleTimeStep,ParticleTimeStepRK
 USE MOD_Particle_Timedisc_Vars,ONLY: PreviousTime
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage,dt
@@ -654,6 +654,10 @@ MeasureSplitTime_DG()       ! LoadBalance
 ! Receive particle source and add to time integral
 IF(doCalcPartSource) CALL SourcePart(Ut)
 #endif /*USE_PARTICLES && PARTICLES_COUPLING >= 2*/
+! Reduce size of particle arrays
+#if USE_PARTICLES
+CALL ReduceMaxParticleNumber()
+#endif /*USE_PARTICLES*/
 
 ! 14. Perform overintegration and apply Jacobian
 ! Perform overintegration (projection filtering type overintegration)

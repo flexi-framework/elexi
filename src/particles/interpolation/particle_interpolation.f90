@@ -235,7 +235,6 @@ IF (InterpolationElemLoop) THEN
   IF (PRESENT(GradAtParticle)) GradAtParticle(:,:,firstPart:lastPart) = 0.
 #endif
 
-
   ! Loop first over all elements, then over all particles within the element. Ideally, this reduces cache misses as the interpolation
   ! happens with the same element metrics
 #if USE_MPI
@@ -393,12 +392,12 @@ REAL                             :: grad(RHS_GRAD,3)
 #endif
 !===================================================================================================================================
 
-FieldAtParticle(:)   = 0.
+FieldAtParticle(:) = 0.
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 IF (PRESENT(GradAtParticle)) GradAtParticle(:,:) = 0.
 #endif
 
-ElemID=PEM%Element(PartID)
+ElemID = PEM%Element(PartID)
 ! No solution available in the halo region (yet), so return for particles there
 ! Adjust check for new halo region, ElemID is now global element ID
 IF ((ElemID.LT.offsetElem+1).OR.(ElemID.GT.offsetElem+nElems)) RETURN

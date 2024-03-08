@@ -216,6 +216,7 @@ SUBROUTINE EvaluateFieldAtPhysPos(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID,Part
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys
+USE MOD_Eos,                   ONLY: ConsToPrim
 USE MOD_Interpolation_Vars,    ONLY: wBary,xGP
 USE MOD_Mesh_Vars,             ONLY: NGeo
 USE MOD_Particle_Mesh_Tools,   ONLY: GetCNElemID
@@ -227,7 +228,6 @@ USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo_Shared,dXCL_NGeo_Shared
 #else
 USE MOD_Particle_Mesh_Vars,    ONLY: XCL_NGeo,dXCL_NGeo
 #endif /*USE_MPI*/
-USE MOD_Eos,                   ONLY: ConsToPrim
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

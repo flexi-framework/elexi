@@ -797,13 +797,13 @@ DO iElem = offsetElem+1,offsetElem+nElems
   DO iPart = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
     PartData_Shared(1:PP_nVarPart,iPart) = PartState(:,pcount)
     PartData_Shared(PP_nVarPart+1,iPart) = PartSpecies(pcount)
-    ! Set the index to the next particle
-  !   pcount = PEM%pNext(pcount)
   ! END DO
   ! ! ... but the PartID is global
   ! pcount   = PEM%pStart(iElem)
   ! DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
     PEM2PartID(iPart)                    = pcount
+    ! Set the index to the next particle
+    pcount = PEM%pNext(pcount)
   END DO
 
   ! Set counter to the end of particle number in the current element

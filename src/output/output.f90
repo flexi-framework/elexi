@@ -502,6 +502,7 @@ CALL DATE_AND_TIME(values=timeArray)
 
 IF (.NOT.MPIRoot) RETURN
 
+WRITE(UNIT_stdOut,*)
 WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
   ' Sys date  :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)

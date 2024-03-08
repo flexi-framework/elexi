@@ -387,7 +387,8 @@ CALL PrintStatusLine(time,dt,tStart,tEnd,iter,maxIter,doETA=.TRUE.)
 WRITE(hilf,'(A,A,A)') 'RUNNING ',TRIM(ProjectName),'...'
 CALL DisplaySimulationTime(CalcTime, StartTime, hilf)
 ! SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,*)
+! SWRITE(UNIT_stdOut,*)
+
 END SUBROUTINE Analyze
 
 

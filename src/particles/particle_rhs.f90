@@ -141,36 +141,37 @@ INTEGER                          :: iPart,nVarPartRHS
 Pt(:,1:PDM%ParticleVecLength)=0.
 
 DO iPart = 1,PDM%ParticleVecLength
-  IF (PDM%ParticleInside(iPart)) THEN
+  IF (.NOT.PDM%ParticleInside(iPart)) CYCLE
+
 !#if USE_RW
-!    ! Do not change the particle velocity if RW is working in full Euler mode
-!    !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
-!    IF (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
+!  ! Do not change the particle velocity if RW is working in full Euler mode
+!  !> Ideally, this should use tStage. But one cannot start a RK without the first stage and it does not make a difference for Euler
+!  IF (RWTime.EQ.'RW') .AND. (t.LT.TurbPartState(4,iPart))) CYCLE
 !#endif
-    ! Calculate the drag (and gravity) force
-    nVarPartRHS = 3
+
+  ! Calculate the drag (and gravity) force
+  nVarPartRHS = 3
 #if USE_PARTTEMP
-    nVarPartRHS = nVarPartRHS + 1
+  nVarPartRHS = nVarPartRHS + 1
 #endif
 #if !USE_FAXEN_CORR
-    Pt(1:nVarPartRHS,iPart) = ParticlePush(iPart,nVarPartRHS,FieldAtParticle(PRIM,iPart))
+  Pt(1:nVarPartRHS,iPart) = ParticlePush(iPart,nVarPartRHS,FieldAtParticle(PRIM,iPart))
 #else
-    Pt(1:nVarPartRHS,iPart) = ParticlePush(iPart,nVarPartRHS,FieldAtParticle(PRIM,iPart),GradAtParticle(1:RHS_GRAD,1:3,iPart))
+  Pt(1:nVarPartRHS,iPart) = ParticlePush(iPart,nVarPartRHS,FieldAtParticle(PRIM,iPart),GradAtParticle(1:RHS_GRAD,1:3,iPart))
 #endif /* USE_FAXEN_CORR */
 #if USE_EXTEND_RHS
 #if USE_BASSETFORCE
-    bIter(iPart) = MIN(bIter(iPart) + 1,N_Basset + 2)
+  bIter(iPart) = MIN(bIter(iPart) + 1,N_Basset + 2)
 #endif /* USE_BASSETFORCE */
-    ! Calculate other RHS forces and add all forces to compute the particle push
-    CALL ParticlePushExtend(iPart,nVarPartRHS,FieldAtParticle(PRIM,iPart)                                     ,&
-                                  GradAtParticle (1:RHS_GRAD,1:3,iPart),Pt(1:PP_nVarPartRHS,iPart) &
+  ! Calculate other RHS forces and add all forces to compute the particle push
+  CALL ParticlePushExtend(iPart,nVarPartRHS,FieldAtParticle(PRIM,iPart)                         ,&
+                                GradAtParticle (1:RHS_GRAD,1:3,iPart),Pt(1:PP_nVarPartRHS,iPart) &
 #if USE_BASSETFORCE || ANALYZE_RHS
-                                  ,t,dt,iStage)
+                                ,t,dt,iStage)
 #else
-                                  )
+                                )
 #endif /* USE_BASSETFORCE || ANALYZE_RHS */
 #endif
-  END IF
 END DO
 
 !#if ANALYZE_RHS

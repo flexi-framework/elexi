@@ -47,10 +47,11 @@ USE MOD_Mesh_Vars                ,ONLY: nElems,offsetElem
 USE MOD_Mesh_Vars                ,ONLY: nComputeNodeElems
 USE MOD_Particle_Collision_Vars
 USE MOD_Particle_Globals         ,ONLY: VECNORM
+USE MOD_Particle_Localization    ,ONLY: SinglePointToElement
 USE MOD_Particle_Mesh_Vars       ,ONLY: ElemToBCSides
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID,GetGlobalElemID
 USE MOD_Particle_Vars            ,ONLY: PEM
-USE MOD_Particle_Vars            !,ONLY: doCalcPartCollision
+USE MOD_Particle_Vars            ,ONLY: doCalcPartCollision
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 #if USE_MPI
 USE MOD_MPI_Shared
@@ -58,9 +59,9 @@ USE MOD_MPI_Shared_Vars,          ONLY: myComputeNodeRank
 USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodeTotalElems
 USE MOD_MPI_Shared_Vars,          ONLY: MPI_COMM_SHARED!,MPI_COMM_LEADERS_SHARED
 USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank,nComputeNodeProcessors
-USE MOD_MPI_Shared_Vars          ,ONLY: nLeaderGroupProcs
+! USE MOD_MPI_Shared_Vars          ,ONLY: nLeaderGroupProcs
+USE MOD_Particle_Vars            ,ONLY: offsetPartMPI
 #endif /*USE_MPI*/
-!----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -327,7 +328,8 @@ USE MOD_Utils                   ,ONLY: ALMOSTZERO
 USE MOD_Particle_Collision_Vars
 USE MOD_Particle_Globals        ,ONLY: UNITVECTOR
 ! USE MOD_Particle_Output_Vars    ,ONLY: offsetnPart,locnPart
-USE MOD_Particle_Vars           ,ONLY: PartState,Species,LastPartPos,PDM
+USE MOD_Particle_Localization   ,ONLY: SinglePointToElement
+USE MOD_Particle_Vars           ,ONLY: PartState,Species,LastPartPos,PDM,PEM
 USE MOD_Particle_Vars           ,ONLY: nComputeNodeParts
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
@@ -423,12 +425,16 @@ IF (iPart2.LE.nComputeNodeParts) &
 PDM%IsNewPart(LocPartID2) = .TRUE.
 
 ! Update the particle's position at time tStage+dtloc
-PartState(PART_POSV,LocPartID1)   = P1_old + mdtColl * PartState(PART_VELV,LocPartID1)
+PartState(  PART_POSV,LocPartID1) = P1_old + mdtColl * PartState(PART_VELV,LocPartID1)
 LastPartPos(PART_POSV,LocPartID1) = P1_old
+! Update the particle host element
+PEM%lastElement(LocPartID1) = SinglePointToElement(LastPartPos(PART_POSV,LocPartID1),doHalo=.TRUE.)
 ! IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
 IF (iPart2.LE.nComputeNodeParts) THEN
-  LastPartPos(PART_POSV,LocPartID2) = P2_old
   PartState(  PART_POSV,LocPartID2) = P2_old + mdtColl * PartState(PART_VELV,LocPartID2)
+  LastPartPos(PART_POSV,LocPartID2) = P2_old
+  ! Update the particle host element
+  PEM%lastElement(LocPartID2) = SinglePointToElement(LastPartPos(PART_POSV,LocPartID2),doHalo=.TRUE.)
 END IF
 
 ! Count number of collisions, only count twice if both particles are on the local processor

@@ -502,6 +502,16 @@ IF(ALLOCATED(Pt))                 CALL ChangeSizeArray(Pt                ,PDM%ma
 IF(ALLOCATED(Pt_temp))            CALL ChangeSizeArray(Pt_temp           ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize)
 
+#if USE_BASSETFORCE
+IF(ALLOCATED(durdt))              CALL ChangeSizeArray(durdt             ,PDM%maxParticleNumber,NewSize,0.)
+IF(ALLOCATED(bIter))              CALL ChangeSizeArray(bIter             ,PDM%maxParticleNumber,NewSize,0)
+IF(ALLOCATED(Fbdt))               CALL ChangeSizeArray(Fbdt              ,PDM%maxParticleNumber,NewSize,0.)
+#endif /* USE_BASSETFORCE */
+
+#if USE_EXTEND_RHS && ANALYZE_RHS
+IF(ALLOCATED(Pt_ext))             CALL ChangeSizeArray(Pt_ext            ,PDM%maxParticleNumber,NewSize,0.)
+#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
+
 #if USE_MPI
 IF(ALLOCATED(PartTargetProc))     CALL ChangeSizeArray(PartTargetProc    ,PDM%maxParticleNumber,NewSize)
 #endif
@@ -603,6 +613,16 @@ IF(ALLOCATED(PartIndex))          CALL ChangeSizeArray(PartIndex         ,PDM%ma
 IF(ALLOCATED(Pt))                 CALL ChangeSizeArray(Pt                ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(Pt_temp))            CALL ChangeSizeArray(Pt_temp           ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize)
+
+#if USE_BASSETFORCE
+IF(ALLOCATED(durdt))              CALL ChangeSizeArray(durdt             ,PDM%maxParticleNumber,NewSize,0.)
+IF(ALLOCATED(bIter))              CALL ChangeSizeArray(bIter             ,PDM%maxParticleNumber,NewSize,0)
+IF(ALLOCATED(Fbdt))               CALL ChangeSizeArray(Fbdt              ,PDM%maxParticleNumber,NewSize,0.)
+#endif /* USE_BASSETFORCE */
+
+#if USE_EXTEND_RHS && ANALYZE_RHS
+IF(ALLOCATED(Pt_ext))             CALL ChangeSizeArray(Pt_ext            ,PDM%maxParticleNumber,NewSize,0.)
+#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 #if USE_MPI
 IF(ALLOCATED(PartTargetProc))     CALL ChangeSizeArray(PartTargetProc    ,PDM%maxParticleNumber,NewSize)
@@ -719,6 +739,28 @@ END IF
 IF(ALLOCATED(FieldAtParticle)) THEN
   FieldAtParticle(:,NewID)  = FieldAtParticle(:,OldID)
 END IF
+
+#if USE_BASSETFORCE
+IF(ALLOCATED(durdt)) THEN
+  durdt(:,NewID)            = durdt(:,OldID)
+  durdt(:,OldID)            = 0.
+END IF
+IF(ALLOCATED(bIter)) THEN
+  bIter(NewID)              = bIter(OldID)
+  bIter(OldID)              = 0
+END IF
+IF(ALLOCATED(Fbdt)) THEN
+  Fbdt(:,NewID)             = Fbdt(:,OldID)
+  Fbdt(:,OldID)             = 0.
+END IF
+#endif /* USE_BASSETFORCE */
+
+#if USE_EXTEND_RHS && ANALYZE_RHS
+IF(ALLOCATED(Pt_ext)) THEN
+  Pt_ext(:,NewID)           = Pt_ext(:,OldID)
+  Pt_ext(:,OldID)           = 0.
+END IF
+#endif /* USE_EXTEND_RHS && ANALYZE_RHS */
 
 #if USE_MPI
 IF(ALLOCATED(PartTargetProc)) PartTargetProc(NewID) = PartTargetProc(OldID)

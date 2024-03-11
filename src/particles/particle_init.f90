@@ -452,8 +452,6 @@ CALL prms%CreateLogicalOption(      'OutputSurfaceFluxLinked'         , 'Flag to
 ! > Boundaries
 !===================================================================================================================================
 CALL prms%SetSection("Particle Boundaries")
-!CALL prms%CreateIntOption(          'Part-nBounds'              , 'Number of particle boundaries.'                                &
-!                                                                , '1')
 CALL prms%CreateStringOption(       'Part-Boundary[$]-Type'     , 'Used boundary condition for boundary.\n'                      //&
                                                                   '- open\n'                                                     //&
                                                                   '- reflective\n'                                               //&

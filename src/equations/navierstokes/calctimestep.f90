@@ -34,7 +34,6 @@ INTERFACE FinalizeCalctimestep
   MODULE PROCEDURE FinalizeCalctimestep
 END INTERFACE
 
-
 PUBLIC :: InitCalctimestep,CALCTIMESTEP,FinalizeCalctimestep
 !==================================================================================================================================
 
@@ -109,7 +108,7 @@ FUNCTION CALCTIMESTEP(errType)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY:U
-USE MOD_EOS_Vars
+USE MOD_EOS_Vars     ,ONLY:Kappa,KappaM1,R
 USE MOD_IO_HDF5      ,ONLY:AddToElemData,ElementOut
 USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems,ElemNaN
 USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem
@@ -278,6 +277,7 @@ END FUNCTION CALCTIMESTEP
 !==================================================================================================================================
 SUBROUTINE FinalizeCalctimestep()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(MetricsAdv)

@@ -162,6 +162,7 @@ LOGICAL            :: NAMEEQUALS
 NAMEEQUALS = STRICMP(this%name, name)
 END FUNCTION NAMEEQUALS
 
+
 !==================================================================================================================================
 #if USE_PARTICLES
 !> Compares name, that contains numbers, with the name of the numberedmulti option, that contains "[$]" (case-insensitive)
@@ -251,6 +252,7 @@ INTEGER                          :: GETNAMELEN   !< length of option name
 GETNAMELEN = LEN_TRIM(this%name)
 END FUNCTION GETNAMELEN
 
+
 !==================================================================================================================================
 !> return string-length required to print the value
 !==================================================================================================================================
@@ -317,7 +319,9 @@ IF ((this%isSet).OR.(this%hasDefault).OR.PRESENT(proposal)) THEN
     STOP 'Unknown TYPE'
   END SELECT
 END IF
+
 END FUNCTION GETVALUELEN
+
 
 !===================================================================================================================================
 !> Returns length of a real represented as string with a given number of digits
@@ -347,14 +351,16 @@ ELSE ! digits not given
   WRITE(tmp,'(E24.19)') value
 END IF
 GETSTRLENREAL = LEN(TRIM(ADJUSTL(tmp)))
+
 END FUNCTION GETSTRLENREAL
+
 
 !==================================================================================================================================
 !> print option
 !==================================================================================================================================
 SUBROUTINE print(this, maxNameLen, maxValueLen, mode, proposal)
 ! MODULES
-USE MOD_StringTools
+USE MOD_StringTools ,ONLY: set_formatting,clear_formatting
 USE MOD_ISO_VARYING_STRING
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars       ,ONLY: PerformLoadBalance
@@ -381,7 +387,7 @@ IF(PerformLoadBalance) RETURN
 #endif /*USE_LOADBALANCE*/
 IF(mode.EQ.1) commentLen=80 !--help
 IF(mode.EQ.2) commentLen=50 !--markdown
-WRITE(fmtName,*) maxNameLen
+WRITE(fmtName ,*) maxNameLen
 WRITE(fmtValue,*) maxValueLen
 ! print name
 IF (mode.EQ.0) THEN
@@ -410,7 +416,6 @@ IF ((mode.EQ.0).OR.(this%hasDefault)) THEN
 ELSE
   SWRITE(UNIT_stdOut, "(A"//fmtValue//")", ADVANCE='NO') ""
 END IF
-
 
 ! print DEFAULT/CUSTOM or print comment
 IF (mode.EQ.0) THEN
@@ -472,7 +477,9 @@ ELSE
     SWRITE(UNIT_stdOut,*) ''
   END IF
 END IF
+
 END SUBROUTINE print
+
 
 !==================================================================================================================================
 !> print value of an option
@@ -602,7 +609,9 @@ CLASS IS (RealArrayOption)
 CLASS DEFAULT
   STOP
 END SELECT
+
 END SUBROUTINE printValue
+
 
 !==================================================================================================================================
 !> parse value from string 'rest_in'. This subroutine is used to readin values from the parameter file.
@@ -769,6 +778,7 @@ END SELECT
 IF(stat.GT.0) CALL Abort(__STAMP__,"Failed to parse: "//TRIM(this%name))
 
 END SUBROUTINE parse
+
 
 !===================================================================================================================================
 !> parse string to real and get the format of the number (floating,scientific)

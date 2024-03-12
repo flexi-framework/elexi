@@ -27,9 +27,16 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d/avg2d.f90
                           ${TOOL_DIR}/visu_vars.f90)
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
-SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                                    COMPILE_OPTIONS "-fPIC"
+                                                    CMAKE_POSITION_INDEPENDENT_CODE ON)
 ADD_LIBRARY(${TOOL_NAME}lib STATIC $<TARGET_OBJECTS:${TOOL_NAME}libF90>)
 ADD_DEPENDENCIES(${TOOL_NAME}libF90 libflexishared)
+
+# When using Ninja, CMake tries to parallelize the build resulting in missing module files. Add a dummy target to ensure synchronization
+ADD_CUSTOM_TARGET(${TOOL_NAME}target)
+ADD_DEPENDENCIES(${TOOL_NAME}target libflexishared)
+ADD_DEPENDENCIES(${TOOL_NAME}libF90 ${TOOL_NAME}target)
 
 # Standalone Posti executable
 add_exec(             posti_${TOOL_NAME} ${TOOL_DIR}/posti_visu.f90)
@@ -139,12 +146,12 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
       ENDFOREACH()
     ENDIF()
 
-  ELSE()
-    PARAVIEW_PLUGIN_SCAN(
-      PLUGIN_FILES      "${TOOL_DIR_PV}/visuReader.plugin"
-      PROVIDES_PLUGINS  plugins
-      REQUIRES_MODULES   required_modules
-      ENABLE_BY_DEFAULT ON)
+   ELSE()
+     PARAVIEW_PLUGIN_SCAN(
+       PLUGIN_FILES      "${TOOL_DIR_PV}/visuReader.plugin"
+       PROVIDES_PLUGINS  plugins
+       REQUIRES_MODULES  required_modules
+       ENABLE_BY_DEFAULT ON)
 
     PARAVIEW_PLUGIN_BUILD(
       PLUGINS ${plugins})
@@ -176,7 +183,12 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
    # > FreeType
    MARK_AS_ADVANCED(FORCE freetype_DIR)
    # > HDF5
+   MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_dl)
+   MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_hdf5)
    MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_hdf5_hl)
+   MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_m)
+   MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_sz)
+   MARK_AS_ADVANCED(FORCE HDF5_C_LIBRARY_z)
    # > ICU
    MARK_AS_ADVANCED(FORCE ICU_DERB_EXECUTABLE)
    MARK_AS_ADVANCED(FORCE ICU_GENBRK_EXECUTABLE)
@@ -235,6 +247,8 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
    MARK_AS_ADVANCED(FORCE Qt5X11Extras_DIR)
    # > rkcommon
    MARK_AS_ADVANCED(FORCE rkcommon_DIR)
+   # > TIFF
+   MARK_AS_ADVANCED(FORCE tiff_DIR)
    # > TBB
    MARK_AS_ADVANCED(FORCE TBB_DIR)
    MARK_AS_ADVANCED(FORCE TBB_ROOT)
@@ -248,6 +262,6 @@ IF (POSTI_VISU_PARAVIEW AND ParaView_FOUND)
    MARK_AS_ADVANCED(FORCE VTKm_Vectorization)
    # > Verdict
    MARK_AS_ADVANCED(FORCE Verdict_DIR)
-   # > X11
+   # > XCB
    MARK_AS_ADVANCED(FORCE X11_xcb_xkb_INCLUDE_PATH)
 ENDIF()

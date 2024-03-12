@@ -468,6 +468,8 @@ FUNCTION(add_exec target)
   ADD_EXECUTABLE(       ${target} ${ARGN})
   TARGET_LINK_LIBRARIES(${target} libflexishared)
   SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                             COMPILE_OPTIONS "-fPIC"
+                                             CMAKE_POSITION_INDEPENDENT_CODE ON
                                              LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
   STRING(TOUPPER ${target} TARGETUP)
@@ -481,7 +483,9 @@ FUNCTION(add_lib_shared target)
   ADD_LIBRARY(          ${target} SHARED ${ARGN})
   TARGET_LINK_LIBRARIES(${target} libflexistatic userblocklib stacksizelib nooplib ${linkedlibs} ${particlelibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
-                                             COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                             COMPILE_FLAGS   ${FLEXI_COMPILE_FLAGS}
+                                             COMPILE_OPTIONS "-fPIC"
+                                             CMAKE_POSITION_INDEPENDENT_CODE ON
                                              LINKER_LANGUAGE Fortran)
   INSTALL(TARGETS ${target} LIBRARY PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                                                 GROUP_READ GROUP_EXECUTE
@@ -618,10 +622,14 @@ ENDIF()
 
 # define libs
 ADD_LIBRARY(          libflexistaticF90 OBJECT ${flexiF90})
-SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
-ADD_LIBRARY(          libflexistatic STATIC $<TARGET_OBJECTS:libflexistaticF90>)
-SET_TARGET_PROPERTIES(libflexistatic PROPERTIES PREFIX ""
-                                     OUTPUT_NAME "libflexif90")
+SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                                   COMPILE_OPTIONS "-fPIC"
+                                                   CMAKE_POSITION_INDEPENDENT_CODE ON)
+ADD_LIBRARY(          libflexistatic    STATIC $<TARGET_OBJECTS:libflexistaticF90>)
+SET_TARGET_PROPERTIES(libflexistatic    PROPERTIES PREFIX ""
+                                                   COMPILE_OPTIONS "-fPIC"
+                                                   CMAKE_POSITION_INDEPENDENT_CODE ON
+                                                   OUTPUT_NAME "libflexif90")
 IF(SELFBUILTEXTERNALS)
   ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
 ENDIF()
@@ -630,16 +638,18 @@ ENDIF()
 #EXECUTE_PROCESS(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/output/print_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/src/output/print_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
 ADD_CUSTOM_TARGET(generateUserblock COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generate_userblock.sh
-                                                   ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-                                                   ${CMAKE_BINARY_DIR}
-                                                   "${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}"
-                                                   ${CMAKE_CURRENT_SOURCE_DIR})
+                                               ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+                                               ${CMAKE_BINARY_DIR}
+                                              "${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}"
+                                               ${CMAKE_CURRENT_SOURCE_DIR})
 ADD_LIBRARY(userblocklib STATIC ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/print_userblock.c)
 ADD_DEPENDENCIES(userblocklib generateUserblock)
 
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
-SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C LINKER_LANGUAGE C
-                                                           COMPILE_FLAGS "-fPIC")
+SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LANGUAGE C
+                                                           LINKER_LANGUAGE C
+                                                           COMPILE_OPTIONS "-fPIC"
+                                                           CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ADD_LIBRARY(nooplib      STATIC ./src/globals/noop.c)
 SET_TARGET_PROPERTIES(nooplib      userblocklib PROPERTIES LANGUAGE C LINKER_LANGUAGE C

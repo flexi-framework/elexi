@@ -1,4 +1,4 @@
-[![logo](https://numericsresearchgroup.org/images/icons/flexi_particle.svg "FLEXI-PARTICLE")][flexi]
+[![logo](https://numericsresearchgroup.org/images/icons/elexi.svg "FLEXI-PARTICLE")][flexi]
 
 [![license](https://img.shields.io/github/license/flexi-framework/flexi.svg?maxAge=2592000 "GPL-3.0 License")](LICENSE.md)
 [![doi](https://img.shields.io/badge/DOI-10.1016/j.cpc.2023.108762-blue "DOI")](https://doi.org/10.1016/j.cpc.2023.108762)

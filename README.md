@@ -1,4 +1,4 @@
-[![logo](https://numericsresearchgroup.org/images/icons/elexi.svg "FLEXI-PARTICLE")][flexi]
+[![logo](https://numericsresearchgroup.org/images/icons/elexi.svg "ƎLexi")][flexi]
 
 [![license](https://img.shields.io/github/license/flexi-framework/flexi.svg?maxAge=2592000 "GPL-3.0 License")](LICENSE.md)
 [![doi](https://img.shields.io/badge/DOI-10.1016/j.cpc.2023.108762-blue "DOI")](https://doi.org/10.1016/j.cpc.2023.108762)
@@ -8,7 +8,7 @@
 
 # About
 
-[FLEXI-PARTICLE][flexiparticle] is a high-order numerical Eulerian-Lagrangian framework for solving PDEs, with a special focus on Computational Fluid Dynamics. [FLEXI][flexi] is based on the Discontinuous Galerkin Spectral Element Method (DGSEM), which allows for high-order of accuracy and fully unstructured hexahedral meshes. The solver is parallelized very efficiently for large-scale applications and scales to 500,000+ cores. Moreover, [FLEXI][flexi] comes with a capable pre- and postprocessing suite that enables complex simulation setups up to the finished visualization.
+[ƎLexi][elexi] is a high-order numerical Eulerian-Lagrangian framework for solving PDEs, with a special focus on Computational Fluid Dynamics. [FLEXI][flexi] is based on the Discontinuous Galerkin Spectral Element Method (DGSEM), which allows for high-order of accuracy and fully unstructured hexahedral meshes. The solver is parallelized very efficiently for large-scale applications and scales to 500,000+ cores. Moreover, [FLEXI][flexi] comes with a capable pre- and postprocessing suite that enables complex simulation setups up to the finished visualization.
 
 For the main development branch, see [flexi-framework/flexi](https://github.com/flexi-framework/flexi). This repository contains an extension of FLEXI towards particle-laden flows. The particle tracking approach operates in physical space and is based on methods from ray-tracing to handle intersections with possibly curved boundaries. Particles are implemented with a Lagrangian point-particle ansatz and can either be one- or two-way coupled to the fluid phase. Particle-wall interactions are handled via a hard-sphere approach, where multiple models are available. 
 
@@ -26,7 +26,7 @@ Numerous people have worked on and with FLEXI over the last years. We would like
 In case you have questions regarding FLEXI or want to contribute yourself by either reporting bugs, requesting features or adding somthing different to the project, feel free to open an issue or pull request.
 
 # Cite
-FLEXI is a scientific project. If you use FLEXI-PARTICLE for publications or presentations in science, please support the project by citing it. As general reference, please cite
+FLEXI is a scientific project. If you use ƎLexi for publications or presentations in science, please support the project by citing it. As general reference, please cite
 ```
 Kopper, P., Schwarz, A., Copplestone, S. M., Ortwein, P., Staudacher, S., and Beck, A.
 A framework for high-fidelity particle tracking on massively parallel systems
@@ -34,7 +34,7 @@ Computer Physics Communications, 289, (2023), 108762
 ```
 or use the following Bibtex files
 
-    @article{flexi_particle,
+    @article{elexi,
      title     = {A framework for high-fidelity particle tracking on massively parallel systems},
      author    = {Kopper, Patrick and Schwarz, Anna and Copplestone, Stephen M. and Ortwein, Philip and Staudacher, Stephan and Beck, Andrea},
      journal   = {Computer Physics Communications},
@@ -67,7 +67,7 @@ The MPI library is only required for running parallel simulations on multiple ra
 ### Getting the code
 Open a terminal, download FLEXI via git and optionally export the FLEXI directory:
 
-    git clone git@github.com:flexi-framework/flexi-particle.git
+    git clone git@github.com:flexi-framework/elexi.git
     export FLEXI_DIR="$(pwd)/flexi"
 
 ### Compiling the code
@@ -100,10 +100,10 @@ FLEXI uses several external libraries as well as auxiliary functions from open s
 * [PAPI](https://icl.cs.utk.edu/papi)
 * [Reggie2.0](https://github.com/reggie-framework/reggie2.0)
 
-[nrg]:           https://numericsresearchgroup.org/index.html
-[flexi]:         https://numericsresearchgroup.org/flexi_index.html
-[flexiparticle]: https://numericsresearchgroup.org/codes.html#codes_particle
-[publications]:  https://numericsresearchgroup.org/publications.html#services
-[userguide]:     https://numericsresearchgroup.org/userguide/userguide.pdf
-[gallery]:       https://numericsresearchgroup.org/gallery.html#portfolio
-[youtube]:       https://www.youtube.com/@nrgiag8633 
+[nrg]:          https://numericsresearchgroup.org/index.html
+[flexi]:        https://numericsresearchgroup.org/flexi_index.html
+[elexi]:        https://numericsresearchgroup.org/codes.html#codes_particle
+[publications]: https://numericsresearchgroup.org/publications.html#services
+[userguide]:    https://numericsresearchgroup.org/userguide/userguide.pdf
+[gallery]:      https://numericsresearchgroup.org/gallery.html#portfolio
+[youtube]:      https://www.youtube.com/@nrgiag8633 

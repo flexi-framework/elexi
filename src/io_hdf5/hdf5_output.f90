@@ -906,7 +906,9 @@ END SUBROUTINE RemoveHDF5
 !==================================================================================================================================
 SUBROUTINE WriteHeader(FileType_in,File_ID)
 ! MODULES
-USE MOD_Output_Vars,ONLY:ProgramName,FileVersion,ProjectName
+USE MOD_Globals_Vars ,ONLY: ProgramName,FileVersionReal,FileVersionInt,FlexiVersionStr
+USE MOD_Globals_Vars ,ONLY: MajorVersion,MinorVersion,PatchVersion
+USE MOD_Output_Vars  ,ONLY: ProjectName
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -920,12 +922,17 @@ CHARACTER(LEN=255) :: tmp255
 ! Write a small file header to identify a Flexi HDF5 files
 ! Attributes are program name, file type identifier, project name and version number
 tmp255=TRIM(ProgramName)
-CALL WriteAttribute(File_ID,'Program'     ,1,StrScalar=(/tmp255/))
+CALL WriteAttribute(File_ID,'Program'         ,1,StrScalar =(/tmp255/))
 tmp255=TRIM(FileType_in)
-CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/tmp255/))
+CALL WriteAttribute(File_ID,'File_Type'       ,1,StrScalar =(/tmp255/))
 tmp255=TRIM(ProjectName)
-CALL WriteAttribute(File_ID,'Project_Name',1,StrScalar=(/tmp255/))
-CALL WriteAttribute(File_ID,'File_Version',1,RealScalar=FileVersion)
+CALL WriteAttribute(File_ID,'Project_Name'    ,1,StrScalar =(/tmp255/))
+CALL WriteAttribute(File_ID,'File_Version'    ,1,RealScalar=FileVersionReal)
+WRITE(UNIT=FlexiVersionStr,FMT='(I0,A1,I0,A1,I0)') MajorVersion,".",MinorVersion,".",PatchVersion
+tmp255=TRIM(FlexiVersionStr)
+CALL WriteAttribute(File_ID,'Elexi_Version'   ,1,StrScalar =(/tmp255/))
+CALL WriteAttribute(File_ID,'Elexi_VersionInt',1,IntScalar =FileVersionInt)
+
 END SUBROUTINE WriteHeader
 
 

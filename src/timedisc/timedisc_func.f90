@@ -760,7 +760,7 @@ IF((Nin_CFL.GT.15).OR.(CFLScale(0).GT.alpha))THEN
 END IF
 !scale with 2N+1
 CFLScale(0) = CFLScale(0)/(2.*Nin_CFL+1.)
-SWRITE(UNIT_stdOut,'(A,2ES16.7)') '   CFL (DG/FV):',CFLScale
+SWRITE(UNIT_stdOut,'(A,2ES16.7)') ' CFL (DG/FV):',CFLScale
 CFLScale_Readin = CFLScale
 
 #if PARABOLIC
@@ -779,7 +779,7 @@ IF((Nin_DFL.GT.10).OR.(DFLScale(0).GT.alpha))THEN
   SWRITE(UNIT_stdOut,'(132("!"))')
 END IF
 DFLScale(0) = DFLScale(0)/(2.*Nin_DFL+1.)**2
-SWRITE(UNIT_stdOut,'(A,2ES16.7)') '   DFL (DG/FV):',DFLScale
+SWRITE(UNIT_stdOut,'(A,2ES16.7)') ' DFL (DG/FV):',DFLScale
 DFLScale_Readin = DFLScale
 #else
 dummy = Nin_DFL ! prevent compile warning

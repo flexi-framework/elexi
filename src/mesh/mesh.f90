@@ -460,7 +460,7 @@ IF (meshMode.GT.1) THEN
     ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
     crossProductMetrics = GETLOGICAL('crossProductMetrics')
 #endif
-    LBWRITE(UNIT_stdOut,'(A)') 'NOW CALLING calcMetrics...'
+    LBWRITE(UNIT_stdOut,'(A)') ' NOW CALLING calcMetrics...'
     ! CALL InitMeshBasis(NGeo,PP_N,xGP)
 
     CALL CalcMetrics()

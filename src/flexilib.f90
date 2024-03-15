@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "commit.h"
 
 MODULE MOD_Flexi
 
@@ -41,7 +42,7 @@ SUBROUTINE InitFlexi(nArgs_In,Args_In &
                     )
 ! MODULES
 USE MOD_Globals
-USE MOD_Globals_Vars,      ONLY:InitializationWallTime,StartTime
+USE MOD_Globals_Vars,      ONLY:InitializationWallTime,StartTime,MajorVersion,MinorVersion,PatchVersion
 USE MOD_Commandline_Arguments
 USE MOD_PreProc
 USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze
@@ -237,6 +238,9 @@ SWRITE(UNIT_stdOut,'(A)') &
 SWRITE(UNIT_stdOut,'(A)') &
 " )______)             )_________________)  )_________________)  )_____)/´   )_____)  )_________________)          "
 SWRITE(UNIT_stdOut,'(A)')
+SWRITE(UNIT_stdOut,'(A)')" ƎLexi version "&
+    //TRIM(int2strf(MajorVersion))//"."//TRIM(int2strf(MinorVersion))//"."//TRIM(int2strf(PatchVersion))&
+    //" with commit "//TRIM(GIT_CURRENT_COMMIT)
 SWRITE(UNIT_stdOut,'(132("="))')
 ! Measure init duration
 StartTime=FLEXITIME()

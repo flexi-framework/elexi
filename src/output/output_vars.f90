@@ -27,7 +27,7 @@ INTEGER                      :: NOut                     !< Polynomial degree at
 REAL,ALLOCATABLE             :: Vdm_GaussN_NVisu(:,:)    !< Vandermonde for direct interpolation from computation grid to visu grid
 REAL,ALLOCATABLE             :: Vdm_N_NOut(:,:)          !< output vandermonde
 REAL,PARAMETER               :: FileVersion=0.1          !< version written into output file
-CHARACTER(LEN=255),PARAMETER :: ProgramName='Flexi'      !< name of program written into output file
+! CHARACTER(LEN=255),PARAMETER :: ProgramName='Flexi'      !< name of program written into output file
 CHARACTER(LEN=255)           :: ProjectName              !< Name of the current simulation (mandatory).
 INTEGER                      :: outputFormat=0           !< File format for visualization. <=0: no visualization, 1: Tecplot binary,
                                                          !< 2: Tecplot ASCII, 3: Paraview binary. Note: Tecplot output is currently

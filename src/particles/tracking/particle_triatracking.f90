@@ -354,11 +354,12 @@ DO iPart = 1,PDM%ParticleVecLength
           OldElemID = ElemID
           BCType    = PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,SideID))
 
-          IF (BCType.NE.1) CALL IntersectionWithWall(PartTrajectory &
-                                                    ,alpha          &
-                                                    ,iPart          &
-                                                    ,LocalSide      &
-                                                    ,ElemID         &
+          IF (BCType.NE.1) CALL IntersectionWithWall(PartTrajectory         &
+                                                    ,LastPartPos(1:3,iPart) &
+                                                    ,alpha                  &
+                                                    ,iPart                  &
+                                                    ,LocalSide              &
+                                                    ,ElemID                 &
                                                     ,TriNum)
 
           CALL GetBoundaryInteraction(PartTrajectory       &

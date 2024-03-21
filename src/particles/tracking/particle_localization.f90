@@ -233,7 +233,7 @@ USE MOD_Particle_Mesh_Tools    ,ONLY: GetCNElemID,GetCNSideID,GetGlobalNonUnique
 USE MOD_Particle_Mesh_Vars     ,ONLY: ElemBaryNGeo
 USE MOD_Particle_Surfaces      ,ONLY: CalcNormAndTangBilinear,CalcNormAndTangBezier
 USE MOD_Particle_Surfaces_Vars ,ONLY: SideType,SideNormVec
-USE MOD_Particle_Vars          ,ONLY: LastPartPos
+USE MOD_Particle_Vars          ,ONLY: PartState,LastPartPos
 USE MOD_Utils                  ,ONLY: ALMOSTZERO
 #if CODE_ANALYZE
 USE MOD_Globals                ,ONLY: MyRank,UNIT_stdOut
@@ -287,7 +287,7 @@ lengthPartTrajectory    = VECNORM(PartTrajectory(1:3))
     IF(PartID.EQ.PARTOUT)THEN
       IPWRITE(UNIT_stdOut,*) ' --------------------------------------------- '
       IPWRITE(UNIT_stdOut,*) ' PartInElemCheck '
-      CALL OutputTrajectory(PartID,PartPos,PartTrajectory,lengthPartTrajectory)
+      CALL OutputTrajectory(PartID,PartPos,PartTrajectory,lengthPartTrajectory,LastPartPos)
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
@@ -313,15 +313,15 @@ DO ilocSide = 1,6
 
   SELECT CASE(SideType(CNSideID))
     CASE(PLANAR_RECT)
-      CALL ComputePlanarRectIntersection(   ishit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,flip,SideID)
+      CALL ComputePlanarRectIntersection(   ishit,PartTrajectory,lengthPartTrajectory,                      LastPartPos(:,PartID),alpha,xi,eta,PartID,flip,SideID)
     CASE(PLANAR_NONRECT)
-      CALL ComputePlanarNonRectIntersection(ishit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,flip,SideID)
+      CALL ComputePlanarNonRectIntersection(ishit,PartTrajectory,lengthPartTrajectory,                      LastPartPos(:,PartID),alpha,xi,eta,PartID,flip,SideID)
     CASE(PLANAR_CURVED)
-      CALL ComputePlanarCurvedIntersection( isHit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,flip,SideID)
+      CALL ComputePlanarCurvedIntersection( isHit,PartTrajectory,lengthPartTrajectory,                      LastPartPos(:,PartID),alpha,xi,eta,PartID,flip,SideID)
     CASE(BILINEAR)
-        CALL ComputeBiLinearIntersection(   isHit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,flip,SideID,ElemCheck_Opt=.TRUE.)
+      CALL ComputeBiLinearIntersection(     isHit,PartTrajectory,lengthPartTrajectory,PartState(1:3,PartID),LastPartPos(:,PartID),alpha,xi,eta,PartID,flip,SideID,ElemCheck_Opt=.TRUE.)
     CASE(CURVED)
-      CALL ComputeCurvedIntersection(       isHit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID,flip,SideID,ElemCheck_Opt=.TRUE.)
+      CALL ComputeCurvedIntersection(       isHit,PartTrajectory,lengthPartTrajectory,PartState(1:3,PartID),LastPartPos(:,PartID),alpha,xi,eta,PartID,flip,SideID,ElemCheck_Opt=.TRUE.)
   END SELECT
 
 #if CODE_ANALYZE

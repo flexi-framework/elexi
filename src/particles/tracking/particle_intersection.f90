@@ -66,8 +66,13 @@ PUBLIC :: OutputTrajectory
 
 CONTAINS
 
-
-SUBROUTINE IntersectionWithWall(PartTrajectory,alpha,iPart,iLocSide,Element,TriNum)
+SUBROUTINE IntersectionWithWall(PartTrajectory &
+                               ,lastPartPos    &
+                               ,alpha          &
+                               ,iPart          &
+                               ,iLocSide       &
+                               ,Element        &
+                               ,TriNum)
 !===================================================================================================================================
 ! Compute the Intersection with bilinear surface by approximating the surface with two triangles
 !===================================================================================================================================
@@ -75,16 +80,16 @@ SUBROUTINE IntersectionWithWall(PartTrajectory,alpha,iPart,iLocSide,Element,TriN
 USE MOD_Mesh_Vars,                   ONLY: NodeCoords_Shared
 USE MOD_Particle_Mesh_Tools,         ONLY: GetCNElemID
 USE MOD_Particle_Mesh_Vars,          ONLY: ElemSideNodeID_Shared
-USE MOD_Particle_Vars,               ONLY: lastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+REAL,INTENT(IN),DIMENSION(1:3)   :: PartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)   :: lastPartPos
 INTEGER,INTENT(IN)               :: iPart
 INTEGER,INTENT(IN)               :: iLocSide
 INTEGER,INTENT(IN)               :: Element
 INTEGER,INTENT(IN)               :: TriNum
-REAL, INTENT(IN)                 :: PartTrajectory(1:3)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)               :: alpha
@@ -99,18 +104,17 @@ REAL                             :: Vector1(1:3),Vector2(1:3)
 !===================================================================================================================================
 
 CNElemID = GetCNElemID(Element)
+PoldX    = LastPartPos(1)
+PoldY    = LastPartPos(2)
+PoldZ    = LastPartPos(3)
 
-PoldX = LastPartPos(1,iPart)
-PoldY = LastPartPos(2,iPart)
-PoldZ = LastPartPos(3,iPart)
-
-xNod = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
-yNod = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
-zNod = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
+xNod     = NodeCoords_Shared(1,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
+yNod     = NodeCoords_Shared(2,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
+zNod     = NodeCoords_Shared(3,ElemSideNodeID_Shared(1,iLocSide,CNElemID)+1)
 
 !---- Calculate normal vector:
-Node1 = TriNum+1     ! normal = cross product of 1-2 and 1-3 for first triangle
-Node2 = TriNum+2     !          and 1-3 and 1-4 for second triangle
+Node1    = TriNum+1     ! normal = cross product of 1-2 and 1-3 for first triangle
+Node2    = TriNum+2     !          and 1-3 and 1-4 for second triangle
 
 Vector1(1) = NodeCoords_Shared(1,ElemSideNodeID_Shared(Node1,iLocSide,CNElemID)+1) - xNod
 Vector1(2) = NodeCoords_Shared(2,ElemSideNodeID_Shared(Node1,iLocSide,CNElemID)+1) - yNod
@@ -160,6 +164,7 @@ END SUBROUTINE IntersectionWithWall
 SUBROUTINE ComputePlanarRectIntersection(isHit                       &
                                         ,PartTrajectory              &
                                         ,lengthPartTrajectory        &
+                                        ,LastPartPos                 &
                                         ,alpha                       &
                                         ,xi                          &
                                         ,eta                         &
@@ -180,7 +185,6 @@ USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY: SideNormVec,epsilontol,SideDistance
 USE MOD_Particle_Surfaces_Vars,  ONLY: BaseVectors0,BaseVectors1,BaseVectors2
-USE MOD_Particle_Vars,           ONLY: LastPartPos
 USE MOD_Utils,                   ONLY: ALMOSTZERO
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints3D
@@ -193,6 +197,7 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
 REAL,INTENT(IN)                   :: lengthPartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
 INTEGER,INTENT(IN)                :: PartID,SideID
 INTEGER,INTENT(IN)                :: flip
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -255,7 +260,7 @@ ELSE
 END IF
 
 ! difference between SideDistance (distance from origin to side) and the dot product is the distance of the particle to the side
-locSideDistance = locDistance-DOT_PRODUCT(LastPartPos(1:3,PartID),NormVec)
+locSideDistance = locDistance-DOT_PRODUCT(LastPartPos,NormVec)
 
 ! particle moving parallel to side
 IF (CriticalParallelInSide) THEN
@@ -294,7 +299,7 @@ IF((alphaNorm.GT.1.0) .OR.(alphaNorm.LT.-epsilontol))THEN
 END IF
 
 ! Calculate intersection point and initial base vectors
-Inter1=LastPartPos(1:3,PartID)+alpha*PartTrajectory
+Inter1=LastPartPos+alpha*PartTrajectory
 P0 =-0.25*BaseVectors0(:,SideID)+Inter1
 P1 = 0.25*BaseVectors1(:,SideID)
 P2 = 0.25*BaseVectors2(:,SideID)
@@ -336,6 +341,7 @@ END SUBROUTINE ComputePlanarRectIntersection
 SUBROUTINE ComputePlanarNonRectIntersection(isHit                       &
                                            ,PartTrajectory              &
                                            ,lengthPartTrajectory        &
+                                           ,LastPartPos                 &
                                            ,alpha                       &
                                            ,xi                          &
                                            ,eta                         &
@@ -355,7 +361,6 @@ USE MOD_Globals_Vars,            ONLY: epsMach
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY: SideNormVec,epsilontol,SideDistance
-USE MOD_Particle_Vars,           ONLY: LastPartPos
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints3D
 USE MOD_Mesh_Vars,               ONLY: NGeo
 USE MOD_Utils,                   ONLY: ALMOSTZERO
@@ -368,6 +373,7 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
 REAL,INTENT(IN)                   :: lengthPartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
 INTEGER,INTENT(IN)                :: PartID,SideID
 INTEGER,INTENT(IN)                :: flip
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -429,7 +435,7 @@ CriticalParallelInSide = .FALSE.
 END IF
 
 ! difference between SideDistance (distance from origin to side) and the dot product is the distance of the particle to the side
-locSideDistance = locDistance-DOT_PRODUCT(LastPartPos(1:3,PartID),NormVec)
+locSideDistance = locDistance-DOT_PRODUCT(LastPartPos,NormVec)
 
 ! particle moving parallel to side
 IF (CriticalParallelInSide) THEN
@@ -468,7 +474,7 @@ IF((alphaNorm.GT.1.0) .OR.(alphaNorm.LT.-epsilontol))THEN
 END IF
 
 ! Calculate intersection point and initial base vectors
-Inter1=LastPartPos(1:3,PartID)+alpha*PartTrajectory
+Inter1=LastPartPos+alpha*PartTrajectory
 
 ! Least square
 ! 1. triangle
@@ -520,6 +526,7 @@ END SUBROUTINE ComputePlanarNonRectIntersection
 SUBROUTINE ComputePlanarCurvedIntersection(isHit                        &
                                            ,PartTrajectory              &
                                            ,lengthPartTrajectory        &
+                                           ,LastPartPos                 &
                                            ,alpha                       &
                                            ,xi                          &
                                            ,eta                         &
@@ -541,7 +548,6 @@ USE MOD_Particle_Surfaces_Vars,  ONLY: SideNormVec,SideSlabNormals
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints2D,BezierControlPoints3D
 USE MOD_Particle_Surfaces_Vars,  ONLY: locXi,locEta,locAlpha,SideDistance
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
-USE MOD_Particle_Vars,           ONLY: LastPartPos
 USE MOD_Utils,                   ONLY: ALMOSTZERO
 USE MOD_Utils,                   ONLY: InsertionSort
 #if CODE_ANALYZE
@@ -551,29 +557,30 @@ USE MOD_Particle_Surfaces_Vars,  ONLY: rBoundingBoxChecks
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN),DIMENSION(1:3)           :: PartTrajectory
-REAL,INTENT(IN)                          :: lengthPartTrajectory
-INTEGER,INTENT(IN)                       :: PartID,SideID
-INTEGER,INTENT(IN)                       :: flip
+REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
+REAL,INTENT(IN)                   :: lengthPartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
+INTEGER,INTENT(IN)                :: PartID,SideID
+INTEGER,INTENT(IN)                :: flip
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                         :: alpha,xi,eta
-LOGICAL,INTENT(OUT)                      :: isHit
-LOGICAL,INTENT(OUT),OPTIONAL             :: opt_CriticalParallelInSide
+REAL,INTENT(OUT)                  :: alpha,xi,eta
+LOGICAL,INTENT(OUT)               :: isHit
+LOGICAL,INTENT(OUT),OPTIONAL      :: opt_CriticalParallelInSide
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                     :: n1(3),n2(3)
-REAL                                     :: NormVec(1:3),locDistance
-INTEGER                                  :: CNSideID,nInterSections,p,q
-LOGICAL                                  :: CriticalParallelInSide
-REAL                                     :: XiNewton(2)
-REAL                                     :: coeffA,locSideDistance
+REAL                              :: n1(3),n2(3)
+REAL                              :: NormVec(1:3),locDistance
+INTEGER                           :: CNSideID,nInterSections,p,q
+LOGICAL                           :: CriticalParallelInSide
+REAL                              :: XiNewton(2)
+REAL                              :: coeffA,locSideDistance
 ! fallback algorithm
-LOGICAL                                  :: failed
-INTEGER(KIND=2)                          :: ClipMode
-REAL                                     :: LineNormVec(1:2,1:2)
-INTEGER                                  :: iClipIter,nXiClip,nEtaClip
-REAL                                     :: PartFaceAngle
+LOGICAL                           :: failed
+INTEGER(KIND=2)                   :: ClipMode
+REAL                              :: LineNormVec(1:2,1:2)
+INTEGER                           :: iClipIter,nXiClip,nEtaClip
+REAL                              :: PartFaceAngle
 !===================================================================================================================================
 
 ! set alpha to minus 1, assume no intersection
@@ -606,7 +613,7 @@ coeffA = DOT_PRODUCT(NormVec,PartTrajectory)
 IF (coeffA.LE.0.) RETURN
 
 ! difference between SideDistance (distance from origin to side) and the dot product is the distance of the particle to the side
-locSideDistance = locDistance-DOT_PRODUCT(LastPartPos(1:3,PartID),NormVec)
+locSideDistance = locDistance-DOT_PRODUCT(LastPartPos,NormVec)
 locSideDistance = locSideDistance/coeffA
 IF (locSideDistance.GT.lengthPartTrajectory) RETURN
 
@@ -615,7 +622,7 @@ IF (TrackingMethod.NE.REFMAPPING) THEN
 END IF
 
 ! Check if the particle intersects the bounding box of the side. If not, we can eliminate the side without doing more checking
-IF(.NOT.FlatBoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,SideID)) RETURN
+IF(.NOT.FlatBoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,LastPartPos,PartID,SideID)) RETURN
 
 ! calculate Bezier intersection through transformation of Bezier patch 3D->2D
 !> 1) calculate a coordinate system standing orthogonal on the particle trajectors
@@ -632,13 +639,21 @@ n2 = CROSSNORM(PartTrajectory,n1)
 
 DO q = 0,NGeo
   DO p = 0,NGeo
-    BezierControlPoints2D(1,p,q) = DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID)-LastPartPos(1:3,PartID),n1)
-    BezierControlPoints2D(2,p,q) = DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID)-LastPartPos(1:3,PartID),n2)
+    BezierControlPoints2D(1,p,q) = DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID)-LastPartPos,n1)
+    BezierControlPoints2D(2,p,q) = DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID)-LastPartPos,n2)
   END DO
 END DO
 
-XiNewton=0.
-CALL BezierNewton(locAlpha(1),XiNewton,BezierControlPoints2D,PartTrajectory,lengthPartTrajectory,PartID,SideID,failed)
+XiNewton = 0.
+CALL BezierNewton(locAlpha(1)           &
+                 ,XiNewton              &
+                 ,BezierControlPoints2D &
+                 ,PartTrajectory        &
+                 ,lengthPartTrajectory  &
+                 ,LastPartPos           &
+                 ,PartID                &
+                 ,SideID                &
+                 ,failed)
 
 ! write Xinewton to locXi and locEta
 locXi (1) = XiNewton(1)
@@ -656,8 +671,18 @@ IF (failed) THEN
   ClipMode    = 1
   LineNormVec = 0.
 
-  CALL BezierClipRecursive(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory,lengthPartTrajectory &
-                ,iClipIter,nXiClip,nEtaClip,nInterSections,PartID,SideID)
+  CALL BezierClipRecursive(ClipMode              &
+                          ,BezierControlPoints2D &
+                          ,LineNormVec           &
+                          ,PartTrajectory        &
+                          ,lengthPartTrajectory  &
+                          ,LastPartPos           &
+                          ,iClipIter             &
+                          ,nXiClip               &
+                          ,nEtaClip              &
+                          ,nInterSections        &
+                          ,PartID                &
+                          ,SideID)
 
   ! TODO: I don't understand this code. Why calculate the number of intersections and then dismiss them?
   IF (nInterSections.GT.1) nInterSections = 1
@@ -698,8 +723,19 @@ END SELECT
 END SUBROUTINE ComputePlanarCurvedIntersection
 
 
-SUBROUTINE ComputeBiLinearIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild &
-                                                   ,PartID,flip,SideID,ElemCheck_Opt,alpha2)
+SUBROUTINE ComputeBiLinearIntersection(isHit                &
+                                      ,PartTrajectory       &
+                                      ,lengthPartTrajectory &
+                                      ,PartState            &
+                                      ,LastPartPos          &
+                                      ,alpha                &
+                                      ,xitild               &
+                                      ,etatild              &
+                                      ,PartID               &
+                                      ,flip                 &
+                                      ,SideID               &
+                                      ,ElemCheck_Opt        &
+                                      ,alpha2)
 !===================================================================================================================================
 ! Compute the Intersection with planar surface, improved version by
 ! Haselbacher, A.; Najjar, F. M. & Ferry, J. P., An efficient and robust particle-localization algorithm for unstructured grids
@@ -713,8 +749,6 @@ USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY: BaseVectors0,BaseVectors1,BaseVectors2,BaseVectors3,SideNormVec,epsilonTol!,BaseVectorsScale
 USE MOD_Particle_Surfaces,       ONLY: CalcNormAndTangBilinear
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
-USE MOD_Particle_Vars,           ONLY: LastPartPos
-! USE MOD_Particle_Vars,           ONLY: PartState,PEM
 USE MOD_Utils,                   ONLY: ALMOSTEQUAL
 #if CODE_ANALYZE
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints3D
@@ -730,6 +764,8 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
 REAL,INTENT(IN)                   :: lengthPartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
+REAL,INTENT(IN),DIMENSION(1:3)    :: PartState
 INTEGER,INTENT(IN)                :: PartID,SideID
 INTEGER,INTENT(IN)                :: flip
 LOGICAL,INTENT(IN),OPTIONAL       :: ElemCheck_Opt
@@ -783,7 +819,7 @@ scaleFac = DOT_PRODUCT(PartTrajectory,SideNormVec(1:3,CNSideID))
 IF (ABS(scaleFac).LT.epsilontol) RETURN
 
 ! Haselbacher et al. define d = d - r_p
-BiLinearCoeff(:,4) = BiLinearCoeff(:,4) - LastPartPos(:,PartID)
+BiLinearCoeff(:,4) = BiLinearCoeff(:,4) - LastPartPos
 
 ! Calculate component normal to ray
 NormalCoeff(:,1) = BiLinearCoeff(:,1) - SUM(BiLinearCoeff(:,1)*PartTrajectory(:))*PartTrajectory
@@ -828,11 +864,21 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState
         ! CALL Abort(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
-        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,flip,SideID)
+        CALL ComputeCurvedIntersection(isHit                &
+                                      ,PartTrajectory       &
+                                      ,lengthPartTrajectory &
+                                      ,PartState            &
+                                      ,LastPartPos          &
+                                      ,alpha                &
+                                      ,xitild               &
+                                      ,etatild              &
+                                      ,PartID               &
+                                      ,flip                 &
+                                      ,SideID)
       END IF
 
       IF( ABS(xi(1)).LE.1.0) THEN
@@ -879,11 +925,21 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState
         ! CALL Abort(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
-        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,flip,SideID)
+        CALL ComputeCurvedIntersection(isHit                &
+                                      ,PartTrajectory       &
+                                      ,lengthPartTrajectory &
+                                      ,PartState            &
+                                      ,LastPartPos          &
+                                      ,alpha                &
+                                      ,xitild               &
+                                      ,etatild              &
+                                      ,PartID               &
+                                      ,flip                 &
+                                      ,SideID)
       END IF
 
       IF( ABS(xi(1)).LE.1.0) THEN
@@ -917,11 +973,21 @@ SELECT CASE(nRoot)
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' PartID:             ', PartID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global SideID:      ', SideID
         ! IPWRITE(UNIT_stdOut,'(I0,A,I0)') ' global ElemID:      ', SideInfo_Shared(SIDE_ELEMID,SideID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos(1:3,PartID)
-        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState  (1:3,PartID)
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' LastPartPos:   ', LastPartPos
+        ! IPWRITE(UNIT_stdOut,'(I0,A,3(1X,ES25.17E3))') ' PartPos:       ', PartState
         ! CALL Abort(__STAMP__,'Invalid intersection with bilinear side!',SideID)
         IPWRITE(UNIT_stdOut,'(I0,A,I0)') 'Fallback for bilinear intersection on global SideID: ', SideID
-        CALL ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xitild,etatild,PartID,flip,SideID)
+        CALL ComputeCurvedIntersection(isHit                &
+                                      ,PartTrajectory       &
+                                      ,lengthPartTrajectory &
+                                      ,PartState            &
+                                      ,LastPartPos          &
+                                      ,alpha                &
+                                      ,xitild               &
+                                      ,etatild              &
+                                      ,PartID               &
+                                      ,flip                 &
+                                      ,SideID)
         RETURN
       END IF
 
@@ -1016,8 +1082,19 @@ END SELECT ! nRoot
 END SUBROUTINE ComputeBiLinearIntersection
 
 
-SUBROUTINE ComputeCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,alpha,xi,eta,PartID &
-                ,flip,SideID,opt_CriticalParallelInSide,ElemCheck_Opt)
+SUBROUTINE ComputeCurvedIntersection(isHit                      &
+                                    ,PartTrajectory             &
+                                    ,lengthPartTrajectory       &
+                                    ,PartState                  &
+                                    ,LastPartPos                &
+                                    ,alpha                      &
+                                    ,xi                         &
+                                    ,eta                        &
+                                    ,PartID                     &
+                                    ,flip                       &
+                                    ,SideID                     &
+                                    ,opt_CriticalParallelInSide &
+                                    ,ElemCheck_Opt)
 !===================================================================================================================================
 ! Compute the intersection with a Bezier surface
 ! particle path = LastPartPos+lengthPartTrajectory*PartTrajectory
@@ -1037,7 +1114,6 @@ USE MOD_Particle_Surfaces_Vars,  ONLY: BoundingBoxIsEmpty
 USE MOD_Particle_Surfaces_Vars,  ONLY: SideSlabNormals
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipTolerance,BezierClipLocalTol
 USE MOD_Particle_Tracking_Vars,  ONLY: TrackingMethod
-USE MOD_Particle_Vars,           ONLY: PartState,LastPartPos
 USE MOD_Utils,                   ONLY: ALMOSTZERO
 USE MOD_Utils,                   ONLY: InsertionSort
 #if CODE_ANALYZE
@@ -1051,33 +1127,35 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN),DIMENSION(1:3)           :: PartTrajectory
-REAL,INTENT(IN)                          :: lengthPartTrajectory
-INTEGER,INTENT(IN)                       :: PartID,SideID
-INTEGER,INTENT(IN)                       :: flip
-LOGICAL,INTENT(IN),OPTIONAL              :: ElemCheck_Opt
+REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
+REAL,INTENT(IN)                   :: lengthPartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
+REAL,INTENT(IN),DIMENSION(1:3)    :: PartState
+INTEGER,INTENT(IN)                :: PartID,SideID
+INTEGER,INTENT(IN)                :: flip
+LOGICAL,INTENT(IN),OPTIONAL       :: ElemCheck_Opt
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                         :: alpha,xi,eta
-LOGICAL,INTENT(OUT)                      :: isHit
-LOGICAL,INTENT(OUT),OPTIONAL             :: opt_CriticalParallelInSide
+REAL,INTENT(OUT)                  :: alpha,xi,eta
+LOGICAL,INTENT(OUT)               :: isHit
+LOGICAL,INTENT(OUT),OPTIONAL      :: opt_CriticalParallelInSide
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                     :: n1(3),n2(3),NormVec(1:3)
-INTEGER                                  :: CNSideID,nInterSections,iInter,p,q
-INTEGER                                  :: iClipIter,nXiClip,nEtaClip
+REAL                              :: n1(3),n2(3),NormVec(1:3)
+INTEGER                           :: CNSideID,nInterSections,iInter,p,q
+INTEGER                           :: iClipIter,nXiClip,nEtaClip
 #if CODE_ANALYZE
-REAL                                     :: BezierControlPoints2D_tmp(2,0:NGeo,0:NGeo)
+REAL                              :: BezierControlPoints2D_tmp(2,0:NGeo,0:NGeo)
 #endif /*CODE_ANALYZE*/
-INTEGER,ALLOCATABLE,DIMENSION(:)         :: locID,realInterID
-INTEGER(KIND=2)                          :: ClipMode
-REAL                                     :: LineNormVec(1:2,1:2)
-INTEGER                                  :: realnInter,isInter
-REAL                                     :: XiNewton(2)
-REAL                                     :: PartFaceAngle,dXi,dEta
-LOGICAL                                  :: CriticalParallelInSide,failed
-INTEGER                                  :: InsideBoxLastPos,InsideBoxPartPos
-!REAL                                     :: Interval1D,dInterVal1D
+INTEGER,ALLOCATABLE,DIMENSION(:)  :: locID,realInterID
+INTEGER(KIND=2)                   :: ClipMode
+REAL                              :: LineNormVec(1:2,1:2)
+INTEGER                           :: realnInter,isInter
+REAL                              :: XiNewton(2)
+REAL                              :: PartFaceAngle,dXi,dEta
+LOGICAL                           :: CriticalParallelInSide,failed
+INTEGER                           :: InsideBoxLastPos,InsideBoxPartPos
+! REAL                              :: Interval1D,dInterVal1D
 !===================================================================================================================================
 ! set alpha to minus 1, asume no intersection
 alpha    = -1.0
@@ -1102,19 +1180,21 @@ IF (BoundingBoxIsEmpty(CNSideID)) THEN
   IF (TrackingMethod.EQ.REFMAPPING) THEN
     IF (DOT_PRODUCT(NormVec,PartTrajectory).LT.0.) RETURN
   ELSE
-    IF (ALMOSTZERO(DOT_PRODUCT(NormVec,PartTrajectory))) CriticalParallelInSide=.TRUE.
+    IF (ALMOSTZERO(DOT_PRODUCT(NormVec,PartTrajectory))) CriticalParallelInSide = .TRUE.
   END IF
-  IF (.NOT.FlatBoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,SideID)) RETURN ! the particle does not intersect the
-                                                                                                  ! bounding box
+
+  ! the particle does not intersect the bounding box
+  IF (.NOT.FlatBoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,LastPartPos,PartID,SideID)) RETURN
 ELSE
   ! 1.) Check if LastPartPos or PartState are within the bounding box. If yes then compute a Bezier intersection problem
-  InsideBoxLastPos = InsideBoundingBox(LastPartPos(1:3,PartID),SideID)
-  InsideBoxPartPos = InsideBoundingBox(PartState(1:3,PartID),SideID)
+  InsideBoxLastPos = InsideBoundingBox(LastPartPos,SideID)
+  InsideBoxPartPos = InsideBoundingBox(PartState  ,SideID)
   IF ((InsideBoxLastPos.NE.0).AND.(InsideBoxPartPos.NE.0)) THEN
     ! the new and old particle positions are not inside the bounding box
     IF (InsideBoxLastPos.EQ.InsideBoxPartPos) RETURN
+
     ! the particle does not intersect the bounding box
-    IF (.NOT.BoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,SideID)) RETURN
+    IF (.NOT.BoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,LastPartPos,PartID,SideID)) RETURN
   END IF
 END IF
 
@@ -1130,9 +1210,9 @@ PartFaceAngle = ABS(0.5*PI - ACOS(DOT_PRODUCT(PartTrajectory,SideSlabNormals(:,2
 DO q = 0,NGeo
   DO p = 0,NGeo
     ! n2 is perpendicular to x-axis => gives distance to new x-axis
-    BezierControlPoints2D(1,p,q) = DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID) - LastPartPos(1:3,PartID),n2)
+    BezierControlPoints2D(1,p,q) = DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID) - LastPartPos,n2)
     ! n1 is perpendicular to y-axis => gives distance to new y-axis
-    BezierControlPoints2D(2,p,q) = DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID) - LastPartPos(1:3,PartID),n1)
+    BezierControlPoints2D(2,p,q) = DOT_PRODUCT(BezierControlPoints3D(:,p,q,SideID) - LastPartPos,n1)
   END DO
 END DO
 
@@ -1176,8 +1256,18 @@ rPerformBezierClip = rPerformBezierClip+1.
     END IF
   END IF
 #endif /*CODE_ANALYZE*/
-  CALL BezierClipRecursive(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory,lengthPartTrajectory&
-                ,iClipIter,nXiClip,nEtaClip,nInterSections,PartID,SideID)
+  CALL BezierClipRecursive(ClipMode              &
+                          ,BezierControlPoints2D &
+                          ,LineNormVec           &
+                          ,PartTrajectory        &
+                          ,lengthPartTrajectory  &
+                          ,LastPartPos           &
+                          ,iClipIter             &
+                          ,nXiClip               &
+                          ,nEtaClip              &
+                          ,nInterSections        &
+                          ,PartID                &
+                          ,SideID)
 
 ELSE !BezierNewtonAngle
 #if CODE_ANALYZE
@@ -1190,14 +1280,34 @@ ELSE !BezierNewtonAngle
   nInterSections = 0
   ClipMode    = 1
   LineNormVec = 0.
-  CALL BezierClipRecursive(ClipMode,BezierControlPoints2D_tmp,LineNormVec,PartTrajectory,lengthPartTrajectory&
-                ,iClipIter,nXiClip,nEtaClip,nInterSections,PartID,SideID)
+  CALL BezierClipRecursive(ClipMode                  &
+                          ,BezierControlPoints2D_tmp &
+                          ,LineNormVec               &
+                          ,PartTrajectory            &
+                          ,lengthPartTrajectory      &
+                          ,LastPartPos               &
+                          ,iClipIter                 &
+                          ,nXiClip                   &
+                          ,nEtaClip                  &
+                          ,nInterSections            &
+                          ,PartID                    &
+                          ,SideID)
+
   IF (nInterSections.GT.1) &
     CALL Abort(__STAMP__,' More then one intersection! Cannot use Newton!' ,nInterSections)
 #endif /*CODE_ANALYZE*/
 
   XiNewton = 0.
-  CALL BezierNewton(locAlpha(1),XiNewton,BezierControlPoints2D,PartTrajectory,lengthPartTrajectory,PartID,SideID,failed)
+  CALL BezierNewton(locAlpha(1)           &
+                   ,XiNewton              &
+                   ,BezierControlPoints2D &
+                   ,PartTrajectory        &
+                   ,lengthPartTrajectory  &
+                   ,LastPartPos           &
+                   ,PartID                &
+                   ,SideID                &
+                   ,failed)
+
   nInterSections = 0
   IF (locAlpha(1).GT.-1) nInterSections=1
   IF (failed) CALL Abort(__STAMP__,' Bezier-Newton does not yield root! ')
@@ -1398,9 +1508,18 @@ IF (PRESENT(ElemCheck_Opt)) ClipMode = 0
 END SUBROUTINE ComputeCurvedIntersection
 
 
-RECURSIVE SUBROUTINE BezierClipRecursive(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory,lengthPartTrajectory &
-                               ,iClipIter,nXiClip,nEtaClip&
-                               ,nInterSections,PartID,SideID)
+RECURSIVE SUBROUTINE BezierClipRecursive(ClipMode              &
+                                        ,BezierControlPoints2D &
+                                        ,LineNormVec           &
+                                        ,PartTrajectory        &
+                                        ,lengthPartTrajectory  &
+                                        ,LastPartPos           &
+                                        ,iClipIter             &
+                                        ,nXiClip               &
+                                        ,nEtaClip              &
+                                        ,nInterSections        &
+                                        ,PartID                &
+                                        ,SideID)
 !================================================================================================================================
 ! Performes the de-Casteljau alogrithm with Clipping to find the intersection between trajectory and surface
 ! original article:
@@ -1426,10 +1545,11 @@ USE MOD_Particle_Surfaces,       ONLY: OutputBezierControlPoints
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)                      :: lengthPartTrajectory
 REAL,INTENT(INOUT)                   :: BezierControlPoints2D(2,0:NGeo,0:NGeo)
-INTEGER,INTENT(IN)                   :: SideID,PartID
 REAL,INTENT(IN),DIMENSION(1:3)       :: PartTrajectory
+REAL,INTENT(IN)                      :: lengthPartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)       :: LastPartPos
+INTEGER,INTENT(IN)                   :: SideID,PartID
 !--------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER,INTENT(INOUT)                  :: iClipIter,nXiClip,nEtaClip,nInterSections
@@ -1470,9 +1590,18 @@ DO WHILE(iClipIter.LE.BezierClipMaxIter)
       !IF(MOD(iClipIter,2).EQ.1) CALL CalcLineNormVec2(BezierControlPoints2D(:,:,:),LineNormVec(:,:),NGeo,0)
       IF(MOD(iClipIter,2).EQ.1) CALL CalcLineNormVec3(BezierControlPoints2D(:,:,:),LineNormVec(:,:))
     END IF
-    CALL CheckXiClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory,lengthPartTrajectory &
-                       ,iClipIter,nXiClip,nEtaClip&
-                       ,nInterSections,PartID,SideID)
+    CALL CheckXiClip( ClipMode              &
+                     ,BezierControlPoints2D &
+                     ,LineNormVec           &
+                     ,PartTrajectory        &
+                     ,lengthPartTrajectory  &
+                     ,LastPartPos           &
+                     ,iClipIter             &
+                     ,nXiClip               &
+                     ,nEtaClip              &
+                     ,nInterSections        &
+                     ,PartID                &
+                     ,SideID)
   CASE(2)
     ! LineNormVec is only computed, if a Xi and Eta Clip is performed.
     ! we compute LineNormVecs only until one direction is converged, than we keep the vector to report the correct
@@ -1481,20 +1610,47 @@ DO WHILE(iClipIter.LE.BezierClipMaxIter)
     IF(BezierClipLineVectorMethod.EQ.2) THEN
       IF(MOD(iClipIter,2).EQ.1) CALL CalcLineNormVec3(BezierControlPoints2D(:,:,:),LineNormVec(:,:))
     END IF
-    CALL CheckEtaClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory,lengthPartTrajectory &
-                       ,iClipIter,nXiClip,nEtaClip&
-                       ,nInterSections,PartID,SideID)
+    CALL CheckEtaClip(ClipMode              &
+                     ,BezierControlPoints2D &
+                     ,LineNormVec           &
+                     ,PartTrajectory        &
+                     ,lengthPartTrajectory  &
+                     ,LastPartPos           &
+                     ,iClipIter             &
+                     ,nXiClip               &
+                     ,nEtaClip              &
+                     ,nInterSections        &
+                     ,PartID                &
+                     ,SideID)
   CASE(3)
-    CALL CheckXiClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory,lengthPartTrajectory &
-                       ,iClipIter,nXiClip,nEtaClip&
-                       ,nInterSections,PartID,SideID)
+    CALL CheckXiClip( ClipMode              &
+                     ,BezierControlPoints2D &
+                     ,LineNormVec           &
+                     ,PartTrajectory        &
+                     ,lengthPartTrajectory  &
+                     ,LastPartPos           &
+                     ,iClipIter             &
+                     ,nXiClip               &
+                     ,nEtaClip              &
+                     ,nInterSections        &
+                     ,PartID                &
+                     ,SideID)
   CASE(4)
-    CALL CheckEtaClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory,lengthPartTrajectory &
-                       ,iClipIter,nXiClip,nEtaClip&
-                       ,nInterSections,PartID,SideID)
+    CALL CheckEtaClip(ClipMode              &
+                     ,BezierControlPoints2D &
+                     ,LineNormVec           &
+                     ,PartTrajectory        &
+                     ,lengthPartTrajectory  &
+                     ,LastPartPos           &
+                     ,iClipIter             &
+                     ,nXiClip               &
+                     ,nEtaClip              &
+                     ,nInterSections        &
+                     ,PartID                &
+                     ,SideID)
   CASE(5)
     ! validate found intersection
-    CALL ComputeBezierIntersectionPoint(nXiClip,nEtaClip,PartID,SideID,nInterSections,PartTrajectory,lengthPartTrajectory)
+    CALL ComputeBezierIntersectionPoint(nXiClip,nEtaClip,PartID,SideID,nInterSections,PartTrajectory,lengthPartTrajectory,LastPartPos)
     RETURN ! leave, because convergence
   CASE DEFAULT
 
@@ -1515,7 +1671,15 @@ END IF
 END SUBROUTINE BezierClipRecursive
 
 
-SUBROUTINE BezierNewton(alpha,Xi,BezierControlPoints2D,PartTrajectory,lengthPartTrajectory,PartID,SideID,failed)
+SUBROUTINE BezierNewton(alpha                 &
+                       ,Xi                    &
+                       ,BezierControlPoints2D &
+                       ,PartTrajectory        &
+                       ,lengthPartTrajectory  &
+                       ,LastPartPos           &
+                       ,PartID                &
+                       ,SideID                &
+                       ,failed)
 !===================================================================================================================================
 ! Newton to find root in projected plane for curved tracking
 ! whole Newton operates in [-1,1]
@@ -1527,7 +1691,6 @@ USE MOD_Globals
 USE MOD_Mesh_Vars,               ONLY: NGeo
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierNewtonTolerance2,BezierNewtonMaxIter,BezierControlPoints3D,epsilontol
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierNewtonGuess
-USE MOD_Particle_Vars,           ONLY: LastPartPos!,PartState
 USE MOD_Particle_Surfaces,       ONLY: EvaluateBezierPolynomialAndGradient
 USE MOD_Particle_Surfaces_Vars,  ONLY: D_Bezier
 #if CODE_ANALYZE
@@ -1539,15 +1702,17 @@ USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-REAL,INTENT(IN)    :: BezierControlPoints2D(2,0:NGeo,0:NGeo)
-REAL,INTENT(IN)    :: PartTrajectory(3),lengthPartTrajectory
-INTEGER,INTENT(IN) :: PartID
-INTEGER,INTENT(IN) :: SideID
+REAL,INTENT(IN)                   :: BezierControlPoints2D(2,0:NGeo,0:NGeo)
+REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
+REAL,INTENT(IN)                   :: lengthPartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
+INTEGER,INTENT(IN)                :: PartID
+INTEGER,INTENT(IN)                :: SideID
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT) :: Xi(2)
-REAL,INTENT(OUT)   :: alpha
-LOGICAL,INTENT(OUT):: failed
+REAL,INTENT(INOUT)                :: Xi(2)
+REAL,INTENT(OUT)                  :: alpha
+LOGICAL,INTENT(OUT)               :: failed
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL               :: dXi(2),sdet,dXi2,alphaNorm
@@ -1735,11 +1900,10 @@ IF(ABS(xi(2)).GT.1.002) RETURN
 
 ! compute 3D intersection
 CALL EvaluateBezierPolynomialAndGradient(Xi,NGeo,3,BezierControlPoints3D(1:3,0:NGeo,0:NGeo,SideID),Point=InterP)
-IntersectionVector=InterP-LastPartPos(1:3,PartID)
+IntersectionVector = InterP-LastPartPos
 
-alpha=DOT_PRODUCT(IntersectionVector,PartTrajectory)
-
-alphaNorm=alpha/lengthPartTrajectory
+alpha     = DOT_PRODUCT(IntersectionVector,PartTrajectory)
+alphaNorm = alpha/lengthPartTrajectory
 
 #if CODE_ANALYZE
 IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
@@ -1817,7 +1981,11 @@ InsideBoundingBox = 0
 END FUNCTION InsideBoundingBox
 
 
-FUNCTION BoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,SideID)
+FUNCTION BoundingBoxIntersection(PartTrajectory       &
+                                ,lengthPartTrajectory &
+                                ,LastPartPos          &
+                                ,PartID               &
+                                ,SideID)
 !================================================================================================================================
 ! check if the particle trajectory penetrates the bounding box, return TRUE/FALSE
 !================================================================================================================================
@@ -1826,23 +1994,23 @@ USE MOD_Globals_Vars,            ONLY: epsMach
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY: SideSlabNormals,SideSlabIntervals,BezierControlPoints3D
-USE MOD_Particle_Vars,           ONLY: LastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,DIMENSION(3),INTENT(IN)         :: PartTrajectory
-REAL,INTENT(IN)                      :: lengthPartTrajectory
-INTEGER,INTENT(IN)                   :: PartID,SideID
+REAL,DIMENSION(3),INTENT(IN)      :: PartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
+REAL,INTENT(IN)                   :: lengthPartTrajectory
+INTEGER,INTENT(IN)                :: PartID,SideID
 !--------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-LOGICAL                              :: BoundingBoxIntersection
+LOGICAL                           :: BoundingBoxIntersection
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                 :: dnk,alpha(2,3)
-REAL                                 :: maxvalue,minvalue
-INTEGER                              :: CNSideID
-INTEGER                              :: i
+REAL                              :: dnk,alpha(2,3)
+REAL                              :: maxvalue,minvalue
+INTEGER                           :: CNSideID
+INTEGER                           :: i
 !================================================================================================================================
 
 CNSideID = GetCNSideID(SideID)
@@ -1859,15 +2027,15 @@ DO i=1,3!x,y,z direction
   END IF
 
   IF(dnk.LT.0.)THEN
-    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(  2*i,CNSideID))/dnk!t_max
-    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
+    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(:,i,CNSideID))&
+                                                                            +SideSlabIntervals(  2*i,CNSideID))/dnk!t_max
+    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(:,i,CNSideID))&
+                                                                            +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
   ELSE
-    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
-    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(  2*i,CNSideID))/dnk!t_max
+    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(:,i,CNSideID))&
+                                                                            +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
+    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(:,i,CNSideID))&
+                                                                            +SideSlabIntervals(  2*i,CNSideID))/dnk!t_max
   END IF
 END DO!i
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1890,7 +2058,11 @@ END IF
 END FUNCTION BoundingBoxIntersection
 
 
-FUNCTION FlatBoundingBoxIntersection(PartTrajectory,lengthPartTrajectory,PartID,SideID)
+FUNCTION FlatBoundingBoxIntersection(PartTrajectory       &
+                                    ,lengthPartTrajectory &
+                                    ,LastPartPos          &
+                                    ,PartID               &
+                                    ,SideID)
 !================================================================================================================================
 ! check if the particle trajectory penetrates the bounding box, return TRUE/FALSE
 !================================================================================================================================
@@ -1899,23 +2071,23 @@ USE MOD_Globals_Vars,            ONLY: epsMach
 USE MOD_Particle_Globals
 USE MOD_Particle_Mesh_Tools,     ONLY: GetCNSideID
 USE MOD_Particle_Surfaces_Vars,  ONLY: SideSlabNormals,SideSlabIntervals,BezierControlPoints3D
-USE MOD_Particle_Vars,           ONLY: LastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !--------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,DIMENSION(3),INTENT(IN)         :: PartTrajectory
-REAL,INTENT(IN)                      :: lengthPartTrajectory
-INTEGER,INTENT(IN)                   :: PartID,SideID
+REAL,DIMENSION(3),INTENT(IN)      :: PartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
+REAL,INTENT(IN)                   :: lengthPartTrajectory
+INTEGER,INTENT(IN)                :: PartID,SideID
 !--------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-LOGICAL                              :: FlatBoundingBoxIntersection
+LOGICAL                           :: FlatBoundingBoxIntersection
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                 :: dnk,alpha(2,3)! alpha(2,2): dummy because we are lazy
-REAL                                 :: maxvalue,minvalue
-INTEGER                              :: CNSideID
-INTEGER                              :: i
+REAL                              :: dnk,alpha(2,3)! alpha(2,2): dummy because we are lazy
+REAL                              :: maxvalue,minvalue
+INTEGER                           :: CNSideID
+INTEGER                           :: i
 !================================================================================================================================
 
 CNSideID = GetCNSideID(SideID)
@@ -1932,15 +2104,15 @@ IF(ABS(dnk).LT.100.*epsMach)THEN
   alpha(2,1) =  HUGE(1.0)
 ELSE
   IF(dnk.LT.0.)THEN
-    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(  2*i,CNSideID))/dnk!t_max
-    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
+    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(  :,i,CNSideID))&
+                                                                            +SideSlabIntervals(2*i,CNSideID))/dnk!t_max
+    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(  :,i,CNSideID))&
+                                                                            +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
   ELSE
-    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
-    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(  2*i,CNSideID))/dnk!t_max
+    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(  :,i,CNSideID))&
+                                                                            +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
+    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(  :,i,CNSideID))&
+                                                                            +SideSlabIntervals(2*i,CNSideID))/dnk!t_max
   END IF
 END IF
 i=3
@@ -1952,15 +2124,15 @@ IF(ABS(dnk).LT.100.*epsMach)THEN
   alpha(2,3) =  HUGE(1.0)
 ELSE
   IF(dnk.LT.0.)THEN
-    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(  2*i,CNSideID))/dnk!t_max
-    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
+    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(  :,i,CNSideID))&
+                                                                            +SideSlabIntervals(2*i,CNSideID))/dnk!t_max
+    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(  :,i,CNSideID))&
+                                                                            +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
   ELSE
-    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
-    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos(1:3,PartID),SideSlabNormals(:,i,CNSideID))&
-                                                                                    +SideSlabIntervals(  2*i,CNSideID))/dnk!t_max
+    alpha(1,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(  :,i,CNSideID))&
+                                                                            +SideSlabIntervals(2*i-1,CNSideID))/dnk!t_min
+    alpha(2,i)=( DOT_PRODUCT(BezierControlPoints3D(:,0,0,SideID)-LastPartPos,SideSlabNormals(  :,i,CNSideID))&
+                                                                            +SideSlabIntervals(2*i,CNSideID))/dnk!t_max
   END IF
 END IF
 
@@ -2123,7 +2295,14 @@ END IF
 END FUNCTION ComputeXi
 
 
-SUBROUTINE ComputeBezierIntersectionPoint(nXiClip,nEtaClip,PartID,SideID,nInterSections,PartTrajectory,lengthPartTrajectory)
+SUBROUTINE ComputeBezierIntersectionPoint(nXiClip              &
+                                         ,nEtaClip             &
+                                         ,PartID               &
+                                         ,SideID               &
+                                         ,nInterSections       &
+                                         ,PartTrajectory       &
+                                         ,lengthPartTrajectory &
+                                         ,LastPartPos)
 !===================================================================================================================================
 ! Compute the BezierInterSectionPoint in 3D, and verify if this intersection is satisfies
 ! a) alpha in [0,lenghtPartTrajectrory]  ! intersection point is between LastPartPos and PartPos
@@ -2136,7 +2315,6 @@ USE MOD_Particle_Surfaces_Vars,  ONLY: XiArray,EtaArray,locAlpha,locXi,locEta
 USE MOD_Particle_Surfaces_Vars,  ONLY: epsilontol,Beziercliphit
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipTolerance,BezierClipLocalTol,BezierClipMaxIntersec
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints3D
-USE MOD_Particle_Vars,           ONLY: LastPartPos
 #if USE_MPI
 USE MOD_Globals,                 ONLY: myRank
 #endif /*USE_MPI*/
@@ -2148,24 +2326,25 @@ USE MOD_Particle_Tracking_Vars,  ONLY: PartOut,MPIRankOut
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                 :: nXiClip
-INTEGER,INTENT(IN)                 :: nEtaClip
-INTEGER,INTENT(IN)                 :: PartID
-INTEGER,INTENT(IN)                 :: SideID
-REAL,INTENT(IN)                    :: lengthPartTrajectory
-REAL,INTENT(IN)                    :: PartTrajectory(3)
+INTEGER,INTENT(IN)                :: nXiClip
+INTEGER,INTENT(IN)                :: nEtaClip
+INTEGER,INTENT(IN)                :: PartID
+INTEGER,INTENT(IN)                :: SideID
+REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
+REAL,INTENT(IN)                   :: lengthPartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
-INTEGER,INTENT(INOUT)              :: nInterSections
+INTEGER,INTENT(INOUT)             :: nInterSections
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                               :: tmpXi,tmpEta,Xi,Eta,alpha,alphaNorm,MinusXi,MinusEta
-REAL,DIMENSION(3,0:NGeo,0:NGeo)    :: ReducedBezierControlPoints
-REAL,DIMENSION(3)                  :: IntersectionVector
-REAL                               :: deltaXi,deltaEta
-INTEGER                            :: p,q,l,iDeCasteljau,iClip
-LOGICAL                            :: isNewIntersection
-INTEGER                            :: iInter
+REAL                              :: tmpXi,tmpEta,Xi,Eta,alpha,alphaNorm,MinusXi,MinusEta
+REAL,DIMENSION(3,0:NGeo,0:NGeo)   :: ReducedBezierControlPoints
+REAL,DIMENSION(3)                 :: IntersectionVector
+REAL                              :: deltaXi,deltaEta
+INTEGER                           :: p,q,l,iDeCasteljau,iClip
+LOGICAL                           :: isNewIntersection
+INTEGER                           :: iInter
 !===================================================================================================================================
 
 ! back transformation of sub-level clipping values to original bezier surface: ximean, etamean
@@ -2230,7 +2409,7 @@ DO iDeCasteljau=1,NGeo
 END DO
 
 ! resulting point is ReducedBezierControlPoints(:,1,1)
-IntersectionVector=ReducedBezierControlPoints(:,0,0)-LastPartPos(1:3,PartID)
+IntersectionVector=ReducedBezierControlPoints(:,0,0)-LastPartPos
 ! END DECASTELJAU ------------------------------------
 ! verify alpha and alphanorm
 alpha=DOT_PRODUCT(IntersectionVector,PartTrajectory)
@@ -2304,9 +2483,18 @@ END IF
 END SUBROUTINE ComputeBezierIntersectionPoint
 
 
-SUBROUTINE CheckXiClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory,lengthPartTrajectory &
-                               ,iClipIter,nXiClip,nEtaClip&
-                               ,nInterSections,iPart,SideID)
+SUBROUTINE CheckXiClip(ClipMode              &
+                      ,BezierControlPoints2D &
+                      ,LineNormVec           &
+                      ,PartTrajectory        &
+                      ,lengthPartTrajectory  &
+                      ,LastPartPos           &
+                      ,iClipIter             &
+                      ,nXiClip               &
+                      ,nEtaClip              &
+                      ,nInterSections        &
+                      ,iPart                 &
+                      ,SideID)
 !================================================================================================================================
 ! Performes the de-Casteljau alogrithm with Clipping to find the intersection between trajectory and surface
 ! original article:
@@ -2337,12 +2525,13 @@ REAL,INTENT(IN)                      :: lengthPartTrajectory
 REAL,INTENT(INOUT)                   :: BezierControlPoints2D(2,0:NGeo,0:NGeo)
 INTEGER,INTENT(IN)                   :: SideID,iPart
 REAL,INTENT(IN),DIMENSION(1:3)       :: PartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)       :: LastPartPos
 !--------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-INTEGER,INTENT(INOUT)                  :: iClipIter
-INTEGER,INTENT(INOUT)                  :: nXiClip,nEtaClip,nInterSections
-INTEGER(KIND=2),INTENT(INOUT)          :: ClipMode
-REAL,DIMENSION(2,2),INTENT(INOUT)      :: LineNormVec
+INTEGER,INTENT(INOUT)                :: iClipIter
+INTEGER,INTENT(INOUT)                :: nXiClip,nEtaClip,nInterSections
+INTEGER(KIND=2),INTENT(INOUT)        :: ClipMode
+REAL,DIMENSION(2,2),INTENT(INOUT)    :: LineNormVec
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: p,q,l
@@ -2355,17 +2544,18 @@ REAL,DIMENSION(2,2)                  :: tmpLineNormVec
 !================================================================================================================================
 
 ! Bezier Clip (and Split) in xi
-DO q=0,NGeo
-  DO p=0,NGeo
-    BezierControlPoints1D(p,q)=DOT_PRODUCT(BezierControlPoints2D(:,p,q),LineNormVec(:,1))
-  END DO
-END DO
+DO q=0,NGeo; DO p=0,NGeo
+  BezierControlPoints1D(p,q) = DOT_PRODUCT(BezierControlPoints2D(:,p,q),LineNormVec(:,1))
+END DO; END DO
+
 DO l=0,NGeo
-  minmax(1,l)=MINVAL(BezierControlPoints1D(l,:))
-  minmax(2,l)=MAXVAL(BezierControlPoints1D(l,:))
+  minmax(1,l) = MINVAL(BezierControlPoints1D(l,:))
+  minmax(2,l) = MAXVAL(BezierControlPoints1D(l,:))
 END DO ! l
-dmin=MINVAL(minmax(1,:))
-dmax=MAXVAL(minmax(2,:))
+
+dmin = MINVAL(minmax(1,:))
+dmax = MAXVAL(minmax(2,:))
+
 #if CODE_ANALYZE
  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
    IF(iPart.EQ.PartOut)THEN
@@ -2377,25 +2567,25 @@ dmax=MAXVAL(minmax(2,:))
  END IF
 #endif /*CODE_ANALYZE*/
 
-!print*,'dmax,min,...',dmax,dmin,ABS(dmax-dmin),BezierClipTolerance
 ! 1D Abort criterion from
 !      AUTHOR = {Efremov, Alexander and Havran, Vlastimil and Seidel, Hans-Peter},
 !      TITLE = {Robust and Numerically Stable Bezier Clipping Method for Ray Tracing NURBS Surfaces},
 !      YEAR = {2005},
-IF(dMax*dMin.GT.0.)THEN ! no sign change with dMax,dMin, hence, no intersection
-  ClipMode=-1
+IF (dMax*dMin.GT.0.) THEN ! no sign change with dMax,dMin, hence, no intersection
+  ClipMode = -1
   RETURN
 END IF
-IF(ABS(dmax-dmin).LT.BezierClipLocalTol)THEN ! current patch is converged in xi, then skip xi
-  IF(ClipMode.EQ.3) THEN  ! eta has already converged
-    ClipMode=5            ! no more clipping, we have converged
+
+IF (ABS(dmax-dmin).LT.BezierClipLocalTol) THEN ! current patch is converged in xi, then skip xi
+  IF (ClipMode.EQ.3) THEN ! eta has already converged
+    ClipMode = 5          ! no more clipping, we have converged
     RETURN                ! or stop
   ELSE
-    ClipMode=4            ! xi is converged, but not eta
+    ClipMode = 4          ! xi is converged, but not eta
     RETURN
   END IF
-ELSE ! xi not converged, next clip should be in eta
-  ClipMode=2 ! after clipping in xi, clip in eta
+ELSE                      ! xi not converged, next clip should be in eta
+  ClipMode = 2            ! after clipping in xi, clip in eta
 END IF
 
 ! we perform the clip  (with XiMin and XiMax) in Xi direction
@@ -2412,101 +2602,92 @@ CALL CalcSminSmax2(minmax,XiMin,XiMax,nXiClip)
 #endif /*CODE_ANALYZE*/
 
 ! check if diverged
-IF((XiMin.EQ.1.5).OR.(XiMax.EQ.-1.5))THEN
-  ClipMode=-1
+IF (XiMin.EQ.1.5 .OR. XiMax.EQ.-1.5) THEN
+  ClipMode = -1
   RETURN
 END IF
 
-IF(XiMin.GT.XiMax)THEN
+IF (XiMin.GT.XiMax) THEN
   ! output, should never ever happen
-!  print*,'swwwaaaaaaaap xi',XiMin,XiMax
   XiTmp = XiMax
   Ximax = XiMin
   XiMin = XiTmp
 END IF
 
-
 ! count number of clips in xi and eta direction
-nXiClip=nXiClip+1
+nXiClip = nXiClip+1
 
 ! 1.) CLIPPING xi
-IF((XiMax-XiMin).GT.BezierSplitLimit)THEN ! two possible intersections: split the clipped patch at 50%
-  XiSplit=0.5*(XiMax+XiMin)
+IF ((XiMax-XiMin).GT.BezierSplitLimit) THEN ! two possible intersections: split the clipped patch at 50%
+  XiSplit = 0.5*(XiMax+XiMin)
   ! first split: xi upper
   ! set mapping array
-  XiArray(:,nXiClip)=(/XiSplit,XiMax/)
-  BezierControlPoints2D_temp=0.
-  ! TOP, Bernstein polynomial B(n,k,x) = (1/(2^n))*choose(n,k)*(x+1).^k.*(1-x).^(n-k)
-  IF(XiMax.NE.1.0)THEN
-    PlusXi=1.0+XiMax
-    MinusXi=1.0-XiMax
-    ! compute the required stuff || pseudo Horner or precomputation
-    xiup(0)=1.0
-    ! caution, here the indicies are switched from n-j to j  for **down
-    xidown(0)=1.0
-    DO l=1,NGeo
-      xiup   (l)     =xiup   (l-1)*PlusXi
-      xidown (l)     =xidown (l-1)*MinusXi
-    END DO ! l=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        XiBuf(p,l)=XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
-      END DO ! l=0,p
-    END DO ! p=0,NGeo
+  XiArray(:,nXiClip)         = (/XiSplit,XiMax/)
+  BezierControlPoints2D_temp = 0.
 
-    DO q=0,NGeo
-      DO p=0,NGeo
-        DO l=0,p
-          BezierControlPoints2D_temp(:,p,q)=BezierControlPoints2D_temp(:,p,q)                  &
-                                           +BezierControlPoints2D     (:,l,q)*XiBuf(p,l)
-        END DO
-      END DO
-    END DO
+  ! TOP, Bernstein polynomial B(n,k,x) = (1/(2^n))*choose(n,k)*(x+1).^k.*(1-x).^(n-k)
+  IF (XiMax.NE.1.0) THEN
+    PlusXi    = 1.0+XiMax
+    MinusXi   = 1.0-XiMax
+    ! compute the required stuff || pseudo Horner or precomputation
+    xiup(0)   = 1.0
+    ! caution, here the indicies are switched from n-j to j  for **down
+    xidown(0) = 1.0
+
+    DO l=1,NGeo
+      xiup   (l) = xiup   (l-1)*PlusXi
+      xidown (l) = xidown (l-1)*MinusXi
+    END DO ! l=0,NGeo
+
+    DO p=0,NGeo; DO l=0,p
+      XiBuf(p,l) = XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
+    END DO; END DO ! l=0,p; p=0,NGeo
+
+    DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+      BezierControlPoints2D_temp(:,p,q) = BezierControlPoints2D_temp(:,p,q)            &
+                                        + BezierControlPoints2D     (:,l,q)*XiBuf(p,l)
+    END DO; END DO; END DO
 
   ELSE
-    BezierControlPoints2D_temp=BezierControlPoints2D
+    BezierControlPoints2D_temp = BezierControlPoints2D
   END IF
 
   ! BOTTOM (mirrored Bernstein Basis evaluation)
   ! s = (smin+1)/(smax+1) for [-1, +1]
   ! s = 2*(1-s)-1         for mirror input for bernstein (1-) and trafo [-1, +1] to [0, 1]
-  BezierControlPoints2D_temp2=0.
-  PlusXi=(XiSplit+1.0)/(XiMax+1.0)
-  ! MinusXi= 2.0*(1-PlusXi)-1
-  ! MinusXi= 1.0-2.0*(1.0-s)+1.0
-  MinusXi=2.0*PlusXi
-  ! PlusXi=1+ 2.0*(1-s)-1
-  PlusXi=2.0-2.0*PlusXi
+  BezierControlPoints2D_temp2 = 0.
+  PlusXi    = (XiSplit+1.0)/(XiMax+1.0)
+  ! MinusXi   = 2.0*(1-PlusXi)-1
+  ! MinusXi   = 1.0-2.0*(1.0-s)+1.0
+  MinusXi   = 2.0*PlusXi
+  ! PlusXi    =1+ 2.0*(1-s)-1
+  PlusXi    = 2.0-2.0*PlusXi
   ! compute the required stuff || pseudo Horner or precomputation
-  xiup(0)=1.0
+  xiup(0)   = 1.0
   ! caution, here the indicies are switched from n-j to j  for **down
-  xidown(0)=1.0
-  DO l=1,NGeo
-    xiup   (l)     =xiup   (l-1)*PlusXi
-    xidown (l)     =xidown (l-1)*MinusXi
-  END DO ! l=0,NGeo
-  DO p=0,NGeo
-    DO l=0,p
-      XiBuf(p,l)=XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
-    END DO ! l=0,p
-  END DO ! p=0,NGeo
+  xidown(0) = 1.0
 
-  DO q=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        BezierControlPoints2D_temp2(:,NGeo-p,q)=BezierControlPoints2D_temp2(:,NGeo-p,q)                  &
-                                               +BezierControlPoints2D_temp(:,NGeo-l,q)*XiBuf(p,l)
-      END DO
-    END DO
-  END DO
+  DO l=1,NGeo
+    xiup   (l) = xiup   (l-1)*PlusXi
+    xidown (l) = xidown (l-1)*MinusXi
+  END DO ! l=0,NGeo
+
+  DO p=0,NGeo; DO l=0,p
+    XiBuf(p,l) = XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
+  END DO; END DO ! l=0,p; p=0,NGeo
+
+  DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+    BezierControlPoints2D_temp2(:,NGeo-p,q) = BezierControlPoints2D_temp2(:,NGeo-p,q)            &
+                                            + BezierControlPoints2D_temp( :,NGeo-l,q)*XiBuf(p,l)
+  END DO; END DO; END DO
 
   ! Bezier Split
-  tmpnClip =iClipIter
+  tmpnClip = iClipIter
   ! backup current split level to compute correct intersection, required for back-trafo of intervals
-  tmpnXi   =nXiClip
-  tmpnEta  =nEtaClip
-  tmpLineNormVec=LineNormVec
-  tmpClipMode   =ClipMode
+  tmpnXi   = nXiClip
+  tmpnEta  = nEtaClip
+  tmpLineNormVec = LineNormVec
+  tmpClipMode    = ClipMode
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
@@ -2521,83 +2702,87 @@ IF((XiMax-XiMin).GT.BezierSplitLimit)THEN ! two possible intersections: split th
 #endif /*CODE_ANALYZE*/
   ! HERE, ClipMode currently set above
   ! Perform split xi-upper
-  CALL BezierClipRecursive(ClipMode,BezierControlPoints2D_temp2,LineNormVec,PartTrajectory,lengthPartTrajectory&
-                 ,iClipIter,nXiClip,nEtaClip,nInterSections,iPart,SideID)
+  CALL BezierClipRecursive(ClipMode                    &
+                          ,BezierControlPoints2D_temp2 &
+                          ,LineNormVec                 &
+                          ,PartTrajectory              &
+                          ,lengthPartTrajectory        &
+                          ,LastPartPos                 &
+                          ,iClipIter                   &
+                          ,nXiClip                     &
+                          ,nEtaClip                    &
+                          ,nInterSections              &
+                          ,iPart                       &
+                          ,SideID)
 
 
   ! second split: xi lower
   ! restore values to allow for correct back-trafo of intervals (required for intersectionpoint)
   ! backup current split level to compute correct intersection, required for back-trafo of intervals
-  iClipIter   =tmpnClip
-  nXiClip     =tmpnXi
-  nEtaClip    =tmpnEta
-  LineNormVec =tmpLineNormVec
-  ClipMode    =tmpClipMode
+  iClipIter   = tmpnClip
+  nXiClip     = tmpnXi
+  nEtaClip    = tmpnEta
+  LineNormVec = tmpLineNormVec
+  ClipMode    = tmpClipMode
 
   ! set mapping array
-  XiArray(:,nXiClip)=(/XiMin,XiSplit/)
+  XiArray(:,nXiClip) = (/XiMin,XiSplit/)
   ! TOP, Bernstein polynomial B(n,k,x) = (1/(2^n))*choose(n,k)*(x+1).^k.*(1-x).^(n-k)
-  BezierControlPoints2D_temp=0.
-  PlusXi=1.0+XiSplit
-  MinusXi=1.0-XiSplit
+  BezierControlPoints2D_temp = 0.
+  PlusXi    = 1.0+XiSplit
+  MinusXi   = 1.0-XiSplit
   ! compute the required stuff || pseudo Horner or precomputation
-  xiup(0)=1.0
+  xiup(0)   = 1.0
   ! caution, here the indicies are switched from n-j to j  for **down
-  xidown(0)=1.0
-  DO l=1,NGeo
-    xiup   (l)     =xiup   (l-1)*PlusXi
-    xidown (l)     =xidown (l-1)*MinusXi
-  END DO ! l=0,NGeo
-  DO p=0,NGeo
-    DO l=0,p
-      XiBuf(p,l)=XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
-    END DO ! l=0,p
-  END DO ! p=0,NGeo
+  xidown(0) = 1.0
 
-  DO q=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        BezierControlPoints2D_temp(:,p,q)=BezierControlPoints2D_temp(:,p,q)                  &
-                                         +BezierControlPoints2D     (:,l,q)*XiBuf(p,l)
-      END DO
-    END DO
-  END DO
+  DO l=1,NGeo
+    xiup   (l) = xiup   (l-1)*PlusXi
+    xidown (l) = xidown (l-1)*MinusXi
+  END DO ! l=0,NGeo
+
+  DO p=0,NGeo; DO l=0,p
+    XiBuf(p,l) = XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
+  END DO; END DO ! l=0,p; p=0,NGeo
+
+  DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+    BezierControlPoints2D_temp(:,p,q) = BezierControlPoints2D_temp(:,p,q)            &
+                                      + BezierControlPoints2D     (:,l,q)*XiBuf(p,l)
+  END DO; END DO; END DO
+
   ! BOTTOM (mirrored Bernstein Basis evaluation)
   ! s = (smin+1)/(smax+1) for [-1, +1]
   ! s = 2*(1-s)-1         for mirror input for bernstein (1-) and trafo [-1, +1] to [0, 1]
-  IF(XiMin.NE.-1.0)THEN
-    BezierControlPoints2D_temp2=0.
-    PlusXi=(XiMin+1.0)/(XiSplit+1.0)
-    ! MinusXi= 2.0*(1-PlusXi)-1
-    ! MinusXi= 1.0-2.0*(1.0-s)+1.0
-    MinusXi=2.0*PlusXi
-    ! PlusXi=1+ 2.0*(1-s)-1
-    PlusXi=2.0-2.0*PlusXi
+  IF (XiMin.NE.-1.0) THEN
+    BezierControlPoints2D_temp2 = 0.
+    PlusXi    = (XiMin+1.0)/(XiSplit+1.0)
+    ! MinusXi   = 2.0*(1-PlusXi)-1
+    ! MinusXi   = 1.0-2.0*(1.0-s)+1.0
+    MinusXi   = 2.0*PlusXi
+    ! PlusXi    =1+ 2.0*(1-s)-1
+    PlusXi    = 2.0-2.0*PlusXi
     ! compute the required stuff || pseudo Horner or precomputation
-    xiup(0)=1.0
+    xiup(0)   = 1.0
     ! caution, here the indicies are switched from n-j to j  for **down
-    xidown(0)=1.0
-    DO l=1,NGeo
-      xiup   (l)     =xiup   (l-1)*PlusXi
-      xidown (l)     =xidown (l-1)*MinusXi
-    END DO ! l=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        XiBuf(p,l)=XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
-      END DO ! l=0,p
-    END DO ! p=0,NGeo
+    xidown(0) = 1.0
 
-    DO q=0,NGeo
-      DO p=0,NGeo
-        DO l=0,p
-          BezierControlPoints2D_temp2(:,NGeo-p,q)=BezierControlPoints2D_temp2(:,NGeo-p,q)                  &
-                                                 +BezierControlPoints2D_temp(:,NGeo-l,q)*XiBuf(p,l)
-        END DO
-      END DO
-    END DO
+    DO l=1,NGeo
+      xiup   (l) = xiup   (l-1)*PlusXi
+      xidown (l) = xidown (l-1)*MinusXi
+    END DO ! l=0,NGeo
+
+    DO p=0,NGeo; DO l=0,p
+        XiBuf(p,l)=XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
+    END DO; END DO ! l=0,p; p=0,NGeo
+
+    DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+      BezierControlPoints2D_temp2(:,NGeo-p,q) = BezierControlPoints2D_temp2(:,NGeo-p,q)            &
+                                              + BezierControlPoints2D_temp( :,NGeo-l,q)*XiBuf(p,l)
+    END DO; END DO; END DO
   ELSE
-    BezierControlPoints2D_temp2=BezierControlPoints2D_temp
+    BezierControlPoints2D_temp2 = BezierControlPoints2D_temp
   END IF
+
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
@@ -2612,89 +2797,116 @@ IF((XiMax-XiMin).GT.BezierSplitLimit)THEN ! two possible intersections: split th
 #endif /*CODE_ANALYZE*/
   ! HERE, ClipMode currently set above
   ! Perform split xi-lower
-  CALL BezierClipRecursive(ClipMode,BezierControlPoints2D_temp2,LineNormVec,PartTrajectory,lengthPartTrajectory&
-                          ,iClipIter,nXiClip,nEtaClip,nInterSections,iPart,SideID)
+  CALL BezierClipRecursive(ClipMode                    &
+                          ,BezierControlPoints2D_temp2 &
+                          ,LineNormVec                 &
+                          ,PartTrajectory              &
+                          ,lengthPartTrajectory        &
+                          ,LastPartPos                 &
+                          ,iClipIter                   &
+                          ,nXiClip                     &
+                          ,nEtaClip                    &
+                          ,nInterSections              &
+                          ,iPart                       &
+                          ,SideID)
   ! and we are done
-  ClipMode=-1
+  ClipMode = -1
   ! after recursive steps, we are done!
-ELSE  ! no split necessary, only a clip
+
+ELSE ! no split necessary, only a clip
 
   ! set mapping array
-  XiArray(:,nXiClip)=(/XiMin,XiMax/)
+  XiArray(:,nXiClip) = (/XiMin,XiMax/)
   ! TOP, Bernstein polynomial B(n,k,x) = (1/(2^n))*choose(n,k)*(x+1).^k.*(1-x).^(n-k)
-  IF(XiMax.NE.1.0)THEN
-    BezierControlPoints2D_temp=0.
-    PlusXi=1.0+XiMax
-    MinusXi=1.0-XiMax
+  IF (XiMax.NE.1.0) THEN
+    BezierControlPoints2D_temp = 0.
+    PlusXi    = 1.0+XiMax
+    MinusXi   = 1.0-XiMax
     ! compute the required stuff || pseudo Horner or precomputation
-    xiup(0)=1.0
+    xiup(0)   = 1.0
     ! caution, here the indicies are switched from n-j to j  for **down
-    xidown(0)=1.0
-    DO l=1,NGeo
-      xiup   (l)     =xiup   (l-1)*PlusXi
-      xidown (l)     =xidown (l-1)*MinusXi
-    END DO ! l=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        XiBuf(p,l)=XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
-      END DO ! l=0,p
-    END DO ! p=0,NGeo
+    xidown(0) = 1.0
 
-    DO q=0,NGeo
-      DO p=0,NGeo
-        DO l=0,p
-          BezierControlPoints2D_temp(:,p,q)=BezierControlPoints2D_temp(:,p,q)                  &
-                                           +BezierControlPoints2D     (:,l,q)*XiBuf(p,l)
-        END DO
-      END DO
-    END DO
+    DO l=1,NGeo
+      xiup   (l) = xiup   (l-1)*PlusXi
+      xidown (l) = xidown (l-1)*MinusXi
+    END DO ! l=0,NGeo
+
+    DO p=0,NGeo; DO l=0,p
+      XiBuf(p,l)=XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
+    END DO; END DO ! l=0,p;p=0,NGeo
+
+    DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+      BezierControlPoints2D_temp(:,p,q) = BezierControlPoints2D_temp(:,p,q)           &
+                                        + BezierControlPoints2D     (:,l,q)*XiBuf(p,l)
+    END DO; END DO; END DO
+
     BezierControlPoints2D=BezierControlPoints2D_temp
   END IF
+
   ! BOTTOM (mirrored Bernstein Basis evaluation)
   ! s = (smin+1)/(smax+1) for [-1, +1]
   ! s = 2*(1-s)-1         for mirror input for bernstein (1-) and trafo [-1, +1] to [0, 1]
-  IF(XiMin.NE.-1.0)THEN
-    BezierControlPoints2D_temp=0.
-    PlusXi=(XiMin+1.0)/(XiMax+1.0)
-    ! MinusXi= 2.0*(1-PlusXi)-1
-    ! MinusXi= 1.0-2.0*(1.0-s)+1.0
-    MinusXi=2.0*PlusXi
-    ! PlusXi=1+ 2.0*(1-s)-1
-    PlusXi=2.0-2.0*PlusXi
+  IF (XiMin.NE.-1.0) THEN
+    BezierControlPoints2D_temp = 0.
+    PlusXi    = (XiMin+1.0)/(XiMax+1.0)
+    ! MinusXi   = 2.0*(1-PlusXi)-1
+    ! MinusXi   = 1.0-2.0*(1.0-s)+1.0
+    MinusXi   = 2.0*PlusXi
+    ! PlusXi    =1+ 2.0*(1-s)-1
+    PlusXi    = 2.0-2.0*PlusXi
     ! compute the required stuff || pseudo Horner or precomputation
-    xiup(0)=1.0
+    xiup(0)   = 1.0
     ! caution, here the indicies are switched from n-j to j  for **down
-    xidown(0)=1.0
-    DO l=1,NGeo
-      xiup   (l)     =xiup   (l-1)*PlusXi
-      xidown (l)     =xidown (l-1)*MinusXi
-    END DO ! l=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        XiBuf(p,l)=XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
-      END DO ! l=0,p
-    END DO ! p=0,NGeo
+    xidown(0) = 1.0
 
-    DO q=0,NGeo
-      DO p=0,NGeo
-        DO l=0,p
-          BezierControlPoints2D_temp(:,NGeo-p,q)=BezierControlPoints2D_temp(:,NGeo-p,q)                  &
-                                                +BezierControlPoints2D(:,NGeo-l,q)*XiBuf(p,l)
-        END DO
-      END DO
-    END DO
+    DO l=1,NGeo
+      xiup   (l) = xiup   (l-1)*PlusXi
+      xidown (l) = xidown (l-1)*MinusXi
+    END DO ! l=0,NGeo
+
+    DO p=0,NGeo; DO l=0,p
+      XiBuf(p,l)=XiUp(l)*XiDown(p-l)*FacNchooseK(p,l)
+    END DO; END DO ! l=0,p;p=0,NGeo
+
+    DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+      BezierControlPoints2D_temp(:,NGeo-p,q) = BezierControlPoints2D_temp(:,NGeo-p,q)       &
+                                             + BezierControlPoints2D(:,NGeo-l,q)*XiBuf(p,l)
+    END DO; END DO; END DO
+
     BezierControlPoints2D=BezierControlPoints2D_temp
   END IF
-  !CALL BezierClipRecursive(ClipMode,BezierControlPoints2D_temp2,LineNormVec,PartTrajectory,lengthPartTrajectory&
-  !               ,iClipIter,nXiClip,nEtaClip,nInterSections,iPart,SideID)
+
+  ! CALL BezierClipRecursive(ClipMode                    &
+  !                         ,BezierControlPoints2D_temp2 &
+  !                         ,LineNormVec                 &
+  !                         ,PartTrajectory              &
+  !                         ,lengthPartTrajectory        &
+  !                         ,LastPartPos                 &
+  !                         ,iClipIter                   &
+  !                         ,nXiClip                     &
+  !                         ,nEtaClip                    &
+  !                         ,nInterSections              &
+  !                         ,iPart                       &
+  !                         ,SideID)
 
 END IF ! decision between Clip or Split
 
 END SUBROUTINE CheckXiClip
 
-SUBROUTINE CheckEtaClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajectory,lengthPartTrajectory &
-                               ,iClipIter,nXiClip,nEtaClip&
-                               ,nInterSections,iPart,SideID)
+
+SUBROUTINE CheckEtaClip(ClipMode              &
+                       ,BezierControlPoints2D &
+                       ,LineNormVec           &
+                       ,PartTrajectory        &
+                       ,lengthPartTrajectory  &
+                       ,LastPartPos           &
+                       ,iClipIter             &
+                       ,nXiClip               &
+                       ,nEtaClip              &
+                       ,nInterSections        &
+                       ,iPart                 &
+                       ,SideID)
 !================================================================================================================================
 ! Performes the de-Casteljau alogrithm with Clipping to find the intersection between trajectory and surface
 ! original article:
@@ -2707,11 +2919,10 @@ SUBROUTINE CheckEtaClip(ClipMode,BezierControlPoints2D,LineNormVec,PartTrajector
 !   year = {2002},
 !================================================================================================================================
 USE MOD_Mesh_Vars,               ONLY: NGeo
-USE MOD_Particle_Surfaces_Vars,  ONLY: EtaArray
+USE MOD_Particle_Surfaces_Vars,  ONLY: EtaArray,XiBuf,MinMax,XiUp,XiDown
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipLocalTol,FacNchooseK
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierSplitLimit
-USE MOD_Particle_Surfaces_Vars,  ONLY: MinMax,XiUp,XiDown,XiBuf
-USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints2D_temp,BezierControlPoints2D_temp2
+USE MOD_Particle_Surfaces_Vars,  ONLY: BezierControlPoints1D,BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces,       ONLY: EvaluateBezierPolynomialAndGradient
 #if CODE_ANALYZE
 USE MOD_Globals,                 ONLY: myRank,UNIT_stdOut
@@ -2726,15 +2937,15 @@ REAL,INTENT(IN)                      :: lengthPartTrajectory
 REAL,INTENT(INOUT)                   :: BezierControlPoints2D(2,0:NGeo,0:NGeo)
 INTEGER,INTENT(IN)                   :: SideID,iPart
 REAL,INTENT(IN),DIMENSION(1:3)       :: PartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)       :: LastPartPos
 !--------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-INTEGER,INTENT(INOUT)                  :: iClipIter
-INTEGER,INTENT(INOUT)                  :: nXiClip,nEtaClip,nInterSections
-INTEGER(KIND=2),INTENT(INOUT)          :: ClipMode
-REAL,DIMENSION(2,2),INTENT(INOUT)      :: LineNormVec
+INTEGER,INTENT(INOUT)                :: iClipIter
+INTEGER,INTENT(INOUT)                :: nXiClip,nEtaClip,nInterSections
+INTEGER(KIND=2),INTENT(INOUT)        :: ClipMode
+REAL,DIMENSION(2,2),INTENT(INOUT)    :: LineNormVec
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(0:NGeo,0:NGeo)        :: BezierControlPoints1D
 INTEGER                              :: p,q,l
 REAL                                 :: EtaMin,EtaMax,EtaSplit,EtaTmp
 REAL                                 :: PlusEta,MinusEta
@@ -2749,17 +2960,18 @@ ASSOCIATE(EtaUp   => XiUp   &
          ,EtaBuf  => XiBuf)
 
 ! Bezier Clip (and Split) in eta
-DO q=0,NGeo
-  DO p=0,NGeo
-    BezierControlPoints1D(p,q)=DOT_PRODUCT(BezierControlPoints2D(:,p,q),LineNormVec(:,2))
-  END DO
-END DO
+DO q=0,NGeo; DO p=0,NGeo
+  BezierControlPoints1D(p,q) = DOT_PRODUCT(BezierControlPoints2D(:,p,q),LineNormVec(:,2))
+END DO; END DO
+
 DO l=0,NGeo
-  minmax(1,l)=MINVAL(BezierControlPoints1D(:,l))
-  minmax(2,l)=MAXVAL(BezierControlPoints1D(:,l))
+  minmax(1,l) = MINVAL(BezierControlPoints1D(:,l))
+  minmax(2,l) = MAXVAL(BezierControlPoints1D(:,l))
 END DO ! l
+
 dmin=MINVAL(minmax(1,:))
 dmax=MAXVAL(minmax(2,:))
+
 #if CODE_ANALYZE
  IF(PartOut.GT.0 .AND. MPIRankOut.EQ.myRank)THEN
    IF(iPart.EQ.PartOut)THEN
@@ -2771,25 +2983,24 @@ dmax=MAXVAL(minmax(2,:))
  END IF
 #endif /*CODE_ANALYZE*/
 
-!print*,'dmax,min,...',dmax,dmin,ABS(dmax-dmin),BezierClipTolerance
 ! 1D Abort criterion from
 !      AUTHOR = {Efremov, Alexander and Havran, Vlastimil and Seidel, Hans-Peter},
 !      TITLE = {Robust and Numerically Stable Bezier Clipping Method for Ray Tracing NURBS Surfaces},
 !      YEAR = {2005},
-IF(dMax*dMin.GT.0.)THEN ! no sign change with dMax,dMin, hence, no intersection
-  ClipMode=-1
+IF (dMax*dMin.GT.0.) THEN ! no sign change with dMax,dMin, hence, no intersection
+  ClipMode = -1
   RETURN
 END IF
-IF(ABS(dmax-dmin).LT.BezierClipLocalTol)THEN ! current patch is converged in eta, then skip eta
-  IF(ClipMode.EQ.4) THEN  ! xi has already converged
-    ClipMode=5            ! no more clipping, we have converged
+IF (ABS(dmax-dmin).LT.BezierClipLocalTol) THEN ! current patch is converged in eta, then skip eta
+  IF (ClipMode.EQ.4) THEN ! xi has already converged
+    ClipMode = 5          ! no more clipping, we have converged
     RETURN                ! or stop
   ELSE
-    ClipMode=3            ! eta is converged, but not xi
+    ClipMode = 3          ! eta is converged, but not xi
     RETURN
   END IF
-ELSE ! eta not converged, next clip should be in xi
-  ClipMode=1 ! after clipping in eta, clip in xi
+ELSE                      ! eta not converged, next clip should be in xi
+  ClipMode = 1            ! after clipping in eta, clip in xi
 END IF
 
 ! we perform the clip  (with EtaMin and EtaMax) in Eta direction
@@ -2806,97 +3017,91 @@ CALL CalcSminSmax2(minmax,Etamin,Etamax,nEtaClip)
 #endif /*CODE_ANALYZE*/
 
 ! check if diverged
-IF((EtaMin.EQ.1.5).OR.(EtaMax.EQ.-1.5)) THEN
-  ClipMode=-1
+IF (EtaMin.EQ.1.5 .OR. EtaMax.EQ.-1.5) THEN
+  ClipMode = -1
   RETURN
 END IF
 
-IF(EtaMin.GT.EtaMax)THEN
-!  print*,'swwwaaaaaaaap etta',etamin,etamax
+IF (EtaMin.GT.EtaMax) THEN
   EtaTmp = EtaMax
   Etamax = EtaMin
   EtaMin = EtaTmp
 END IF
 
-nEtaClip=nEtaClip+1
+! count number of clips in xi and eta direction
+nEtaClip = nEtaClip+1
+
 ! 2.) CLIPPING eta
-IF((EtaMax-EtaMin).GT.BezierSplitLimit)THEN ! two possible intersections: split the clipped patch at 50%
-  EtaSplit=0.5*(EtaMax+EtaMin)
+IF ((EtaMax-EtaMin).GT.BezierSplitLimit) THEN ! two possible intersections: split the clipped patch at 50%
+  EtaSplit = 0.5*(EtaMax+EtaMin)
   ! first split: eta upper
   ! set mapping array
-  EtaArray(:,nEtaClip)=(/EtaSplit,EtaMax/)
-  BezierControlPoints2D_temp=0.
-  ! TOP, Bernstein polynomial B(n,k,x) = (1/(2^n))*choose(n,k)*(x+1).^k.*(1-x).^(n-k)
-  IF(EtaMax.NE.1.0)THEN
-    PlusEta=1.0+EtaMax
-    MinusEta=1.0-EtaMax
-    ! compute the required stuff || pseudo Horner or precomputation
-    Etaup(0)=1.0
-    ! caution, here the indicies are switched from n-j to j  for **down
-    Etadown(0)=1.0
-    DO l=1,NGeo
-      Etaup   (l)     =Etaup   (l-1)*PlusEta
-      Etadown (l)     =Etadown (l-1)*MinusEta
-    END DO ! l=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        EtaBuf(p,l)=EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
-      END DO ! l=0,p
-    END DO ! p=0,NGeo
+  EtaArray(:,nEtaClip)       = (/EtaSplit,EtaMax/)
+  BezierControlPoints2D_temp = 0.
 
-    DO q=0,NGeo
-      DO p=0,NGeo
-        DO l=0,p
-          BezierControlPoints2D_temp(:,q,p)=BezierControlPoints2D_temp(:,q,p)                  &
-                                           +BezierControlPoints2D     (:,q,l)*EtaBuf(p,l)
-        END DO
-      END DO
-    END DO
+  ! TOP, Bernstein polynomial B(n,k,x) = (1/(2^n))*choose(n,k)*(x+1).^k.*(1-x).^(n-k)
+  IF (EtaMax.NE.1.0) THEN
+    PlusEta    = 1.0+EtaMax
+    MinusEta   = 1.0-EtaMax
+    ! compute the required stuff || pseudo Horner or precomputation
+    Etaup(0)   = 1.0
+    ! caution, here the indicies are switched from n-j to j  for **down
+    Etadown(0) = 1.0
+
+    DO l=1,NGeo
+      Etaup   (l) = Etaup   (l-1)*PlusEta
+      Etadown (l) = Etadown (l-1)*MinusEta
+    END DO ! l=0,NGeo
+
+    DO p=0,NGeo; DO l=0,p
+      EtaBuf(p,l) = EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
+    END DO; END DO ! l=0,p; p=0,NGeo
+
+    DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+      BezierControlPoints2D_temp(:,q,p) = BezierControlPoints2D_temp(:,q,p)                  &
+                                        + BezierControlPoints2D     (:,q,l)*EtaBuf(p,l)
+    END DO; END DO; END DO
 
   ELSE
-    BezierControlPoints2D_temp=BezierControlPoints2D
+    BezierControlPoints2D_temp = BezierControlPoints2D
   END IF
 
   ! BOTTOM (mirrored Bernstein Basis evaluation)
   ! s = (smin+1)/(smax+1) for [-1, +1]
   ! s = 2*(1-s)-1         for mirror input for bernstein (1-) and trafo [-1, +1] to [0, 1]
-  BezierControlPoints2D_temp2=0.
-  PlusEta=(EtaSplit+1.0)/(EtaMax+1.0)
-  ! MinusXi= 2.0*(1-PlusXi)-1
-  ! MinusXi= 1.0-2.0*(1.0-s)+1.0
-  MinusEta=2.0*PlusEta
-  ! PlusXi=1+ 2.0*(1-s)-1
-  PlusEta=2.0-2.0*PlusEta
+  BezierControlPoints2D_temp2 = 0.
+  PlusEta    = (EtaSplit+1.0)/(EtaMax+1.0)
+  ! MinusXi    = 2.0*(1-PlusXi)-1
+  ! MinusXi    = 1.0-2.0*(1.0-s)+1.0
+  MinusEta   = 2.0*PlusEta
+  ! PlusXi     = 1+ 2.0*(1-s)-1
+  PlusEta    = 2.0-2.0*PlusEta
   ! compute the required stuff || pseudo Horner or precomputation
-  Etaup(0)=1.0
+  Etaup(0)   = 1.0
   ! caution, here the indicies are switched from n-j to j  for **down
-  Etadown(0)=1.0
-  DO l=1,NGeo
-    Etaup   (l)     =Etaup   (l-1)*PlusEta
-    Etadown (l)     =Etadown (l-1)*MinusEta
-  END DO ! l=0,NGeo
-  DO p=0,NGeo
-    DO l=0,p
-      EtaBuf(p,l)=EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
-    END DO ! l=0,p
-  END DO ! p=0,NGeo
+  Etadown(0) = 1.0
 
-  DO q=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        BezierControlPoints2D_temp2(:,q,NGeo-p)=BezierControlPoints2D_temp2(:,q,NGeo-p)             &
-                                               +BezierControlPoints2D_temp(:,q,NGeo-l)*EtaBuf(p,l)
-      END DO
-    END DO
-  END DO
+  DO l=1,NGeo
+    Etaup   (l) = Etaup   (l-1)*PlusEta
+    Etadown (l) = Etadown (l-1)*MinusEta
+  END DO ! l=0,NGeo
+
+  DO p=0,NGeo; DO l=0,p
+    EtaBuf(p,l) = EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
+  END DO; END DO ! l=0,p; p=0,NGeo
+
+  DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+    BezierControlPoints2D_temp2(:,q,NGeo-p) = BezierControlPoints2D_temp2(:,q,NGeo-p)             &
+                                            + BezierControlPoints2D_temp(:,q,NGeo-l)*EtaBuf(p,l)
+  END DO; END DO; END DO
 
   ! Bezier Split
-  tmpnClip =iClipIter
+  tmpnClip = iClipIter
   ! backup current split level to compute correct intersection, required for back-trafo of intervals
-  tmpnXi   =nXiClip
-  tmpnEta  =nEtaClip
-  tmpLineNormVec=LineNormVec
-  tmpClipMode   =ClipMode
+  tmpnXi   = nXiClip
+  tmpnEta  = nEtaClip
+  tmpLineNormVec = LineNormVec
+  tmpClipMode    = ClipMode
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
@@ -2911,86 +3116,91 @@ IF((EtaMax-EtaMin).GT.BezierSplitLimit)THEN ! two possible intersections: split 
 #endif /*CODE_ANALYZE*/
   ! HERE, ClipMode currently set above
   ! Perform split eta-upper
-  CALL BezierClipRecursive(ClipMode,BezierControlPoints2D_temp2,LineNormVec,PartTrajectory,lengthPartTrajectory&
-                 ,iClipIter,nXiClip,nEtaClip,nInterSections,iPart,SideID)
+  CALL BezierClipRecursive(ClipMode                    &
+                          ,BezierControlPoints2D_temp2 &
+                          ,LineNormVec                 &
+                          ,PartTrajectory              &
+                          ,lengthPartTrajectory        &
+                          ,LastPartPos                 &
+                          ,iClipIter                   &
+                          ,nXiClip                     &
+                          ,nEtaClip                    &
+                          ,nInterSections              &
+                          ,iPart                       &
+                          ,SideID)
 
   ! second split: eta lower
   ! restore values to allow for correct back-trafo of intervals (required for intersectionpoint)
-  iClipIter   =tmpnClip
-  nXiClip     =tmpnXi
-  nEtaClip    =tmpnEta
-  LineNormVec =tmpLineNormVec
-  ClipMode    =tmpClipMode
+  ! backup current split level to compute correct intersection, required for back-trafo of intervals
+  iClipIter   = tmpnClip
+  nXiClip     = tmpnXi
+  nEtaClip    = tmpnEta
+  LineNormVec = tmpLineNormVec
+  ClipMode    = tmpClipMode
 
   ! set mapping array
-  EtaArray(:,nEtaClip)=(/EtaMin,EtaSplit/)
+  EtaArray(:,nEtaClip) = (/EtaMin,EtaSplit/)
   ! TOP, Bernstein polynomial B(n,k,x) = (1/(2^n))*choose(n,k)*(x+1).^k.*(1-x).^(n-k)
-  BezierControlPoints2D_temp=0.
-  PlusEta=1.0+EtaSplit
-  MinusEta=1.0-EtaSplit
+  BezierControlPoints2D_temp = 0.
+  PlusEta    = 1.0+EtaSplit
+  MinusEta   = 1.0-EtaSplit
   ! compute the required stuff || pseudo Horner or precomputation
-  Etaup(0)=1.0
+  Etaup(0)   = 1.0
   ! caution, here the indicies are switched from n-j to j  for **down
-  Etadown(0)=1.0
-  DO l=1,NGeo
-    Etaup   (l)     =Etaup   (l-1)*PlusEta
-    Etadown (l)     =Etadown (l-1)*MinusEta
-  END DO ! l=0,NGeo
-  DO p=0,NGeo
-    DO l=0,p
-      EtaBuf(p,l)=EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
-    END DO ! l=0,p
-  END DO ! p=0,NGeo
+  Etadown(0) = 1.0
 
-  DO q=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        BezierControlPoints2D_temp(:,q,p)=BezierControlPoints2D_temp(:,q,p)                  &
-                                         +BezierControlPoints2D     (:,q,l)*EtaBuf(p,l)
-      END DO
-    END DO
-  END DO
+  DO l=1,NGeo
+    Etaup   (l) = Etaup   (l-1)*PlusEta
+    Etadown (l) = Etadown (l-1)*MinusEta
+  END DO ! l=0,NGeo
+
+  DO p=0,NGeo; DO l=0,p
+    EtaBuf(p,l) = EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
+  END DO; END DO ! l=0,p; p=0,NGeo
+
+  DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+    BezierControlPoints2D_temp(:,q,p) = BezierControlPoints2D_temp(:,q,p)                  &
+                                      + BezierControlPoints2D     (:,q,l)*EtaBuf(p,l)
+  END DO; END DO; END DO
+
   ! BOTTOM (mirrored Bernstein Basis evaluation)
   ! s = (smin+1)/(smax+1) for [-1, +1]
   ! s = 2*(1-s)-1         for mirror input for bernstein (1-) and trafo [-1, +1] to [0, 1]
-  IF(EtaMin.NE.-1.0)THEN
-    BezierControlPoints2D_temp2=0.
-    PlusEta=(EtaMin+1.0)/(EtaSplit+1.0)
-    ! MinusXi= 2.0*(1-PlusXi)-1
-    ! MinusXi= 1.0-2.0*(1.0-s)+1.0
-    MinusEta=2.0*PlusEta
-    ! PlusXi=1+ 2.0*(1-s)-1
-    PlusEta=2.0-2.0*PlusEta
+  IF (EtaMin.NE.-1.0) THEN
+    BezierControlPoints2D_temp2 = 0.
+    PlusEta    = (EtaMin+1.0)/(EtaSplit+1.0)
+    ! MinusXi    = 2.0*(1-PlusXi)-1
+    ! MinusXi    = 1.0-2.0*(1.0-s)+1.0
+    MinusEta   = 2.0*PlusEta
+    ! PlusXi     = 1+ 2.0*(1-s)-1
+    PlusEta    = 2.0-2.0*PlusEta
     ! compute the required stuff || pseudo Horner or precomputation
-    Etaup(0)=1.0
+    Etaup(0)   = 1.0
     ! caution, here the indicies are switched from n-j to j  for **down
-    Etadown(0)=1.0
-    DO l=1,NGeo
-      Etaup   (l)     =Etaup   (l-1)*PlusEta
-      Etadown (l)     =Etadown (l-1)*MinusEta
-    END DO ! l=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        EtaBuf(p,l)=EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
-      END DO ! l=0,p
-    END DO ! p=0,NGeo
+    Etadown(0) = 1.0
 
-    DO q=0,NGeo
-      DO p=0,NGeo
-        DO l=0,p
-          BezierControlPoints2D_temp2(:,q,NGeo-p)=BezierControlPoints2D_temp2(:,q,NGeo-p)             &
-                                                 +BezierControlPoints2D_temp(:,q,NGeo-l)*EtaBuf(p,l)
-        END DO
-      END DO
-    END DO
+    DO l=1,NGeo
+      Etaup   (l) = Etaup   (l-1)*PlusEta
+      Etadown (l) = Etadown (l-1)*MinusEta
+    END DO ! l=0,NGeo
+
+    DO p=0,NGeo; DO l=0,p
+      EtaBuf(p,l)=EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
+    END DO; END DO ! l=0,p; p=0,NGeo
+
+    DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+      BezierControlPoints2D_temp2(:,q,NGeo-p) = BezierControlPoints2D_temp2(:,q,NGeo-p)             &
+                                              + BezierControlPoints2D_temp(:,q,NGeo-l)*EtaBuf(p,l)
+    END DO; END DO; END DO
   ELSE
-    BezierControlPoints2D_temp2=BezierControlPoints2D_temp
+    BezierControlPoints2D_temp2 = BezierControlPoints2D_temp
   END IF
-  tmpnClip      =iClipIter
-  tmpnXi        =nXiClip
-  tmpnEta       =nEtaClip
-  tmpLineNormVec=LineNormVec
-  tmpClipMode   =ClipMode
+
+  tmpnClip       = iClipIter
+  tmpnXi         = nXiClip
+  tmpnEta        = nEtaClip
+  tmpLineNormVec = LineNormVec
+  tmpClipMode    = ClipMode
   ! MAYBE set ClipMode for NEXT clip
   ! HERE, ClipMode currently set above
 #if CODE_ANALYZE
@@ -2999,83 +3209,89 @@ IF((EtaMax-EtaMin).GT.BezierSplitLimit)THEN ! two possible intersections: split 
           IPWRITE(UNIT_stdOut,*) ' --------------------------------------- '
           IPWRITE(UNIT_stdOut,*) ' split eta-lower '
           IPWRITE(UNIT_stdOut,*) ' EtaMin,EtaMax ',EtaArray(:,nEtaClip)
-          !CALL OutputBezierControlPoints(BezierControlPoints2D_in=BezierControlPoints2D_temp2)
+          ! CALL OutputBezierControlPoints(BezierControlPoints2D_in=BezierControlPoints2D_temp2)
         END IF
       END IF
 #endif /*CODE_ANALYZE*/
   ! HERE, ClipMode currently set above
   ! Perform split eta-lower
-  CALL BezierClipRecursive(ClipMode,BezierControlPoints2D_temp2,LineNormVec,PartTrajectory,lengthPartTrajectory&
-                 ,iClipIter,nXiClip,nEtaClip,nInterSections,iPart,SideID)
-  ! we are done
-  ClipMode=-1
-  !! after recursive steps, we are done!
-ELSE  ! no split necessary, only a clip
+  CALL BezierClipRecursive(ClipMode                    &
+                          ,BezierControlPoints2D_temp2 &
+                          ,LineNormVec                 &
+                          ,PartTrajectory              &
+                          ,lengthPartTrajectory        &
+                          ,LastPartPos                 &
+                          ,iClipIter                   &
+                          ,nXiClip                     &
+                          ,nEtaClip                    &
+                          ,nInterSections              &
+                          ,iPart                       &
+                          ,SideID)
+  ! and we are done
+  ClipMode = -1
+  ! after recursive steps, we are done!
+
+ELSE ! no split necessary, only a clip
 
   ! set mapping array
-  EtaArray(:,nEtaClip)=(/EtaMin,EtaMax/)
+  EtaArray(:,nEtaClip) = (/EtaMin,EtaMax/)
   ! TOP, Bernstein polynomial B(n,k,x) = (1/(2^n))*choose(n,k)*(x+1).^k.*(1-x).^(n-k)
-  IF(EtaMax.NE.1.0)THEN
-    BezierControlPoints2D_temp=0.
-    PlusEta=1.0+EtaMax
-    MinusEta=1.0-EtaMax
+  IF (EtaMax.NE.1.0) THEN
+    BezierControlPoints2D_temp = 0.
+    PlusEta    = 1.0+EtaMax
+    MinusEta   = 1.0-EtaMax
     ! compute the required stuff || pseudo Horner or precomputation
-    Etaup(0)=1.0
+    Etaup(0)   = 1.0
     ! caution, here the indicies are switched from n-j to j  for **down
-    Etadown(0)=1.0
-    DO l=1,NGeo
-      Etaup   (l)     =Etaup   (l-1)*PlusEta
-      Etadown (l)     =Etadown (l-1)*MinusEta
-    END DO ! l=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        EtaBuf(p,l)=EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
-      END DO ! l=0,p
-    END DO ! p=0,NGeo
+    Etadown(0) = 1.0
 
-    DO q=0,NGeo
-      DO p=0,NGeo
-        DO l=0,p
-          BezierControlPoints2D_temp(:,q,p)=BezierControlPoints2D_temp(:,q,p)                  &
-                                           +BezierControlPoints2D     (:,q,l)*EtaBuf(p,l)
-        END DO
-      END DO
-    END DO
+    DO l=1,NGeo
+      Etaup   (l) =Etaup   (l-1)*PlusEta
+      Etadown (l) =Etadown (l-1)*MinusEta
+    END DO ! l=0,NGeo
+
+    DO p=0,NGeo; DO l=0,p
+      EtaBuf(p,l) = EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
+    END DO; END DO ! l=0,p;p=0,NGeo
+
+    DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+      BezierControlPoints2D_temp(:,q,p) = BezierControlPoints2D_temp(:,q,p)                  &
+                                        + BezierControlPoints2D     (:,q,l)*EtaBuf(p,l)
+    END DO; END DO; END DO
+
     BezierControlPoints2D=BezierControlPoints2D_temp
   END IF
+
   ! BOTTOM (mirrored Bernstein Basis evaluation)
   ! s = (smin+1)/(smax+1) for [-1, +1]
   ! s = 2*(1-s)-1         for mirror input for bernstein (1-) and trafo [-1, +1] to [0, 1]
-  IF(EtaMin.NE.-1.0)THEN
-    BezierControlPoints2D_temp=0.
-    PlusEta=(EtaMin+1.0)/(EtaMax+1.0)
-    ! MinusXi= 2.0*(1-PlusXi)-1
-    ! MinusXi= 1.0-2.0*(1.0-s)+1.0
-    MinusEta=2.0*PlusEta
-    ! PlusXi=1+ 2.0*(1-s)-1
-    PlusEta=2.0-2.0*PlusEta
+  IF (EtaMin.NE.-1.0) THEN
+    BezierControlPoints2D_temp = 0.
+    PlusEta    = (EtaMin+1.0)/(EtaMax+1.0)
+    ! MinusXi    = 2.0*(1-PlusXi)-1
+    ! MinusXi    = 1.0-2.0*(1.0-s)+1.0
+    MinusEta   = 2.0*PlusEta
+    ! PlusXi     = 1+ 2.0*(1-s)-1
+    PlusEta    = 2.0-2.0*PlusEta
     ! compute the required stuff || pseudo Horner or precomputation
-    Etaup(0)=1.0
+    Etaup(0)   = 1.0
     ! caution, here the indicies are switched from n-j to j  for **down
-    Etadown(0)=1.0
+    Etadown(0) = 1.0
+
     DO l=1,NGeo
       Etaup   (l)     =Etaup   (l-1)*PlusEta
       Etadown (l)     =Etadown (l-1)*MinusEta
     END DO ! l=0,NGeo
-    DO p=0,NGeo
-      DO l=0,p
-        EtaBuf(p,l)=EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
-      END DO ! l=0,p
-    END DO ! p=0,NGeo
 
-    DO q=0,NGeo
-      DO p=0,NGeo
-        DO l=0,p
-          BezierControlPoints2D_temp(:,q,NGeo-p)=BezierControlPoints2D_temp(:,q,NGeo-p)             &
-                                                 +BezierControlPoints2D     (:,q,NGeo-l)*EtaBuf(p,l)
-        END DO
-      END DO
-    END DO
+    DO p=0,NGeo; DO l=0,p
+      EtaBuf(p,l) = EtaUp(l)*EtaDown(p-l)*FacNchooseK(p,l)
+    END DO; END DO ! l=0,p;p=0,NGeo
+
+    DO q=0,NGeo; DO p=0,NGeo; DO l=0,p
+      BezierControlPoints2D_temp(:,q,NGeo-p) = BezierControlPoints2D_temp(:,q,NGeo-p)             &
+                                             + BezierControlPoints2D     (:,q,NGeo-l)*EtaBuf(p,l)
+    END DO; END DO; END DO
+
     BezierControlPoints2D=BezierControlPoints2D_temp
   END IF
   ! after recursive steps, we are done!
@@ -3085,34 +3301,36 @@ END ASSOCIATE
 
 END SUBROUTINE CheckEtaClip
 
+
 #if CODE_ANALYZE
-SUBROUTINE OutputTrajectory(PartID,PartPos,PartTrajectory,lengthPartTrajectory)
+SUBROUTINE OutputTrajectory(PartID,PartPos,PartTrajectory,lengthPartTrajectory,LastPartPos)
 !===================================================================================================================================
 ! subroutine to print particle trajectory, lengthPartTrajectory and Last and Current position in matlab format
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Particle_Vars, ONLY: LastPartPos
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
-INTEGER,INTENT(IN)               :: PartID
-REAL, INTENT(IN)                 :: PartTrajectory(1:3), lengthPartTrajectory
-REAL, INTENT(IN)                 :: PartPos(1:3)
+INTEGER,INTENT(IN)                :: PartID
+REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
+REAL,INTENT(IN)                   :: lengthPartTrajectory
+REAL,INTENT(IN),DIMENSION(1:3)    :: PartPos
+REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' LastPartPos    = [ ',LastpartPos(1,PartID), ','  &
-                                                        ,LastpartPos(2,PartID), ','  &
-                                                        ,LastpartPos(3,PartID), '];'
+WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' LastPartPos    = [ ',LastpartPos(1), ','  &
+                                                           ,LastpartPos(2), ','  &
+                                                           ,LastpartPos(3), '];'
 
 WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' PartPosition   = [ ',PartPos(1), ','  &
-                                                         ,PartPos(2), ','  &
-                                                         ,PartPos(3), '];'
+                                                           ,PartPos(2), ','  &
+                                                           ,PartPos(3), '];'
 
 WRITE(UNIT_stdOut,'(A,3(E24.12,A))') ' PartTrajectory = [ ',PartTrajectory(1) ,','  &
                                                            ,PartTrajectory(2) ,','  &

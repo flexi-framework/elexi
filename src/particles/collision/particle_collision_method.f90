@@ -275,8 +275,10 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElem
         IF (dtColl.LT.0. .OR. dtColl.GT.dtLoc) CYCLE
 
         ! the collision is only valid if it occurred before a BC intersection
-        IF (dtColl.GT.PartBC_Shared(iPart1)) CYCLE
-        IF (dtColl.GT.PartBC_Shared(iPart2)) CYCLE
+        ! > here, the particle radius needs to be considered since the collision is on the particle surface but the BC intersection
+        ! > is determined based on the particle center of mass
+        IF (dtColl.GT.PartBC_Shared(iPart1) - 0.5*PartData_Shared(PART_DIAM,iPart1)/NORM2(PartData_Shared(PART_VELV,iPart1))) CYCLE
+        IF (dtColl.GT.PartBC_Shared(iPart2) - 0.5*PartData_Shared(PART_DIAM,iPart2)/NORM2(PartData_Shared(PART_VELV,iPart2))) CYCLE
 
         ! collision is only valid the particles approach each other
         ! FIXME: NOT TRUE, we can collide on with acute angles
@@ -486,6 +488,7 @@ INTEGER                       :: SideID,CNSideID,flip
 REAL                          :: PartTrajectory(1:3),lengthPartTrajectory
 ! Tracking
 REAL                          :: locAlpha(1:6),xi,eta
+REAL                          :: PartState(1:3),LastPartPos(1:3)
 LOGICAL                       :: isHit
 LOGICAL                       :: isCriticalParallelInFace
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -495,6 +498,9 @@ dtBC = HUGE(1.)
 ! Calculate particle trajectory
 PartTrajectory       = PartData_Shared(PART_VELV,PartID) * dtLoc
 lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
+! Reconstruct the particle position since PartID is for SHM particles
+PartState            = PartData_Shared(PART_POSV,PartID)
+LastPartPos          = PartData_Shared(PART_POSV,PartID) - PartData_Shared(PART_VELV,PartID)*dtLoc
 
 ! Check if the particle moved at all. If not, tracking is done
 IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID))) RETURN
@@ -515,16 +521,16 @@ DO iLocSide = 1,6
 
   SELECT CASE(SideType(CNSideID))
     CASE(PLANAR_RECT)
-      CALL ComputePlanarRectIntersection(   isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+      CALL ComputePlanarRectIntersection(   isHit,PartTrajectory,lengthPartTrajectory,          LastPartPos,locAlpha(iLocSide) &
                                            ,xi,eta,PartID,flip,SideID,isCriticalParallelInFace)
     CASE(BILINEAR,PLANAR_NONRECT)
-      CALL ComputeBiLinearIntersection(     isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+      CALL ComputeBiLinearIntersection(     isHit,PartTrajectory,lengthPartTrajectory,PartState,LastPartPos,locAlpha(iLocSide) &
                                            ,xi,eta,PartID,flip,SideID)
     CASE(PLANAR_CURVED)
-      CALL ComputePlanarCurvedIntersection( isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+      CALL ComputePlanarCurvedIntersection( isHit,PartTrajectory,lengthPartTrajectory,          LastPartPos,locAlpha(iLocSide) &
                                            ,xi,eta,PartID,flip,SideID,isCriticalParallelInFace)
     CASE(CURVED)
-      CALL ComputeCurvedIntersection(       isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+      CALL ComputeCurvedIntersection(       isHit,PartTrajectory,lengthPartTrajectory,PartState,LastPartPos,locAlpha(iLocSide) &
                                            ,xi,eta,PartID,flip,SideID,isCriticalParallelInFace)
     CASE DEFAULT
       CALL Abort(__STAMP__,' Missing required side-data. Please increase halo region. ',SideID)
@@ -578,6 +584,7 @@ INTEGER                       :: SideID,CNSideID,flip
 REAL                          :: PartTrajectory(1:3),lengthPartTrajectory
 ! Tracking
 REAL                          :: localpha(firstSide:lastSide),xi,eta
+REAL                          :: PartState(1:3),LastPartPos(1:3)
 LOGICAL                       :: isHit
 !-----------------------------------------------------------------------------------------------------------------------------------
 
@@ -589,6 +596,9 @@ IF (nLocSides.EQ.0) RETURN
 ! Calculate particle trajectory
 PartTrajectory       = PartData_Shared(PART_VELV,PartID) * dtLoc
 lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
+! Reconstruct the particle position since PartID is for SHM particles
+PartState            = PartData_Shared(PART_POSV,PartID)
+LastPartPos          = PartData_Shared(PART_POSV,PartID) - PartData_Shared(PART_VELV,PartID)*dtLoc
 
 ! Check if the particle moved at all. If not, tracking is done
 IF (.NOT.PARTHASMOVED(lengthPartTrajectory,ElemRadiusNGeo(CNElemID))) RETURN
@@ -610,16 +620,16 @@ DO iLocSide = firstSide,LastSide
 
   SELECT CASE(SideType(CNSideID))
     CASE(PLANAR_RECT)
-      CALL ComputePlanarRectIntersection(  isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+      CALL ComputePlanarRectIntersection(  isHit,PartTrajectory,lengthPartTrajectory,          LastPartPos,locAlpha(iLocSide) &
                                         ,  xi,eta,PartID,flip,SideID)
     CASE(BILINEAR,PLANAR_NONRECT)
-      CALL ComputeBiLinearIntersection(    isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+      CALL ComputeBiLinearIntersection(    isHit,PartTrajectory,lengthPartTrajectory,PartState,LastPartPos,locAlpha(iLocSide) &
                                       ,    xi,eta,PartID,flip,SideID)
     CASE(PLANAR_CURVED)
-      CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+      CALL ComputePlanarCurvedIntersection(isHit,PartTrajectory,lengthPartTrajectory,          LastPartPos,locAlpha(iLocSide) &
                                           ,xi,eta,PartID,flip,SideID)
     CASE(CURVED)
-      CALL ComputeCurvedIntersection(      isHit,PartTrajectory,lengthPartTrajectory,locAlpha(iLocSide) &
+      CALL ComputeCurvedIntersection(      isHit,PartTrajectory,lengthPartTrajectory,PartState,LastPartPos,locAlpha(iLocSide) &
                                     ,      xi,eta,PartID,flip,SideID)
   END SELECT
 END DO ! iLocSide = firstSide,LastSide

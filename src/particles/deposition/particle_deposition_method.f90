@@ -258,7 +258,6 @@ DO iPart = 1,PDM%ParticleVecLength
 
   ! Loop over all nodes and add normalized deposition to shared array
   DO iNode = 1,8
-    ! FEMNodeID(iNode) = VertexInfo_Shared(1,(iElem-1)*8 + iNode)
 #if USE_MPI
     CALL MPI_ACCUMULATE(NodeSource_tmp(:,iNode),PP_nVar,MPI_DOUBLE_PRECISION,0,INT(PP_nVar*(FEMNodeID(iNode)-1)*SIZE_REAL,MPI_ADDRESS_KIND) , &
                                                 PP_nVar,MPI_DOUBLE_PRECISION,MPI_SUM,FEMNodeSource_Shared_Win,iError)

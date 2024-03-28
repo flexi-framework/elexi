@@ -202,6 +202,13 @@ REAL                :: alpha1,alpha2,alpha3
 REAL                :: Vol
 REAL                :: Source(PP_nVar)
 !==================================================================================================================================
+! Nullify
+#if USE_MPI
+IF (myComputeNodeRank.EQ.0) FEMNodeSource_Shared(:,:) = 0.
+CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
+#else
+FEMNodeSource_Shared(:,:) = 0.
+#endif /*USE_MPI*/
 
 ! Loop all particles and deposit their force contribution
 DO iPart = 1,PDM%ParticleVecLength

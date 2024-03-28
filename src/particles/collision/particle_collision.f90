@@ -794,7 +794,7 @@ DO iElem = offsetElem+1,offsetElem+nElems
   CNElemID = GetCNElemID(iElem)
   pcount   = PEM%pStart(iElem)
   ! PartData is CN-local ...
-  DO iPart = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
+  DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
     PartData_Shared(1:PP_nVarPart,iPart) = PartState(:,pcount)
     PartData_Shared(PP_nVarPart+1,iPart) = PartSpecies(pcount)
   ! END DO
@@ -807,7 +807,7 @@ DO iElem = offsetElem+1,offsetElem+nElems
   END DO
 
   ! Set counter to the end of particle number in the current element
-  iPart = PartInt_Shared(2,CNElemID)
+  iPart = PartInt_Shared(4,CNElemID)
 END DO ! iElem = offsetElem+1,offsetElem+nElems
 
 ! De-allocate linked list and return to normal particle array mode

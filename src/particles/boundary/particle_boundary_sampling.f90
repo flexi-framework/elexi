@@ -434,6 +434,7 @@ nSurfTotalSides = nComputeNodeSurfTotalSides
 #endif /* USE_MPI */
 
 ! surface sampling array do not need to be allocated if there are no sides within halo_eps range
+SurfGlob = .FALSE.
 #if USE_MPI
 CALL MPI_REDUCE(SurfOnNode,SurfGlob,1,MPI_LOGICAL,MPI_LOR,0,MPI_COMM_FLEXI,iERROR)
 #else

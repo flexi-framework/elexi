@@ -477,6 +477,8 @@ FUNCTION(add_exec target)
   # Strip executable/shared library when building in release mode
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:${target}>)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:libflexishared>)
+  # Create a symlink to elexi
+  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND ${CMAKE_COMMAND} -E create_symlink ${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/"exeli")
 ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)

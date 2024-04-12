@@ -112,7 +112,7 @@ USE MOD_Mappings,           ONLY:buildMappings
 USE MOD_Prepare_Mesh,       ONLY:exchangeFlip
 #endif /*USE_MPI*/
 #if FV_ENABLED
-USE MOD_FV_Metrics,         ONLY:InitFV_Metrics
+USE MOD_FV_Metrics,         ONLY:InitFV_Metrics,FV_CalcMetrics
 #endif /*FV_ENABLED*/
 #if (PP_dim == 2)
 USE MOD_2D
@@ -360,7 +360,7 @@ IF (meshMode.GT.0) THEN
   ALLOCATE(SideToElem(5,nSides))
   ALLOCATE(BC(1:nBCSides))
   ALLOCATE(AnalyzeSide(1:nSides))
-  ALLOCATE(SideToGlobalSide(1:nSides))
+  ! ALLOCATE(SideToGlobalSide(1:nSides))
   ElemToSide  = 0
   SideToElem  = -1   !mapping side to elem, sorted by side ID (for surfint)
   BC          = 0
@@ -469,12 +469,13 @@ IF (meshMode.GT.1) THEN
 #endif /*USE_LOADBALANCE*/
 
   ! surface data
-  ALLOCATE(Face_xGP      (3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
-  ALLOCATE(NormVec       (3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
-  ALLOCATE(TangVec1      (3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
-  ALLOCATE(TangVec2      (3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
-  ALLOCATE(SurfElem      (  0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
-  ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ          ,1:nSides)) ! temp
+  ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(       NormVec(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(      TangVec1(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(      TangVec2(3,0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(      SurfElem(  0:PP_N,0:PP_NZ,0:FV_SIZE,1:nSides))
+  ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ,          1:nSides)) ! temp
+  ALLOCATE(    Ja_slave(3,3,0:PP_N,0:PP_NZ,          1:nSides)) ! temp
   Face_xGP = 0.
   NormVec  = 0.
   TangVec1 = 0.
@@ -497,15 +498,32 @@ IF (meshMode.GT.1) THEN
   END DO
 
 #if FV_ENABLED
-  CALL InitFV_Metrics()  ! FV metrics
+  CALL InitFV_Metrics()  ! Init FV metrics
+  CALL FV_CalcMetrics()  ! FV metrics
 #endif
 
 ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
   CALL WriteDebugMesh(GETINT('debugmesh'))
 END IF ! meshMode.GT.1
 
+! IF (meshMode.GT.0) THEN
+!   ALLOCATE(SideToGlobalSide(nSides))
+!   DO iElem=1,nElems
+! #if PP_dim == 3
+!     DO LocSideID=1,6
+! #else
+!     DO LocSideID=2,5
+! #endif
+!       SideID = ElemToSide(E2S_SIDE_ID,LocSideID,iElem)
+!       iSide  = ElemInfo(3,iElem+offsetElem) + LocSideID
+!       SideToGlobalSide(SideID) = ABS(SideInfo(2,iSide))
+!     END DO
+!   END DO ! iElem
+! END IF
+
 ! SDEALLOCATE(dXCL_N)
-SDEALLOCATE(Ja_Face)
+! SDEALLOCATE(Ja_Face)
+! SDEALLOCATE(Ja_Slave)
 SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
@@ -586,11 +604,14 @@ SDEALLOCATE(TangVec1)
 SDEALLOCATE(TangVec2)
 SDEALLOCATE(SurfElem)
 
+SDEALLOCATE(Ja_Face)
+SDEALLOCATE(Ja_slave)
+
 ! ijk sorted mesh
 SDEALLOCATE(Elem_IJK)
 SDEALLOCATE(ElemInfo)
 SDEALLOCATE(SideInfo)
-SDEALLOCATE(SideToGlobalSide)
+! SDEALLOCATE(SideToGlobalSide)
 
 ! mappings
 CALL FinalizeMappings()

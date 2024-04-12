@@ -60,7 +60,6 @@ USE MOD_Mortar,            ONLY:InitMortar
 USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 USE MOD_Output,            ONLY:DefineParametersOutput,InitOutput
 USE MOD_Overintegration,   ONLY:DefineParametersOverintegration,InitOverintegration
-USE MOD_Precond,           ONLY:DefineParametersPrecond
 USE MOD_ReadInTools,       ONLY:prms,PrintDefaultParameterFile,ExtractParameterFile
 USE MOD_RecordPoints,      ONLY:DefineParametersRecordPoints,InitRecordPoints
 USE MOD_Restart,           ONLY:DefineParametersRestart,InitRestart,Restart
@@ -82,6 +81,9 @@ USE MOD_Lifting,           ONLY:DefineParametersLifting,InitLifting
 USE MOD_MPI,               ONLY:InitMPIvars
 USE MOD_MPI_Shared,        ONLY:DefineParametersMPIShared,InitMPIShared
 #endif /*USE_MPI*/
+#if USE_PRECOND
+USE MOD_Precond,           ONLY:DefineParametersPrecond
+#endif /*USE_PRECOND*/
 #if USE_LOADBALANCE
 USE MOD_LoadBalance,       ONLY:DefineParametersLoadBalance,InitLoadBalance
 USE MOD_Restart_Vars,      ONLY:DoRestart,RestartFile
@@ -177,7 +179,9 @@ CALL DefineParametersLifting ()
 CALL DefineParametersSponge()
 CALL DefineParametersTimedisc()
 CALL DefineParametersImplicit()
+#if USE_PRECOND
 CALL DefineParametersPrecond()
+#endif /*USE_PRECOND*/
 CALL DefineParametersAnalyze()
 CALL DefineParametersRecordPoints()
 #if USE_MPI

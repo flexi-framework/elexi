@@ -92,6 +92,7 @@ CALL addStrListEntry('IniExactFunc','convergence'       ,34)
 CALL addStrListEntry('IniExactFunc','sinevelx'          ,35)
 CALL addStrListEntry('IniExactFunc','sinevely'          ,36)
 CALL addStrListEntry('IniExactFunc','sinevelty'         ,37)
+CALL addStrListEntry('IniExactFunc','blast_shock'       ,111)
 #if PARABOLIC
 CALL addStrListEntry('IniExactFunc','blasius'        ,1338)
 CALL addStrListEntry('IniExactFunc','blasius_round_x',1339)
@@ -743,6 +744,20 @@ CASE(11) ! Sod Shock tube
   ELSE
     Resu = RefStateCons(:,2)
   END IF
+CASE(111) ! Sedov blast wave
+  xs = 0.5
+  Ms = SQRT(SUM((X(1:3)-1.5)**2))
+  IF ((Ms.LE.xs).AND.(Ms.NE.0)) THEN
+    prim(DENS)      = 1.3416
+    prim(VEL1:VEL3) = 0.3615*(X(1:3)-1.5)/Ms
+    prim(PRES)      = 1.5133
+  ELSE
+    prim(DENS)      = 1.
+    prim(VELV)      = 0.
+    prim(PRES)      = 1.
+  END IF
+  prim(TEMP)=prim(PRES)/(prim(DENS)*R)
+  CALL PrimToCons(prim,resu)
 CASE(12) ! Shu Osher density fluctuations shock wave interaction
   IF (x(1).LT.-4.0) THEN
     prim(DENS)      = 3.857143

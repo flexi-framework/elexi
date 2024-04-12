@@ -101,6 +101,15 @@ END IF
 ALLOCATE(Ut(       PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 Ut=0.
 
+#ifdef PP_EntropyVars
+ALLOCATE(V   (PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+V=0.
+ALLOCATE(V_master(PP_nVar,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(V_slave( PP_nVar,0:PP_N,0:PP_N,1:nSides))
+V_master=0.
+V_slave=0.
+#endif /*ifdef PP_EntropyVars*/
+
 ! Allocate the 2D solution vectors on the sides, one array for the data belonging to the proc (the master)
 ! and one for the sides which belong to another proc (slaves): side-based
 ALLOCATE(U_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
@@ -173,6 +182,10 @@ REAL,ALLOCATABLE,DIMENSION(:)  ,INTENT(OUT)    :: L_HatPlus              !< Valu
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(0:N_in,0:N_in)              :: M,Minv
+#if ((PP_NodeType==1) && defined(SPLIT_DG))
+REAL,DIMENSION(2,0:N_in)                   :: Vf
+REAL,DIMENSION(2,2)                        :: B
+#endif /*((PP_NodeType==1) && defined(SPLIT_DG))*/
 !==================================================================================================================================
 
 ALLOCATE(L_HatMinus(0:N_in), L_HatPlus(0:N_in))
@@ -182,7 +195,7 @@ ALLOCATE(D_Hat(0:N_in,0:N_in), D_Hat_T(0:N_in,0:N_in))
 CALL PolynomialDerivativeMatrix(N_in,xGP,D)
 D_T=TRANSPOSE(D)
 
-!Build Mass Matrix
+! Build Mass Matrix
 CALL PolynomialMassMatrix(N_in,xGP,wGP,M,Minv)
 
 ! Build D_Hat matrix. D^ = - (M^(-1) * D^T * M)
@@ -193,12 +206,25 @@ D_Hat_T= TRANSPOSE(D_Hat)
 ! Use a modified D matrix for the strong form volume integral, that incorporates the inner fluxes that are subtracted from the
 ! surfaces
 ALLOCATE(DVolSurf(0:N_in,0:N_in))
+#if (PP_NodeType==1)
+! Chan, J.: Efficient Entropy Stable Gauss Collocation Methods, JSC, 2019.
+! S = D - 0.5 V^T B V
+! Lagrange polynomials evaluated at the cell boundaries
+Vf(1,:) = L_Minus
+Vf(2,:) = L_Plus
+B(1,:)  = (/-1.,0./)
+B(2,:)  = (/ 0.,1./)
+DVolSurf = D - 1./2.*MATMUL(Minv,MATMUL(MATMUL(TRANSPOSE(Vf),B),Vf))
+! Transpose for efficiency
+DVolSurf = TRANSPOSE(DVolSurf)
+#else
 DVolSurf = D_T
 ! Modify the D matrix here, the integral over the inner fluxes at the boundaries will then be automatically done in the volume
 ! integral. The factor 1/2 is needed since we incorporate a factor of 2 in the split fluxes themselves!
 ! For Gauss-Lobatto points, these inner flux contributions cancel exactly with entries in the DVolSurf matrix, resulting in zeros.
 DVolSurf(   0,   0) = DVolSurf(   0   ,0) + 1.0/(2.0 * wGP(   0))  ! = 0. (for LGL)
 DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))  ! = 0. (for LGL)
+#endif
 #endif /*SPLIT_DG*/
 
 ! interpolate to left and right face (1 and -1 in reference space) and pre-divide by mass matrix
@@ -261,14 +287,19 @@ USE MOD_FV_Vars             ,ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems_Sum
 USE MOD_FV_Mortar           ,ONLY: FV_Elems_Mortar
 USE MOD_FV                  ,ONLY: FV_DGtoFV,FV_ConsToPrim
 USE MOD_FV_VolInt           ,ONLY: FV_VolInt
+#if ((FV_ENABLED >= 2) && (PP_NodeType == 1))
+USE MOD_FV_Vars             ,ONLY: FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave
+USE MOD_FV_Vars             ,ONLY: FV_Flux_master,FV_Flux_slave
+#endif /*((FV_ENABLED >= 2) && (PP_NodeType == 1))*/
 #if USE_MPI
 USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
 #endif /*USE_MPI*/
 #if FV_RECONSTRUCT
 USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta
-#if PARABOLIC
+#if VOLINT_VISC
 USE MOD_FV_Vars             ,ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
-#endif
+USE MOD_FV_Reconstruction   ,ONLY: FV_SurfCalcGradients_Parabolic
+#endif /* VOLINT_VISC */
 USE MOD_FV_Vars             ,ONLY: FV_surf_gradU,FV_multi_master,FV_multi_slave
 USE MOD_FV_ProlongToFace    ,ONLY: FV_ProlongToDGFace
 USE MOD_FV_Mortar           ,ONLY: FV_gradU_mortar
@@ -279,6 +310,10 @@ USE MOD_FV_Reconstruction   ,ONLY: FV_PrepareSurfGradient,FV_SurfCalcGradients,F
 USE MOD_EddyVisc_Vars       ,ONLY: ComputeEddyViscosity, muSGS, muSGS_master, muSGS_slave
 USE MOD_ProlongToFace       ,ONLY: ProlongToFace
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
+#endif
+#ifdef PP_EntropyVars
+USE MOD_DG_Vars             ,ONLY: V,V_slave,V_master
+USE MOD_EOS                 ,ONLY: ConsToEntropy
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
@@ -340,6 +375,11 @@ IF(FilterType.GT.0) CALL Filter_Pointer(U,FilterMat)
 CALL ConsToPrim(PP_N,UPrim,U)
 MeasureSplitTime_DG()       ! LoadBalance
 
+! Compute entropy variables
+#ifdef PP_EntropyVars
+Call ConsToEntropy(PP_N,V,U)
+#endif
+
 ! 3. Prolong the solution to the face integration points for flux computation (and do overlapping communication)
 ! -----------------------------------------------------------------------------------------------------------
 ! General idea: The slave sends its surface data to the master, where the flux is computed and sent back to the slaves.
@@ -364,11 +404,32 @@ MeasureSplitTime_DG()       ! LoadBalance
 MeasureStartTime()          ! LoadBalance
 CALL StartReceiveMPIData(U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,SEND),SendID=2) ! Receive MINE / U_slave: slave -> master
 MeasureSplitTime_DGCOMM()   ! LoadBalance
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+CALL StartReceiveMPIData(FV_U_slave,DataSizeSide,1,nSides,MPIRequest_FV_U(:,SEND),SendID=2) ! Receive MINE / FV_U_slave: slave -> master
+#endif
+
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+#ifndef PP_EntropyVars
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.TRUE.,pureFV=.TRUE.)
+#endif /*ifndef PP_EntropyVars*/
+#else /*FV_ENABLED*/
+#ifdef PP_EntropyVars
+CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+#else
+CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+#endif /*ifdef PP_EntropyVars*/
+#endif /*FV_ENABLED*/
+
+MeasureStartTime()          ! LoadBalance
 CALL U_MortarCons(U_master,U_slave,doMPISides=.TRUE.)
 MeasureSplitTime_DG()       ! LoadBalance
 CALL StartSendMPIData(   U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,RECV),SendID=2) ! SEND YOUR / U_slave: slave -> master
 MeasureSplitTime_DGCOMM()   ! LoadBalance
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+CALL U_MortarCons(FV_U_master,FV_U_slave,doMPISides=.TRUE.)
+CALL StartSendMPIData(FV_U_slave,DataSizeSide,1,nSides,MPIRequest_FV_U(:,RECV),SendID=2) ! SEND YOUR / FV_U_slave: slave -> master
+#endif
 #if FV_ENABLED
 ! 3.2)
 CALL FV_Elems_Mortar(FV_Elems_master,FV_Elems_slave,doMPISides=.TRUE.)
@@ -388,11 +449,26 @@ CALL StartSendMPIData(   FV_multi_slave,DataSizeSidePrim,1,nSides,MPIRequest_FV_
 
 ! Step 3 for all remaining sides
 ! 3.1)
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+#ifndef PP_EntropyVars
 MeasureStartTime()          ! LoadBalance
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
-CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)
 MeasureSplitTime_DG()       ! LoadBalance
+CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.FALSE.,pureFV=.TRUE.)
+#endif /*ifndef PP_EntropyVars*/
+#else /*FV_ENABLED*/
+MeasureStartTime()          ! LoadBalance
+#ifdef PP_EntropyVars
+CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+#else
+CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+#endif /*ifdef PP_EntropyVars*/
+#endif
 
+CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+CALL U_MortarCons(FV_U_master,FV_U_slave,doMPISides=.FALSE.)
+#endif
 #if FV_ENABLED
 ! 3.2)
 CALL FV_Elems_Mortar(FV_Elems_master,FV_Elems_slave,doMPISides=.FALSE.)
@@ -410,6 +486,9 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)        ! U_slave: slave -> m
 MeasureSplitTime_DGCOMM()   ! LoadBalance
 #if FV_ENABLED
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems) ! FV_Elems_slave: slave -> master
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_U)     ! FV_U_slave: slave -> master
+#endif
 #if FV_RECONSTRUCT
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_gradU) ! FV_multi_slave: slave -> master
 #endif /*FV_RECONSTRUCT*/
@@ -422,6 +501,9 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_gradU) ! FV_multi_slave: sla
 MeasureStartTime()          ! LoadBalance
 CALL GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
 MeasureSplitTime_DG()       ! LoadBalance
+#if (FV_ENABLED == 2) && (PP_NodeType==1)
+CALL GetPrimitiveStateSurface(FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave)
+#endif
 #if FV_ENABLED
 ! Build four-states-array for the 4 different combinations DG/DG(0), FV/DG(1), DG/FV(2) and FV/FV(3) a face can be.
 FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
@@ -472,9 +554,9 @@ CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU,t)
 CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.FALSE.)
 ! 5.6)
 CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
-#if PARABOLIC
+#if VOLINT_VISC
     ,gradUxi_central,gradUeta_central,gradUzeta_central &
-#endif /*PARABOLIC*/
+#endif /* VOLINT_VISC */
     )
 #endif /*FV_ENABLED && FV_RECONSTRUCT*/
 
@@ -532,7 +614,8 @@ MeasureSplitTime_DG()       ! LoadBalance
 CALL FV_VolInt(UPrim,Ut)
 #endif /*FV_ENABLED*/
 
-#if (FV_ENABLED == 2) && PARABOLIC
+
+#if (FV_ENABLED >= 2) && PARABOLIC
 ! [10. Compute viscous volume integral contribution separately and add to Ut (FV-blending only)]
 CALL VolInt_Visc(Ut)
 #endif
@@ -575,11 +658,12 @@ END IF
 ! 11.5)  Compute surface integral
 #if FV_ENABLED
 ! 11.1)
-#if PARABOLIC
+#if VOLINT_VISC
 CALL FV_DGtoFV(PP_nVarLifting,gradUx_master,gradUx_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUy_master,gradUy_slave)
 CALL FV_DGtoFV(PP_nVarLifting,gradUz_master,gradUz_slave)
-#endif /*PARABOLIC*/
+CALL FV_SurfCalcGradients_Parabolic()
+#endif /* VOLINT_VISC */
 
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )
 CALL FV_ConsToPrim(PP_nVarPrim,PP_nVar,UPrim_master,UPrim_slave,U_master,U_slave)
@@ -600,14 +684,34 @@ MeasureSplitTime_DG()       ! LoadBalance
 CALL StartSendMPIData(   Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,RECV),SendID=1)
                                                                               ! Send MINE  /   Flux_slave: master -> slave
 MeasureSplitTime_DGCOMM()   ! LoadBalance
+
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+CALL StartReceiveMPIData(FV_Flux_slave, DataSizeSide, 1,nSides,MPIRequest_FV_Flux( :,SEND),SendID=1)
+                                                                              ! Receive YOUR / Flux_slave: master -> slave
+CALL FillFlux(t,FV_Flux_master,FV_Flux_slave,FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave,doMPISides=.TRUE.,pureFV=.TRUE.)
+CALL StartSendMPIData(   FV_Flux_slave, DataSizeSide, 1,nSides,MPIRequest_FV_Flux( :,RECV),SendID=1)
+                                                                              ! Send MINE  /   Flux_slave: master -> slave
+#endif /*((FV_ENABLED == 2) && (PP_NodeType == 1))*/
 #endif /*USE_MPI*/
 
 MeasureStartTime()          ! LoadBalance
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.FALSE.)
 ! 11.4)
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
+
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+MeasureSplitTime_DG()       ! LoadBalance
+! 11.3)
+CALL FillFlux(t,FV_Flux_master,FV_Flux_slave,FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave,doMPISides=.FALSE.)
+! 11.4)
+CALL Flux_MortarCons(FV_Flux_master,FV_Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
+! 11.5)
+MeasureStartTime()          ! LoadBalance
+CALL SurfIntCons(PP_N,Flux_master,Flux_slave,FV_Flux_master,FV_Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
+#else
 ! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
+#endif
 MeasureSplitTime_DG()       ! LoadBalance
 
 #if USE_MPI
@@ -615,8 +719,17 @@ MeasureSplitTime_DG()       ! LoadBalance
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux )                       ! Flux_slave: master -> slave
 MeasureSplitTime_DGCOMM()   ! LoadBalance
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
+#if ((FV_ENABLED == 2) && (PP_NodeType == 1))
+! 11.4)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Flux )                       ! Flux_slave: master -> slave
+CALL Flux_MortarCons(FV_Flux_master,FV_Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
+! 11.5)
+MeasureStartTime()          ! LoadBalance
+CALL SurfIntCons(PP_N,Flux_master,Flux_slave,FV_Flux_master,FV_Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
+#else
 ! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
+#endif
 MeasureSplitTime_DG()       ! LoadBalance
 #endif /*USE_MPI*/
 
@@ -739,6 +852,11 @@ SDEALLOCATE(L_HatPlus)
 SDEALLOCATE(Ut)
 SDEALLOCATE(U_master)
 SDEALLOCATE(U_slave)
+#ifdef PP_EntropyVars
+SDEALLOCATE(V)
+SDEALLOCATE(V_master)
+SDEALLOCATE(V_slave)
+#endif
 SDEALLOCATE(Flux_master)
 SDEALLOCATE(Flux_slave)
 SDEALLOCATE(UPrim)

@@ -25,8 +25,8 @@ MODULE MOD_FV_Blending
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-#if FV_ENABLED == 2
 
+#if FV_ENABLED == 2
 INTERFACE FV_ExtendAlpha
   MODULE PROCEDURE FV_ExtendAlpha
 END INTERFACE
@@ -38,17 +38,34 @@ END INTERFACE
 INTERFACE FV_ProlongFValphaToFace
   MODULE PROCEDURE FV_ProlongFValphaToFace
 END INTERFACE
+#endif
 
+#if ((FV_ENABLED >= 2) && (PP_NodeType == 1))
+INTERFACE FV_CommAlpha
+  MODULE PROCEDURE FV_CommAlpha
+END INTERFACE
+#endif
+
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 INTERFACE FV_Info
   MODULE PROCEDURE FV_Info
 END INTERFACE
+#endif
 
+#if FV_ENABLED == 2
 PUBLIC::FV_ExtendAlpha
+#endif
+#if ((FV_ENABLED >= 2) && (PP_NodeType == 1))
+PUBLIC::FV_CommAlpha
+#endif
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 PUBLIC::FV_Info
+#endif
 !==================================================================================================================================
 
 CONTAINS
 
+#if FV_ENABLED == 2
 !==================================================================================================================================
 !> Extend the blending coefficient FV_alpha
 !==================================================================================================================================
@@ -78,9 +95,11 @@ REAL                  :: FV_alpha_current(nElems)
 FV_alpha_master = 0.
 FV_alpha_slave  = 0.
 
-DO i=1,FV_nExtendAlpha
-  !CALL FV_ProlongFValphaToFace(doMPISides=.TRUE.)
-  ! TODO: You get here two times the network latency. Could be optimized
+  DO i=1,FV_nExtendAlpha
+    ! Prolong blending factor to faces
+    CALL FV_ProlongFValphaToFace(FV_alpha)
+
+    ! TODO: You get here two times the network latency. Could be optimized
 #if USE_MPI
   ! Prolong blending factor to faces
   CALL FV_ProlongFValphaToFace(doMPISides=.TRUE.)
@@ -105,24 +124,22 @@ DO i=1,FV_nExtendAlpha
 END DO
 END SUBROUTINE FV_ExtendAlpha
 
+
 !==================================================================================================================================
 !> Set FV_Alpha_slave and FV_Alpha_master information
 !==================================================================================================================================
-SUBROUTINE FV_ProlongFValphaToFace(doMPISides)
+SUBROUTINE FV_ProlongFValphaToFace(FV_alpha)
 ! MODULES
-USE MOD_FV_Vars         ,ONLY: FV_alpha,FV_alpha_master,FV_alpha_slave
-USE MOD_Mesh_Vars       ,ONLY: SideToElem
-USE MOD_Mesh_Vars       ,ONLY: firstMPISide_MINE,lastMortarMPISide
-USE MOD_Mesh_Vars       ,ONLY: lastInnerSide
+USE MOD_FV_Vars         ,ONLY: FV_alpha_master,FV_alpha_slave
+USE MOD_Mesh_Vars       ,ONLY: SideToElem,nSides,nElems
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-LOGICAL,INTENT(IN) :: doMPISides  !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
+REAL,INTENT(INOUT)    :: FV_alpha(nElems)    !< elementwise blending coefficient for DG/FV blending
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: ElemID,nbElemID
-INTEGER            :: SideID,firstSideID,lastSideID
+INTEGER               :: iSide,ElemID,nbElemID
 !==================================================================================================================================
 ! array not allocated in postiMode
 IF (.NOT.ALLOCATED(SideToElem)) RETURN
@@ -143,11 +160,12 @@ DO SideID=firstSideID,lastSideID
   ElemID    = SideToElem(S2E_ELEM_ID   ,SideID)
   nbElemID  = SideToElem(S2E_NB_ELEM_ID,SideID)
   !master sides
-  IF (ElemID   .GT. 0) FV_alpha_master(SideID) = FV_alpha(ElemID)
+  IF (ElemID  .GT.0) FV_alpha_master(SideID) = FV_alpha(ElemID)
   !slave side (ElemID,locSide and flip =-1 if not existing)
-  IF (nbElemID .GT. 0) FV_alpha_slave( SideID) = FV_alpha(nbElemID)
+  IF (nbElemID.GT.0) FV_alpha_slave( SideID) = FV_alpha(nbElemID)
 END DO
 END SUBROUTINE FV_ProlongFValphaToFace
+
 
 !==================================================================================================================================
 !> Check for indicator value in neighboring elements
@@ -185,13 +203,59 @@ DO iSide = 1,nSides
     FV_alpha_current(nbElemID) = MAX(FV_alpha_current(nbElemID),MAX(FV_alpha_master(iSide),FV_alpha_slave(iSide)))
 END DO
 END SUBROUTINE FV_ComputeExtendedAlpha
+#endif
 
+
+#if ((FV_ENABLED >= 2) && (PP_NodeType == 1))
+!==================================================================================================================================
+!> Extend the blending coefficient FV_alpha
+!==================================================================================================================================
+SUBROUTINE FV_CommAlpha(FV_alpha)
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Mortar        ,ONLY: FV_alpha_Mortar
+USE MOD_FV_Vars          ,ONLY: FV_alpha_master,FV_alpha_slave
+#if USE_MPI
+USE MOD_Mesh_Vars        ,ONLY: nSides,nElems
+USE MOD_MPI              ,ONLY: StartExchange_FV_alpha,FinishExchangeMPIData
+USE MOD_MPI_Vars         ,ONLY: MPIRequest_FV_Elems,nNbProcs
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(INOUT)    :: FV_alpha(nElems)    !< elementwise blending coefficient for DG/FV blending
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+! TODO: You get here two times the network latency. Could be optimized
+CALL FV_ProlongFValphaToFace(FV_alpha)
+#if USE_MPI
+! Prolong blending factor to faces
+! CALL FV_ProlongFValphaToFace(doMPISides=.TRUE.)
+CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.TRUE.)
+CALL StartExchange_FV_alpha(FV_alpha_slave,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=2)
+#endif
+! CALL FV_ProlongFValphaToFace(doMPISides=.FALSE.)
+CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.FALSE.)
+#if USE_MPI
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems)
+
+CALL StartExchange_FV_alpha(FV_alpha_master,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=1)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems)
+#endif
+END SUBROUTINE FV_CommAlpha
+#endif /* FV_ENABLED */
+
+
+#if FV_ENABLED == 2 || FV_ENABLED == 3
 !==================================================================================================================================
 !> Print information on the amount of FV blending
 !==================================================================================================================================
 SUBROUTINE FV_Info(iter)
 ! MODULES
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_Mesh_Vars    ,ONLY: nGlobalElems
 USE MOD_FV_Vars      ,ONLY: FV_alpha
 USE MOD_Analyze_Vars ,ONLY: FV_totalAlpha
@@ -218,8 +282,14 @@ ELSE
   CALL MPI_REDUCE(FV_totalAlpha    ,0               ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif /*USE_MPI*/
-SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' FV_alpha   : ',FV_alpha_range(1),' - ',FV_alpha_range(2),&
-                                              ', avg: '        ,FV_totalAlpha / REAL(nGlobalElems) / iter
+
+#if FV_ENABLED == 3
+! DOF-wise FV_alpha
+FV_totalAlpha = FV_totalAlpha / ((PP_N +1)*(PP_N +1)*(PP_NZ+1))
+#endif /*FV_ENABLED*/
+
+SWRITE(UNIT_stdOut,'(A,F8.3,A,F5.3,A,ES18.9)') ' FV_alpha    : ',FV_alpha_range(1),' - ',FV_alpha_range(2),&
+                                              ', avg: '         ,FV_totalAlpha / REAL(nGlobalElems) / iter
 FV_totalAlpha   = 0.
 END SUBROUTINE FV_Info
 

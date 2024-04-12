@@ -58,6 +58,14 @@ REAL,ALLOCATABLE,TARGET               :: JU(:,:,:,:,:)          !< Solution vari
                                                                 !< size [1..NVar,0..N,0..N,0..N,nElems].
 REAL,ALLOCATABLE,TARGET               :: U(:,:,:,:,:)           !< Solution variable for each equation, node and element,
                                                                 !< size [1..NVar,0..N,0..N,0..N,nElems].
+#ifdef PP_EntropyVars
+REAL,ALLOCATABLE,TARGET               :: V   (:,:,:,:,:)        !< Entropy variables for each node and element,
+                                                                !< size \([1..PP_nVar,0..N,0..N,0..N,nElems]\).
+REAL,ALLOCATABLE                      :: V_master(:,:,:,:)      !< 2D Solution on face nodes for the master sides,
+                                                                !< size \([1..nVar,0..N,0..N,all\_master\_sides]\)
+
+REAL,ALLOCATABLE                      :: V_slave(:,:,:,:)       !< 2D Solution on face nodes for the slave sides,
+#endif
 #if USE_RW
 REAL,ALLOCATABLE,TARGET               :: Uturb(:,:,:,:,:)       !< Turbulent solution variable for each turbulent equation, node and
                                                                 !< element, size [1..NVarTurb,0..N,0..N,0::N,nElems]

@@ -96,17 +96,14 @@ FV_alpha_master = 0.
 FV_alpha_slave  = 0.
 
   DO i=1,FV_nExtendAlpha
-    ! Prolong blending factor to faces
-    CALL FV_ProlongFValphaToFace(FV_alpha)
-
     ! TODO: You get here two times the network latency. Could be optimized
 #if USE_MPI
   ! Prolong blending factor to faces
-  CALL FV_ProlongFValphaToFace(doMPISides=.TRUE.)
+  CALL FV_ProlongFValphaToFace(FV_alpha,doMPISides=.TRUE.)
   CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.TRUE.)
   CALL StartExchange_FV_alpha(FV_alpha_slave,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=2)
 #endif
-  CALL FV_ProlongFValphaToFace(doMPISides=.FALSE.)
+  CALL FV_ProlongFValphaToFace(FV_alpha,doMPISides=.FALSE.)
   CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.FALSE.)
 #if USE_MPI
   CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems)
@@ -128,18 +125,21 @@ END SUBROUTINE FV_ExtendAlpha
 !==================================================================================================================================
 !> Set FV_Alpha_slave and FV_Alpha_master information
 !==================================================================================================================================
-SUBROUTINE FV_ProlongFValphaToFace(FV_alpha)
+SUBROUTINE FV_ProlongFValphaToFace(FV_alpha,doMPISides)
 ! MODULES
 USE MOD_FV_Vars         ,ONLY: FV_alpha_master,FV_alpha_slave
 USE MOD_Mesh_Vars       ,ONLY: SideToElem,nSides,nElems
+USE MOD_Mesh_Vars       ,ONLY: firstMPISide_MINE,lastMortarMPISide,lastInnerSide
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(INOUT)    :: FV_alpha(nElems)    !< elementwise blending coefficient for DG/FV blending
+LOGICAL,INTENT(IN)    :: doMPISides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: iSide,ElemID,nbElemID
+INTEGER               :: iSide,ElemID,nbElemID,SideID
+INTEGER               :: firstSideID,lastSideID
 !==================================================================================================================================
 ! array not allocated in postiMode
 IF (.NOT.ALLOCATED(SideToElem)) RETURN

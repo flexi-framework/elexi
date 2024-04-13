@@ -215,8 +215,9 @@ SUBROUTINE FV_CommAlpha(FV_alpha)
 USE MOD_PreProc
 USE MOD_FV_Mortar        ,ONLY: FV_alpha_Mortar
 USE MOD_FV_Vars          ,ONLY: FV_alpha_master,FV_alpha_slave
+USE MOD_Mesh_Vars        ,ONLY: nElems
 #if USE_MPI
-USE MOD_Mesh_Vars        ,ONLY: nSides,nElems
+USE MOD_Mesh_Vars        ,ONLY: nSides
 USE MOD_MPI              ,ONLY: StartExchange_FV_alpha,FinishExchangeMPIData
 USE MOD_MPI_Vars         ,ONLY: MPIRequest_FV_Elems,nNbProcs
 #endif

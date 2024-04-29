@@ -853,7 +853,7 @@ DO i=0,N_in; DO j=0,N_in
   Minv(i,j) = Minv(i,j) + beta*pNi*pNj
 END DO; END DO
 #else
-! Supress compiler warning
+! Suppress compiler warning
 NO_OP(xGP)
 #endif
 

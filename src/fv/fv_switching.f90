@@ -251,7 +251,11 @@ SUBROUTINE FV_FillIni()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Basis             ,ONLY: InitializeVandermonde
-USE MOD_ChangeBasis       ,ONLY: ChangeBasis2D_XYZ, ChangeBasis3D_XYZ
+#if PP_dim == 3
+USE MOD_ChangeBasis       ,ONLY: ChangeBasis3D_XYZ
+#else
+USE MOD_ChangeBasis       ,ONLY: ChangeBasis2D_XYZ
+#endif
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_DG_Vars           ,ONLY: U
 USE MOD_Equation_Vars     ,ONLY: IniExactFunc

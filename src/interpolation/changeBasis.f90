@@ -25,26 +25,20 @@ MODULE MOD_ChangeBasis
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
 INTERFACE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D_singleVar
 END INTERFACE
 
-#if (PP_dim == 3)
 INTERFACE ChangeBasis3D_XYZ
   MODULE PROCEDURE ChangeBasis3D_XYZ
 END INTERFACE
-#else
+#if (PP_dim == 2)
 INTERFACE ChangeBasis2D_XYZ
   MODULE PROCEDURE ChangeBasis2D_XYZ
 END INTERFACE
-#endif /*PP_dim == 3*/
+#endif /*PP_dim == 2*/
 
 INTERFACE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D
@@ -60,11 +54,10 @@ END INTERFACE
 
 PUBLIC :: ChangeBasis3D
 PUBLIC :: ChangeBasis2D
-#if (PP_dim == 3)
 PUBLIC :: ChangeBasis3D_XYZ
-#else
+#if (PP_dim == 2)
 PUBLIC :: ChangeBasis2D_XYZ
-#endif /*PP_dim == 3*/
+#endif /*PP_dim == 2*/
 #if FV_ENABLED
 PUBLIC :: ChangeBasis1D
 #endif /*FV_ENABLED*/
@@ -72,8 +65,10 @@ PUBLIC :: ChangeBasis1D
 CONTAINS
 
 #define _ADD_DIM
+#define _ENABLE_DIM
 #include "changeBasis.t90"
 #undef _ADD_DIM
+#undef _ENABLE_DIM
 END MODULE MOD_ChangeBasis
 
 !==================================================================================================================================
@@ -121,6 +116,7 @@ CONTAINS
 #else
 #  define _ADD_DIM
 #endif
+#undef _ENABLE_DIM
 #include "changeBasis.t90"
 #undef _ADD_DIM
 END MODULE MOD_ChangeBasisByDim

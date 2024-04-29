@@ -10,6 +10,7 @@ PROGRAM ChangeBasisUnitTest
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ChangeBasis,       ONLY: ChangeBasis2D,ChangeBasis3D,ChangeBasis3D_XYZ
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -49,13 +50,13 @@ IF (nArgs.GT.0) THEN
   END IF
 END IF
 
-UOut = 0.
+UOut   = 0.
 UOut2D = 0.
 ! Initialize VDMs with arbitrary data
 z=1
 DO q=0,NIn; DO p=0,NOut
   z=z+1
-  Vdm(p,q) = 1. + 1./z
+  Vdm(p,q)  = 1. + 1./z
   Vdm2(p,q) = 1. - 1./z
   Vdm3(p,q) = 1. + 0.1*z
 END DO; END DO ! p,q=0,NIn
@@ -87,7 +88,7 @@ CALL ChangeBasis3D(nVar,NIn,NOut,Vdm,UIn(:,:,:,:,1),UOut(:,:,:,:,1,3))
 ! Check ChangeBasis3D_XYZ
 CALL ChangeBasis3D_XYZ(nVar,NIn,NOut,Vdm,Vdm2,Vdm3,UIn(:,:,:,:,1),UOut(:,:,:,:,1,4))
 
-UIn2D = UIn(:,:,:,0,:)
+UIn2D  = UIn( :,:,:,0,:)
 UOut2D = UOut(:,:,:,0,:,1:3)
 ! Check ChangeBasis2D
 CALL ChangeBasis2D(nVar,NIn,NOut,Vdm,UIn2D(:,:,:,1),UOut2D(:,:,:,1,1))

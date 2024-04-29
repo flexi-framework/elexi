@@ -1227,7 +1227,7 @@ IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).LT.INT(HUGE(INT(1,KIND=MPI_ADDRESS_KIND
   MPI_SIZE = INT(nVal,KIND=MPI_ADDRESS_KIND) * INT(VarSize,KIND=MPI_ADDRESS_KIND)
 ELSE
   CALL Abort(__STAMP__,'MPI_SIZE for shared array too large!')
-  ! Avoid compiler warnings
+  ! Suppress compiler warning
   MPI_SIZE = -1
 END IF
 

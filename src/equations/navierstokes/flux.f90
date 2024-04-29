@@ -278,7 +278,7 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
                             )
 END DO; END DO; END DO ! i,j,k
 
-! Remove compiler warning
+! Suppress compiler warning
 NO_OP(iElem)
 END SUBROUTINE EvalDiffFlux3D_Volume
 
@@ -315,7 +315,13 @@ DO k=0,PP_N_zeta;  DO j=0,PP_N_eta; DO i=0,PP_N_xi
                             ,muSGS(1,i,j,k,iElem)&
 #endif
                             )
+
 END DO; END DO; END DO ! i,j,k
+
+#if !EDDY_VISCOSITY
+! Suppress compiler warning
+NO_OP(iElem)
+#endif /*!EDDY_VISCOSITY*/
 END SUBROUTINE EvalDiffFlux3D_Volume_FV
 #endif /*FV_ENABLED*/
 

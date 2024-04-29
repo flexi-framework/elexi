@@ -260,9 +260,9 @@ USE MOD_SplitFlux    ,ONLY: SplitDGVolume_pointer ! computes volume fluxes in sp
 USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars    ,ONLY: NormalSigns,S2V,NormalDirs
 #endif
+#ifdef SPLIT_DG
 USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
-#ifdef SPLIT_DG
 #if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
 #endif
@@ -484,9 +484,9 @@ USE MOD_PreProc
 USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides
 USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
+#ifdef SPLIT_DG
 USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
-#ifdef SPLIT_DG
 #if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
 #endif

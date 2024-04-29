@@ -357,7 +357,6 @@ DO iPart = 1,PDM%ParticleVecLength
           IF (BCType.NE.1) CALL IntersectionWithWall(PartTrajectory         &
                                                     ,LastPartPos(1:3,iPart) &
                                                     ,alpha                  &
-                                                    ,iPart                  &
                                                     ,LocalSide              &
                                                     ,ElemID                 &
                                                     ,TriNum)

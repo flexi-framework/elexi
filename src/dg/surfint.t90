@@ -35,8 +35,10 @@ USE MOD_Mesh_Vars    ,ONLY: NormalSigns,S2V,NormalDirs
 USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
 #endif
-#if PP_dim==3 || VOLINT_VISC
+#ifdef SPLIT_DG
+#if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
+#endif
 #endif
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv
@@ -260,8 +262,10 @@ USE MOD_Mesh_Vars    ,ONLY: NormalSigns,S2V,NormalDirs
 #endif
 USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
-#if PP_dim==3 || VOLINT_VISC
+#ifdef SPLIT_DG
+#if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
+#endif
 #endif
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv
@@ -482,8 +486,10 @@ USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
 USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
-#if PP_dim==3 || VOLINT_VISC
+#ifdef SPLIT_DG
+#if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
+#endif
 #endif
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv

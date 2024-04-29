@@ -852,6 +852,9 @@ DO i=0,N_in; DO j=0,N_in
   M(i,j)    = M(i,j)    + alpha*wGP(i)*wGP(j)*pNi*pNj
   Minv(i,j) = Minv(i,j) + beta*pNi*pNj
 END DO; END DO
+#else
+! Supress compiler warning
+NO_OP(xGP)
 #endif
 
 END SUBROUTINE PolynomialMassMatrix

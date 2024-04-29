@@ -322,17 +322,56 @@ DO iPart = 1,PDM%ParticleVecLength
 
           SELECT CASE(SideType(CNSideID))
             CASE(PLANAR_RECT)
-              CALL ComputePlanarRectIntersection(  foundHit,PartTrajectory,lengthPartTrajectory,                     LastPartPos(:,iPart),locAlpha &
-                                                ,  xi,eta,iPart,flip,SideID,isCriticalParallelInFace)
+              CALL ComputePlanarRectIntersection(  isHit                      = foundHit                  &
+                                                ,  PartTrajectory             = PartTrajectory            &
+                                                ,  lengthPartTrajectory       = lengthPartTrajectory      &
+                                                ,  LastPartPos                = LastPartPos(:,iPart)      &
+                                                ,  alpha                      = locAlpha                  &
+                                                ,  xi                         = xi                        &
+                                                ,  eta                        = eta                       &
+#if CODE_ANALYZE
+                                                ,  PartID                     = PartID                    &
+#endif /*CODE_ANALYZE*/
+                                                ,  flip                       = flip                      &
+                                                ,  SideID                     = SideID                    &
+                                                ,  opt_criticalParallelInSide = isCriticalParallelInFace)
             CASE(BILINEAR,PLANAR_NONRECT)
-              CALL ComputeBiLinearIntersection(    foundHit,PartTrajectory,lengthPartTrajectory,PartState(1:3,iPart),LastPartPos(:,iPart),locAlpha &
-                                              ,    xi,eta,iPart,flip,SideID)
+              CALL ComputeBiLinearIntersection(    isHit                      = foundHit                  &
+                                                ,  PartTrajectory             = PartTrajectory            &
+                                                ,  lengthPartTrajectory       = lengthPartTrajectory      &
+                                                ,  PartState                  = PartState(1:3,iPart)      &
+                                                ,  LastPartPos                = LastPartPos(:,iPart)      &
+                                                ,  alpha                      = locAlpha                  &
+                                                ,  xitild                     = xi                        &
+                                                ,  etatild                    = eta                       &
+                                                ,  PartID                     = iPart                     &
+                                                ,  flip                       = flip                      &
+                                                ,  SideID                     = SideID)
             CASE(PLANAR_CURVED)
-              CALL ComputePlanarCurvedIntersection(foundHit,PartTrajectory,lengthPartTrajectory,                     LastPartPos(:,iPart),locAlpha &
-                                                  ,xi,eta,iPart,flip,SideID,isCriticalParallelInFace)
+              CALL ComputePlanarCurvedIntersection(isHit                      = foundHit                  &
+                                                ,  PartTrajectory             = PartTrajectory            &
+                                                ,  lengthPartTrajectory       = lengthPartTrajectory      &
+                                                ,  LastPartPos                = LastPartPos(:,iPart)      &
+                                                ,  alpha                      = locAlpha                  &
+                                                ,  xi                         = xi                        &
+                                                ,  eta                        = eta                       &
+                                                ,  PartID                     = iPart                     &
+                                                ,  flip                       = flip                      &
+                                                ,  SideID                     = SideID                    &
+                                                ,  opt_criticalParallelInSide = isCriticalParallelInFace)
             CASE(CURVED)
-              CALL ComputeCurvedIntersection(      foundHit,PartTrajectory,lengthPartTrajectory,PartState(1:3,iPart),LastPartPos(:,iPart),locAlpha &
-                                            ,      xi,eta,iPart,flip,SideID,isCriticalParallelInFace)
+              CALL ComputeCurvedIntersection(      isHit                      = foundHit                  &
+                                                ,  PartTrajectory             = PartTrajectory            &
+                                                ,  lengthPartTrajectory       = lengthPartTrajectory      &
+                                                ,  PartState                  = PartState(1:3,iPart)      &
+                                                ,  LastPartPos                = LastPartPos(:,iPart)      &
+                                                ,  alpha                      = locAlpha                  &
+                                                ,  xi                         = xi                        &
+                                                ,  eta                        = eta                       &
+                                                ,  PartID                     = iPart                     &
+                                                ,  flip                       = flip                      &
+                                                ,  SideID                     = SideID                    &
+                                                ,  opt_criticalParallelInSide = isCriticalParallelInFace)
             CASE DEFAULT
               CALL Abort(__STAMP__,' Missing required side-data. Please increase halo region. ',SideID)
           END SELECT
@@ -811,20 +850,66 @@ ELSE
 
       SELECT CASE(SideType(NbCNSideID))
         CASE(PLANAR_RECT)
-          CALL ComputePlanarRectIntersection(   isHit,PartTrajectory,lengthPartTrajectory,                      LastPartPos(:,PartID),locAlpha &
-                                            ,   locXi,locEta,PartID,0      ,NbSideID)
+          CALL ComputePlanarRectIntersection(   isHit                = isHit                 &
+                                            ,   PartTrajectory       = PartTrajectory        &
+                                            ,   lengthPartTrajectory = lengthPartTrajectory  &
+                                            ,   LastPartPos          = LastPartPos(:,PartID) &
+                                            ,   Alpha                = locAlpha              &
+                                            ,   xi                   = locXi                 &
+                                            ,   eta                  = locEta                &
+#if CODE_ANALYZE
+                                            ,   PartID               = PartID                &
+#endif /*CODE_ANALYZE*/
+                                            ,   flip                 = 0                     &
+                                            ,   SideID               = NbSideID)
         CASE(PLANAR_NONRECT)
-          CALL ComputePlanarNonRectIntersection(isHit,PartTrajectory,lengthPartTrajectory,                      LastPartPos(:,PartID),locAlpha &
-                                               ,locXi,locEta,PartID,0      ,NbSideID)
+          CALL ComputePlanarNonRectIntersection(isHit                = isHit                 &
+                                            ,   PartTrajectory       = PartTrajectory        &
+                                            ,   lengthPartTrajectory = lengthPartTrajectory  &
+                                            ,   LastPartPos          = LastPartPos(:,PartID) &
+                                            ,   Alpha                = locAlpha              &
+                                            ,   xi                   = locXi                 &
+                                            ,   eta                  = locEta                &
+#if CODE_ANALYZE
+                                            ,   PartID               = PartID                &
+#endif /*CODE_ANALYZE*/
+                                            ,   flip                 = 0                     &
+                                            ,   SideID               = NbSideID)
         CASE(BILINEAR)
-          CALL ComputeBiLinearIntersection(     isHit,PartTrajectory,lengthPartTrajectory,PartState(1:3,PartID),LastPartPos(:,PartID),locAlpha &
-                                          ,     locXi,locEta,PartID,0      ,NbSideID)
+          CALL ComputeBiLinearIntersection(     isHit                = isHit                 &
+                                            ,   PartTrajectory       = PartTrajectory        &
+                                            ,   lengthPartTrajectory = lengthPartTrajectory  &
+                                            ,   PartState            = PartState(1:3,PartID) &
+                                            ,   LastPartPos          = LastPartPos(:,PartID) &
+                                            ,   Alpha                = locAlpha              &
+                                            ,   xitild               = locXi                 &
+                                            ,   etatild              = locEta                &
+                                            ,   PartID               = PartID                &
+                                            ,   flip                 = 0                     &
+                                            ,   SideID               = NbSideID)
         CASE(PLANAR_CURVED)
-          CALL ComputePlanarCurvedIntersection( isHit,PartTrajectory,lengthPartTrajectory,                      LastPartPos(:,PartID),locAlpha &
-                                          ,     locXi,locEta,PartID,0      ,NbSideID)
+          CALL ComputePlanarCurvedIntersection( isHit                = isHit                 &
+                                            ,   PartTrajectory       = PartTrajectory        &
+                                            ,   lengthPartTrajectory = lengthPartTrajectory  &
+                                            ,   LastPartPos          = LastPartPos(:,PartID) &
+                                            ,   Alpha                = locAlpha              &
+                                            ,   xi                   = locXi                 &
+                                            ,   eta                  = locEta                &
+                                            ,   PartID               = PartID                &
+                                            ,   flip                 = 0                     &
+                                            ,   SideID               = NbSideID)
         CASE(CURVED)
-          CALL ComputeCurvedIntersection(       isHit,PartTrajectory,lengthPartTrajectory,PartState(1:3,PartID),LastPartPos(:,PartID),locAlpha &
-                                        ,       locXi,locEta,PartID,0      ,NbSideID)
+          CALL ComputeCurvedIntersection(       isHit                = isHit                 &
+                                            ,   PartTrajectory       = PartTrajectory        &
+                                            ,   lengthPartTrajectory = lengthPartTrajectory  &
+                                            ,   PartState            = PartState(1:3,PartID) &
+                                            ,   LastPartPos          = LastPartPos(:,PartID) &
+                                            ,   Alpha                = locAlpha              &
+                                            ,   xi                   = locXi                 &
+                                            ,   eta                  = locEta                &
+                                            ,   PartID               = PartID                &
+                                            ,   flip                 = 0                     &
+                                            ,   SideID               = NbSideID)
       END SELECT
 
       IF (isHit) THEN

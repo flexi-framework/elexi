@@ -69,7 +69,6 @@ CONTAINS
 SUBROUTINE IntersectionWithWall(PartTrajectory &
                                ,lastPartPos    &
                                ,alpha          &
-                               ,iPart          &
                                ,iLocSide       &
                                ,Element        &
                                ,TriNum)
@@ -86,7 +85,6 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 REAL,INTENT(IN),DIMENSION(1:3)   :: PartTrajectory
 REAL,INTENT(IN),DIMENSION(1:3)   :: lastPartPos
-INTEGER,INTENT(IN)               :: iPart
 INTEGER,INTENT(IN)               :: iLocSide
 INTEGER,INTENT(IN)               :: Element
 INTEGER,INTENT(IN)               :: TriNum
@@ -156,8 +154,6 @@ IF (dist.NE.dist) dist = SQRT(bx*bx+by*by+bz*bz)
 alpha = PartTrajectory(1) * nx + PartTrajectory(2) * ny + PartTrajectory(3) * nz
 IF(ABS(alpha).GT.0.) alpha = dist / alpha
 
-RETURN
-
 END SUBROUTINE IntersectionWithWall
 
 
@@ -168,7 +164,9 @@ SUBROUTINE ComputePlanarRectIntersection(isHit                       &
                                         ,alpha                       &
                                         ,xi                          &
                                         ,eta                         &
+#if CODE_ANALYZE
                                         ,PartID                      &
+#endif /*CODE_ANALYZE*/
                                         ,flip                        &
                                         ,SideID                      &
                                         ,opt_CriticalParallelInSide  )
@@ -198,7 +196,10 @@ IMPLICIT NONE
 REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
 REAL,INTENT(IN)                   :: lengthPartTrajectory
 REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
-INTEGER,INTENT(IN)                :: PartID,SideID
+#if CODE_ANALYZE
+INTEGER,INTENT(IN)                :: PartID
+#endif /*CODE_ANALYZE*/
+INTEGER,INTENT(IN)                :: SideID
 INTEGER,INTENT(IN)                :: flip
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -338,6 +339,7 @@ isHit=.TRUE.
 
 END SUBROUTINE ComputePlanarRectIntersection
 
+
 SUBROUTINE ComputePlanarNonRectIntersection(isHit                       &
                                            ,PartTrajectory              &
                                            ,lengthPartTrajectory        &
@@ -345,7 +347,9 @@ SUBROUTINE ComputePlanarNonRectIntersection(isHit                       &
                                            ,alpha                       &
                                            ,xi                          &
                                            ,eta                         &
+#if CODE_ANALYZE
                                            ,PartID                      &
+#endif /*CODE_ANALYZE*/
                                            ,flip                        &
                                            ,SideID                      &
                                            ,opt_CriticalParallelInSide  )
@@ -374,7 +378,10 @@ IMPLICIT NONE
 REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
 REAL,INTENT(IN)                   :: lengthPartTrajectory
 REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
-INTEGER,INTENT(IN)                :: PartID,SideID
+#if CODE_ANALYZE
+INTEGER,INTENT(IN)                :: PartID
+#endif /*CODE_ANALYZE*/
+INTEGER,INTENT(IN)                :: SideID
 INTEGER,INTENT(IN)                :: flip
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -651,7 +658,9 @@ CALL BezierNewton(locAlpha(1)           &
                  ,PartTrajectory        &
                  ,lengthPartTrajectory  &
                  ,LastPartPos           &
+#if CODE_ANALYZE
                  ,PartID                &
+#endif /*CODE_ANALYZE*/
                  ,SideID                &
                  ,failed)
 
@@ -1304,7 +1313,9 @@ ELSE !BezierNewtonAngle
                    ,PartTrajectory        &
                    ,lengthPartTrajectory  &
                    ,LastPartPos           &
+#if CODE_ANALYZE
                    ,PartID                &
+#endif /*CODE_ANALYZE*/
                    ,SideID                &
                    ,failed)
 
@@ -1677,7 +1688,9 @@ SUBROUTINE BezierNewton(alpha                 &
                        ,PartTrajectory        &
                        ,lengthPartTrajectory  &
                        ,LastPartPos           &
+#if CODE_ANALYZE
                        ,PartID                &
+#endif /*CODE_ANALYZE*/
                        ,SideID                &
                        ,failed)
 !===================================================================================================================================
@@ -1706,7 +1719,9 @@ REAL,INTENT(IN)                   :: BezierControlPoints2D(2,0:NGeo,0:NGeo)
 REAL,INTENT(IN),DIMENSION(1:3)    :: PartTrajectory
 REAL,INTENT(IN)                   :: lengthPartTrajectory
 REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
+#if CODE_ANALYZE
 INTEGER,INTENT(IN)                :: PartID
+#endif /*CODE_ANALYZE*/
 INTEGER,INTENT(IN)                :: SideID
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
@@ -2055,6 +2070,10 @@ IF(maxvalue.LE.minvalue)THEN!smallest interval exists with atleast one point
 ELSE
   BoundingBoxIntersection=.FALSE.
 END IF
+
+! Supress compiler warning
+NO_OP(PartID)
+
 END FUNCTION BoundingBoxIntersection
 
 
@@ -2078,7 +2097,8 @@ IMPLICIT NONE
 REAL,DIMENSION(3),INTENT(IN)      :: PartTrajectory
 REAL,INTENT(IN),DIMENSION(1:3)    :: LastPartPos
 REAL,INTENT(IN)                   :: lengthPartTrajectory
-INTEGER,INTENT(IN)                :: PartID,SideID
+INTEGER,INTENT(IN)                :: PartID
+INTEGER,INTENT(IN)                :: SideID
 !--------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 LOGICAL                           :: FlatBoundingBoxIntersection
@@ -2157,6 +2177,9 @@ IF(maxvalue.LE.minvalue)THEN!smallest interval exists with atleast one point
 ELSE
   FlatBoundingBoxIntersection=.FALSE.
 END IF
+
+! Supress compiler warning
+NO_OP(PartID)
 
 END FUNCTION FlatBoundingBoxIntersection
 

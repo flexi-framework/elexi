@@ -30,34 +30,44 @@ PRIVATE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE ChangeBasis3D_XYZ
-  MODULE PROCEDURE ChangeBasis3D_XYZ
-END INTERFACE
 
 INTERFACE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D_singleVar
 END INTERFACE
 
+#if (PP_dim == 3)
+INTERFACE ChangeBasis3D_XYZ
+  MODULE PROCEDURE ChangeBasis3D_XYZ
+END INTERFACE
+#else
 INTERFACE ChangeBasis2D_XYZ
   MODULE PROCEDURE ChangeBasis2D_XYZ
 END INTERFACE
+#endif /*PP_dim == 3*/
 
 INTERFACE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D_singleVar
 END INTERFACE
 
+#if FV_ENABLED
 INTERFACE ChangeBasis1D
   MODULE PROCEDURE ChangeBasis1D
   MODULE PROCEDURE ChangeBasis1D_singleVar
 END INTERFACE
+#endif /*FV_ENABLED*/
 
-PUBLIC :: ChangeBasis3D_XYZ
 PUBLIC :: ChangeBasis3D
-PUBLIC :: ChangeBasis2D_XYZ
 PUBLIC :: ChangeBasis2D
+#if (PP_dim == 3)
+PUBLIC :: ChangeBasis3D_XYZ
+#else
+PUBLIC :: ChangeBasis2D_XYZ
+#endif /*PP_dim == 3*/
+#if FV_ENABLED
 PUBLIC :: ChangeBasis1D
+#endif /*FV_ENABLED*/
 !==================================================================================================================================
 CONTAINS
 

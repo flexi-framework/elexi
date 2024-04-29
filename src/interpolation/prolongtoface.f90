@@ -47,7 +47,9 @@ PRIVATE
 INTEGER,PARAMETER :: TP_nVar = PP_nVar
 
 INTERFACE ProlongToFaceCons
+#ifdef PP_EntropyVars
   MODULE PROCEDURE ProlongToFaceEntropy
+#endif /*PP_EntropyVars*/
   MODULE PROCEDURE ProlongToFace
 END INTERFACE
 

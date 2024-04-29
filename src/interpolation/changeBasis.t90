@@ -13,6 +13,7 @@
 !=================================================================================================================================
 #include "flexi.h"
 
+#if FV_ENABLED
 !==================================================================================================================================
 !> Interpolate an array of Dim1 1D Lagrange polynomials (defined by X_In) of order NIn to 1D Lagrange polynomials of order NOut
 !> using the Vandermonde matrix Vdm.
@@ -93,6 +94,7 @@ ELSE
   X_In = X_Buf
 END IF
 END SUBROUTINE ChangeBasis1D_SingleVar
+#endif /*FV_ENABLED*/
 
 !==================================================================================================================================
 !> Interpolate an array of Dim1 2D tensor product Lagrange polynomials (defined by X_In) of order NIn to 2D Lagrange polynomials
@@ -180,6 +182,7 @@ DO jNIn=0,NIn
 END DO
 END SUBROUTINE ChangeBasis2D_SingleVar
 
+#if (PP_dim == 2)
 !==================================================================================================================================
 !> Interpolate an array of Dim1 2D tensor product Lagrange polynomials (defined by X_In) of order NIn to 2D Lagrange polynomials
 !> of order NOut using a seperate 1D Vandermonde matrix per reference direction.
@@ -221,6 +224,7 @@ DO jI=0,NIn
   END DO
 END DO
 END SUBROUTINE ChangeBasis2D_XYZ
+#endif /*PP_dim == 2*/
 
 !==================================================================================================================================
 !> Interpolate an array of Dim1 3D tensor product Lagrange polynomials (defined by X_In) of order NIn to 3D Lagrange polynomials
@@ -277,7 +281,6 @@ ELSE
 END IF
 END SUBROUTINE ChangeBasis3D
 
-
 !==================================================================================================================================
 !> Interpolate single 3D tensor product Lagrange polynomial (defined by X_In) of order NIn to 3D Lagrange polynomial
 !> of order NOut using the 1D Vandermonde matrix Vdm.
@@ -333,6 +336,7 @@ DO kNIn=0,NIn
 END DO
 END SUBROUTINE ChangeBasis3D_SingleVar
 
+#if (PP_dim == 3)
 !==================================================================================================================================
 !> Interpolate an array of Dim1 3D tensor product Lagrange polynomials (defined by X_In) of order NIn to 3D Lagrange polynomials
 !> of order NOut using a seperate 1D Vandermonde matrix per reference direction.
@@ -391,4 +395,4 @@ DO kI=0,NIn
   END DO
 END DO
 END SUBROUTINE ChangeBasis3D_XYZ
-
+#endif /*PP_dim == 3*/

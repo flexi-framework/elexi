@@ -408,6 +408,10 @@ DO i=1,nDOF_loc
   hJacQy(:,:,i) = 0.
   hJacQz(:,:,i) = 0.
 #endif
+
+! Suppress compiler warning
+NO_OP(U)
+
 END DO
 END SUBROUTINE EvalFluxGradJacobian
 #endif /*PARABOLIC*/

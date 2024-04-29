@@ -132,7 +132,7 @@ INTEGER                         :: iSample,iVar,iRP,iStart,iEnd
 REAL                            :: df
 COMPLEX,ALLOCATABLE             :: in(:),out(:)
 INTEGER(KIND=8)                 :: plan
-REAL                            :: Time,StartTime
+REAL                            :: EndTime
 REAL                            :: Time_Block
 REAL,ALLOCATABLE                :: RPData_tmp(:)
 REAL                            :: M_t,RMS_t,RMS_PSD
@@ -236,10 +236,10 @@ IF(doPSD .OR. doFFT) THEN
       maxdev=MAX(maxdev,(RMS_t-RMS_PSD)**2/RMS_t**2)
     END DO ! iVar
   END DO   ! iRP
-  GETTIME(Time)
+  GETTIME(EndTime)
   WRITE(UNIT_stdOut,*)'------------------------------'
   WRITE(UNIT_stdOut,*)' Max. relative error in RMS: ', SQRT(maxdev)
-  WRITE(UNIT_stdOut,'(A,F8.2,A)')' DONE! [',Time-StartTime,' sec ]'
+  WRITE(UNIT_stdOut,'(A,F8.2,A)')' DONE! [',EndTime-StartTime,' sec ]'
 END IF!(doPSD .OR. doFFT)
 
 !1/3 octave average

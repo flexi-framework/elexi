@@ -492,7 +492,7 @@ IF(ALLOCATED(PDM%IsNewPart))      CALL ChangeSizeArray(PDM%IsNewPart     ,PDM%ma
 
 IF(ALLOCATED(PartState))          CALL ChangeSizeArray(PartState         ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(TurbPartState))      CALL ChangeSizeArray(TurbPartState     ,PDM%maxParticleNumber,NewSize,0.)
-IF(ALLOCATED(LastPartPos))        CALL ChangeSizeArray(LastPartPos       ,PDM%maxParticleNumber,NewSize)
+IF(ALLOCATED(LastPartPos))        CALL ChangeSizeArray(LastPartPos       ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(PartPosRef))         CALL ChangeSizeArray(PartPosRef        ,PDM%maxParticleNumber,NewSize,-888.)
 IF(ALLOCATED(PartReflCount))      CALL ChangeSizeArray(PartReflCount     ,PDM%maxParticleNumber,NewSize,0)
 IF(ALLOCATED(PartSpecies))        CALL ChangeSizeArray(PartSpecies       ,PDM%maxParticleNumber,NewSize,0)
@@ -500,7 +500,7 @@ IF(ALLOCATED(PartIndex))          CALL ChangeSizeArray(PartIndex         ,PDM%ma
 
 IF(ALLOCATED(Pt))                 CALL ChangeSizeArray(Pt                ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(Pt_temp))            CALL ChangeSizeArray(Pt_temp           ,PDM%maxParticleNumber,NewSize,0.)
-IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize)
+IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize,0.)
 
 #if USE_BASSETFORCE
 IF(ALLOCATED(durdt))              CALL ChangeSizeArray(durdt             ,PDM%maxParticleNumber,NewSize,0.)
@@ -587,7 +587,7 @@ ELSE
         CALL UpdateNextFreePosition()
         PDM%CurrentNextFreePosition = PDM%CurrentNextFreePosition + 1
         ii = PDM%nextFreePosition(PDM%CurrentNextFreePosition)
-        IF (ii.EQ.0.OR.ii.GT.NewSize) CALL Abort(__STAMP__,'Error in particle re-arrange!')
+        IF(ii.EQ.0.OR.ii.GT.NewSize) CALL ABORT(__STAMP__,'Error in ReduceMaxParticleNumber: New particle index outside of possible range')
       END IF
       IF (PDM%ParticleVecLength.LT.ii) PDM%ParticleVecLength = ii
       CALL ChangePartID(i,ii)
@@ -604,7 +604,7 @@ IF(ALLOCATED(PDM%IsNewPart))      CALL ChangeSizeArray(PDM%IsNewPart     ,PDM%ma
 
 IF(ALLOCATED(PartState))          CALL ChangeSizeArray(PartState         ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(TurbPartState))      CALL ChangeSizeArray(TurbPartState     ,PDM%maxParticleNumber,NewSize,0.)
-IF(ALLOCATED(LastPartPos))        CALL ChangeSizeArray(LastPartPos       ,PDM%maxParticleNumber,NewSize)
+IF(ALLOCATED(LastPartPos))        CALL ChangeSizeArray(LastPartPos       ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(PartPosRef))         CALL ChangeSizeArray(PartPosRef        ,PDM%maxParticleNumber,NewSize,-888.)
 IF(ALLOCATED(PartReflCount))      CALL ChangeSizeArray(PartReflCount     ,PDM%maxParticleNumber,NewSize,0)
 IF(ALLOCATED(PartSpecies))        CALL ChangeSizeArray(PartSpecies       ,PDM%maxParticleNumber,NewSize,0)
@@ -612,7 +612,7 @@ IF(ALLOCATED(PartIndex))          CALL ChangeSizeArray(PartIndex         ,PDM%ma
 
 IF(ALLOCATED(Pt))                 CALL ChangeSizeArray(Pt                ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(Pt_temp))            CALL ChangeSizeArray(Pt_temp           ,PDM%maxParticleNumber,NewSize,0.)
-IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize)
+IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize,0.)
 
 #if USE_BASSETFORCE
 IF(ALLOCATED(durdt))              CALL ChangeSizeArray(durdt             ,PDM%maxParticleNumber,NewSize,0.)

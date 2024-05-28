@@ -668,12 +668,9 @@ REAL              :: ElapsedTime,mins,secs,hours,days
 LOGICAL           :: DisplayDespiteLBLoc, DisplayLineLoc, LocalRoot
 CHARACTER(LEN=60) :: hilf
 #if !USE_LOADBALANCE
-LOGICAL           :: PerformLoadBalance
+LOGICAL,PARAMETER :: PerformLoadBalance = .FALSE.
 #endif /*!USE_LOADBALANCE*/
 !===================================================================================================================================
-#if !USE_LOADBALANCE
-PerformLoadBalance = .FALSE.
-#endif /*!USE_LOADBALANCE*/
 
 ! Define who returns and who does the output (default is MPIRoot)
 LocalRoot = .FALSE. ! default

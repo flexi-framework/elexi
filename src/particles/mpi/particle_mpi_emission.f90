@@ -934,7 +934,8 @@ DO i = 1,TotalNbrOfRecvParts
   IF (TrackingMethod.EQ.REFMAPPING) THEN
     CALL GetPositionInRefElem(PartState(1:3,ParticleIndexNbr),PartPosRef(1:3,ParticleIndexNbr),ElemID)
   END IF ! TrackingMethod.EQ.REFMAPPING
-  PEM%Element(ParticleIndexNbr)         = ElemID
+  PEM%Element(ParticleIndexNbr)     = ElemID
+  PEM%lastElement(ParticleIndexNbr) = -1 ! Initialize with invalid value
 
   mySumOfMatchedParticles = mySumOfMatchedParticles + 1
   PDM%IsNewPart(ParticleIndexNbr) = .TRUE.
@@ -967,7 +968,8 @@ DO iProc=0,PartMPI%InitGroup(InitGroup)%nProcs-1
     IF (TrackingMethod.EQ.REFMAPPING) THEN
       PartPosRef(1:3,ParticleIndexNbr) = EmissionRecvBuf(iProc)%content(PartCommSize*(i-1)+4:PartCommSize*(i-1)+6)
     END IF ! TrackingMethod.EQ.REFMAPPING
-    PEM%Element(ParticleIndexNbr) = INT(EmissionRecvBuf(iProc)%content(PartCommSize*(i)),KIND=4)
+    PEM%Element(ParticleIndexNbr)     = INT(EmissionRecvBuf(iProc)%content(PartCommSize*(i)),KIND=4)
+    PEM%lastElement(ParticleIndexNbr) = -1 ! Initialize with invalid value
 
     PDM%ParticleInside( ParticleIndexNbr) = .TRUE.
 !     IF (TrackingMethod.EQ.REFMAPPING) THEN

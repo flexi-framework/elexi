@@ -155,7 +155,7 @@ CALL FinalizeMPI()
 CALL FinalizeIOHDF5()
 
 !-- Set removed flag to false
-CALL prms%finalize()
+CALL prms%finalize(.TRUE.)
 ElementOut   => NULL() !< linked list of output pointers
 FieldOut     => NULL() !< linked list of output pointers
 

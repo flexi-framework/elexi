@@ -186,8 +186,10 @@ END IF
 #endif /*USE_LOADBALANCE*/
 
 IF(useCurveds.AND.(PP_N.LT.NGeo))THEN
-  LBWRITE(UNIT_stdOut,'(A)') 'WARNING: N<NGeo, for curved hexa normals are only approximated,&
-                           & can cause problems on periodic boundaries! Set N>=NGeo'
+#if USE_LOADBALANCE
+  IF (.NOT.PerformLoadBalance) &
+#endif /*USE_LOADBALANCE*/
+  CALL PrintWarning('N<NGeo, for curved hexa normals are only approximated, can cause problems on periodic boundaries! Set N>=NGeo')
 ENDIF
 
 #if USE_PARTICLES

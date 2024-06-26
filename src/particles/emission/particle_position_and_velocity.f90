@@ -42,14 +42,14 @@ INTERFACE SetParticleTemperature
 END INTERFACE
 #endif
 
-!===================================================================================================================================
-PUBLIC         :: SetParticleVelocity,SetParticlePosition
+PUBLIC         :: SetParticleVelocity
+PUBLIC         :: SetParticlePosition
 #if USE_PARTTEMP
 PUBLIC         :: SetParticleTemperature
 #endif
 !===================================================================================================================================
-CONTAINS
 
+CONTAINS
 
 SUBROUTINE SetParticlePositionCellLocal(FractNbr,iInit,NbrOfParticle)
 !===================================================================================================================================

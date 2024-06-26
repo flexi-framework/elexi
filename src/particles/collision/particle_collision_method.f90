@@ -66,24 +66,25 @@ USE MOD_Particle_Vars            ,ONLY: offsetPartMPI
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)               :: dtLoc
+REAL,INTENT(IN)                :: dtLoc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                          :: PartBCdt
-INTEGER                       :: iElem,ElemID
-INTEGER                       :: iPart,iPart1,iPart2
-INTEGER                       :: CNElemID,CNNeighElemID
-INTEGER                       :: NeighElemID,iCNNeighElem
+REAL                           :: PartBCdt
+INTEGER                        :: iElem,ElemID
+INTEGER                        :: iPart,iPart1,iPart2
+INTEGER                        :: CNElemID,CNNeighElemID
+INTEGER                        :: NeighElemID,iCNNeighElem
 ! Trajectories and position
-REAL                          :: P1(3),P2(3),pColl(3)
+REAL                           :: P1(3),P2(3),pColl(3)
+REAL                           :: V1(3),V2(3)
 ! Collisions
-REAL                          :: a,b,c,delta,dtColl
+REAL                           :: a,b,c,delta,dtColl
 ! Neighbor particles
-LOGICAL,ALLOCATABLE           :: PartColl(:)
+LOGICAL,ALLOCATABLE            :: PartColl(:)
 ! Communication
-INTEGER                       :: ElemProc
-INTEGER                       :: CNRank
-! INTEGER                       :: MPI_WINDOW(   0:nLeaderGroupProcs)
+INTEGER                        :: ElemProc
+INTEGER                        :: CNRank
+! INTEGER                        :: MPI_WINDOW(   0:nLeaderGroupProcs)
 !===================================================================================================================================
 
 IF (.NOT.doCalcPartCollision) RETURN
@@ -242,13 +243,17 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElem
         ! Ignore already collided particles
         IF (PartColl(iPart2 - offsetNeighElemPart(NeighElemID))) CYCLE
 
+        ! Reconstruct the particle velocity
+        V1 = (PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_OLDV,iPart1)) / dtLoc
+        V2 = (PartData_Shared(PART_POSV,iPart2) - PartData_Shared(PART_OLDV,iPart2)) / dtLoc
+
         ! FIXME: What about periodic?
 
         ! Check if particles will collide
         ! Solve: |x-y|**2 = (r1+r2)**2, x = xp1^n-xp2^n, y = dt_coll*up1^{n+1} - dt_coll*up2^{n+1}; dt_coll \in [0;1]
         ! Triangle inequality: |x+y|**2 <= (|x| + |y|)**2
         ! compute coefficients a,b,c of the previous quadratic equation (a*t^2+b*t+c=0)
-        ASSOCIATE(Term => PartData_Shared(PART_VELV,iPart2) - PartData_Shared(PART_VELV,iPart1))
+        ASSOCIATE(Term => V2 - V1)
         a = DOT_PRODUCT(Term,Term)
         END ASSOCIATE
 
@@ -256,9 +261,9 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElem
         IF (a.EQ.0.) CYCLE
 
         ! Cauchy-Schwarz inequality: <x,y> + <y,x> <= 2 |<x,y>| <= 2|x||y|
-        P1 = PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_VELV,iPart1)*dtLoc
-        P2 = PartData_Shared(PART_POSV,iPart2) - PartData_Shared(PART_VELV,iPart2)*dtLoc
-        b = 2. * DOT_PRODUCT(ABS(PartData_Shared(PART_VELV,iPart1) - PartData_Shared(PART_VELV,iPart2)), ABS(P1-P2))
+        P1 = PartData_Shared(PART_OLDV,iPart1)
+        P2 = PartData_Shared(PART_OLDV,iPart2)
+        b = 2. * DOT_PRODUCT(ABS(V1 - V2), ABS(P1-P2))
         ! b = 2. * DOT_PRODUCT(P1-P2,PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_POSV,iPart2)-(P1 - P2))
         ASSOCIATE(Term => P1 - P2)
         c = DOT_PRODUCT(Term,Term) - 0.25*(PartData_Shared(PART_DIAM,iPart2) + PartData_Shared(PART_DIAM,iPart1))**2.
@@ -276,19 +281,19 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElem
         ! the collision is only valid if it occurred before a BC intersection
         ! > here, the particle radius needs to be considered since the collision is on the particle surface but the BC intersection
         ! > is determined based on the particle center of mass
-        !IF (dtColl.GT.PartBC_Shared(iPart1) - 0.5*PartData_Shared(PART_DIAM,iPart1)/NORM2(PartData_Shared(PART_VELV,iPart1))) CYCLE
-        !IF (dtColl.GT.PartBC_Shared(iPart2) - 0.5*PartData_Shared(PART_DIAM,iPart2)/NORM2(PartData_Shared(PART_VELV,iPart2))) CYCLE
+        !IF (dtColl.GT.PartBC_Shared(iPart1) - 0.5*PartData_Shared(PART_DIAM,iPart1)/NORM2(V1)) CYCLE
+        !IF (dtColl.GT.PartBC_Shared(iPart2) - 0.5*PartData_Shared(PART_DIAM,iPart2)/NORM2(V2)) CYCLE
         IF (dtColl.GT.PartBC_Shared(iPart1)) CYCLE
         IF (dtColl.GT.PartBC_Shared(iPart2)) CYCLE
 
-        !IF (VECNORM(P1 + dtColl * PartData_Shared(PART_VELV,iPart1) - (P2 + dtColl * PartData_Shared(PART_VELV,iPart2))) &
+        !IF (VECNORM(P1 + dtColl * V1 - (P2 + dtColl * V2)) &
           !.GT. 0.5*(PartData_Shared(PART_DIAM,iPart2) + PartData_Shared(PART_DIAM,iPart1))) CYCLE
 
         ! collision is only valid the particles approach each other
         ! FIXME: NOT TRUE, we can collide on with acute angles
-        ASSOCIATE(N1 => PartData_Shared(PART_VELV,iPart1) &
-                 ,N2 => PartData_Shared(PART_VELV,iPart2))
-        pColl = PartData_Shared(PART_POSV,iPart1) - (dtLoc-dtColl) * PartData_Shared(PART_VELV,iPart1)
+        ASSOCIATE(N1 => V1 &
+                 ,N2 => V2)
+        pColl = PartData_Shared(PART_POSV,iPart1) - (dtLoc-dtColl) * V1
         ! IF (DOT_PRODUCT(P2 - P1,N1).LE.0) CYCLE
         ! IF (DOT_PRODUCT(P1 - P2,N2).LE.0) CYCLE
         IF (DOT_PRODUCT(pColl - P1,N1).LE.0) CYCLE
@@ -300,7 +305,7 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElem
         PartColl(iPart2 - offsetNeighElemPart(NeighElemID)) = .TRUE.
 
         ! apply the power
-        CALL ComputeHardSphereCollision(iPart1,iPart2,dtLoc-dtColl)
+        CALL ComputeHardSphereCollision(iPart1,iPart2,dtLoc-dtColl,dtLoc)
 
         EXIT PartLoop
       END DO ! iPart2
@@ -323,7 +328,7 @@ SDEALLOCATE(PEM2PartID)
 END SUBROUTINE ComputeParticleCollisions
 
 
-SUBROUTINE ComputeHardSphereCollision(iPart1,iPart2,mdtColl)
+SUBROUTINE ComputeHardSphereCollision(iPart1,iPart2,mdtColl,dtLoc)
 !===================================================================================================================================
 !> Apply hard sphere collision model
 !===================================================================================================================================
@@ -344,14 +349,17 @@ USE MOD_Particle_Vars           ,ONLY: nComputeNodeParts
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER, INTENT(IN)                :: iPart1, iPart2
-REAL   , INTENT(IN)                :: mdtColl
+INTEGER,INTENT(IN)                 :: iPart1, iPart2
+REAL   ,INTENT(IN)                 :: mdtColl
+REAL   ,INTENT(IN)                 :: dtLoc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                            :: LocPartID1,LocPartID2
-REAL                               :: n_loc(3),t_loc(3),P1_old(3),P2_old(3)
+REAL                               :: n_loc(3),t_loc(3)
+REAL                               :: P1_old(3),P2_old(3)
+REAL                               :: V1(    3),V2(    3)
 REAL                               :: v_rel_contactpoint(3)
 REAL                               :: vt_rel_contactpoint(3),vt_rel_contactpoint_norm
 REAL                               :: m_red,m1,m2
@@ -362,8 +370,12 @@ REAL                               :: Jxn_loc(3)
 !===================================================================================================================================
 
 ! Move the particles back to their positions at the collision time
-P1_old = PartData_Shared(PART_POSV,iPart1) - mdtColl * PartData_Shared(PART_VELV,iPart1)
-P2_old = PartData_Shared(PART_POSV,iPart2) - mdtColl * PartData_Shared(PART_VELV,iPart2)
+P1_old = PartData_Shared(PART_OLDV,iPart1)
+P2_old = PartData_Shared(PART_OLDV,iPart2)
+
+! Reconstruct the particle velocity
+V1 = (PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_OLDV,iPart1)) / dtLoc
+V2 = (PartData_Shared(PART_POSV,iPart2) - PartData_Shared(PART_OLDV,iPart2)) / dtLoc
 
 LocPartID1 = PEM2PartID(iPart1)
 
@@ -377,12 +389,12 @@ m2 = MASS_SPHERE(Species(INT(PartData_Shared(PP_nVarPart+1,iPart2)))%DensityIC,P
 m_red = m1*m2/(m1+m2)
 
 ! Compute normal component Jn of impulsive contact force J
-Jn = - m_red * (1+PartCollisionModel%e) * DOT_PRODUCT(PartData_Shared(PART_VELV,iPart1) - PartData_Shared(PART_VELV,iPart2),n_loc)
+Jn = - m_red * (1+PartCollisionModel%e) * DOT_PRODUCT(V1 - V2,n_loc)
 
 ! Compute friction (Jt) if enabled
 IF (PartCollisionModel%Friction) THEN
   ! Relative velocity of the contact point just before the collision in iPart2's reference frame
-  v_rel_contactpoint = PartData_Shared(PART_VELV,iPart1) - PartData_Shared(PART_VELV,iPart2)
+  v_rel_contactpoint = V1 - V2
 #if USE_PARTROT
   ! Take particle rotation into account
   v_rel_contactpoint = v_rel_contactpoint + &
@@ -408,14 +420,14 @@ ELSE
 END IF
 
 ! Apply jump relation to momentum equation, i.e., update velocity of particles
-PartState(PART_VELV,LocPartID1) = PartData_Shared(PART_VELV,iPart1) + J / m1
+PartState(PART_VELV,LocPartID1) = V1 + J / m1
 
 !IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
 !IF (iPart2.LE.nComputeNodeParts) THEN
 IF (iPart2.GE.PartInt_Shared(3,GetCNElemID(offsetElem+1))+1 .AND. &
     iPart2.LE.PartInt_Shared(4,GetCNElemID(offsetElem+nElems))) THEN
   LocPartID2 = PEM2PartID(iPart2)
-  PartState(PART_VELV,LocPartID2) = PartData_Shared(PART_VELV,iPart2) - J / m2
+  PartState(PART_VELV,LocPartID2) = V2 - J / m2
 END IF
 
 ! Apply jump relation also to angular momentum if particles can rotate

@@ -578,7 +578,7 @@ USE MOD_Particle_Output_Vars    ,ONLY: offsetnPart,locnPart
 USE MOD_Particle_Tools          ,ONLY: GetOffsetAndGlobalNumberOfParts,UpdateNextFreePosition
 USE MOD_Particle_Vars           ,ONLY: nComputeNodeParts,offsetComputeNodeParts,nGlobalParts
 USE MOD_Particle_Vars           ,ONLY: nComputeNodeTotalParts
-USE MOD_Particle_Vars           ,ONLY: PDM,PEM,PartState,PartSpecies
+USE MOD_Particle_Vars           ,ONLY: PDM,PEM,PartState,LastPartPos,PartSpecies
 USE MOD_Particle_Vars           ,ONLY: offsetPartMPI
 USE MOD_Particle_Vars           ,ONLY: useLinkedList
 USE MOD_Particle_Vars           ,ONLY: doCalcPartCollision
@@ -589,7 +589,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER,PARAMETER              :: PartIntSize=2
+INTEGER,PARAMETER              :: PartIntSize = 2
 INTEGER                        :: pcount
 INTEGER                        :: iPart,iElem
 ! Number of particles
@@ -757,9 +757,9 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
   ! > Needs to be reallocated every single time as the number of particles changes
   IF (myComputeNodeRank.EQ.0) THEN
     !> Free up our window
-    CALL MPI_WIN_FREE(     PartData_Window                                                       &
+    CALL MPI_WIN_FREE(     PartData_Window                                                    &
                       ,    iError)
-    CALL MPI_WIN_FREE(     PartBC_Window                                                         &
+    CALL MPI_WIN_FREE(     PartBC_Window                                                      &
                       ,    iError)
 
     ! Specify a window of existing memory that is exposed to RMA accesses
@@ -795,7 +795,9 @@ DO iElem = offsetElem+1,offsetElem+nElems
   pcount   = PEM%pStart(iElem)
   ! PartData is CN-local ...
   DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
-    PartData_Shared(1:PP_nVarPart,iPart) = PartState(:,pcount)
+    PartData_Shared(1:PP_nVarPart,iPart) = PartState(  :        ,pcount)
+    ! We need to old position instead of the updated velocity
+    PartData_Shared(PART_OLDV    ,iPart) = LastPartPos(PART_POSV,pcount)
     PartData_Shared(PP_nVarPart+1,iPart) = PartSpecies(pcount)
   ! END DO
   ! ! ... but the PartID is global
@@ -873,15 +875,15 @@ IF (myComputeNodeRank.EQ.0) THEN
   END DO ! iElem
 
   !> Complete the epoch - this will block until MPI_Get is complete
-  CALL MPI_WIN_FENCE(    0                                                       &
-                    ,    PartData_Window                                         &
+  CALL MPI_WIN_FENCE(    0                                                      &
+                    ,    PartData_Window                                        &
                     ,    iError)
   ! All done with the window - tell MPI there are no more epochs
-  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
-                    ,    PartData_Window                                         &
+  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                     &
+                    ,    PartData_Window                                        &
                     ,    iError)
   ! Free up our window
-  ! CALL MPI_WIN_FREE(     MPI_WINDOW                                              &
+  ! CALL MPI_WIN_FREE(     MPI_WINDOW                                             &
   !                   ,    iError)
 END IF ! myComputeNodeRank.EQ.0
 

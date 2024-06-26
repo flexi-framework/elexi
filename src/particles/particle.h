@@ -140,6 +140,11 @@
 #define PART_VEL2       5
 #define PART_VEL3       6
 #define PART_VELV       PART_VEL1:PART_VEL3
+! Only defined for PartData_Shared
+#define PART_OLD1       4
+#define PART_OLD2       5
+#define PART_OLD3       6
+#define PART_OLDV       PART_OLD1:PART_OLD3
 #if USE_PARTTEMP
 #define PART_TEMP       7
 #endif

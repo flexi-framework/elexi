@@ -496,7 +496,7 @@ USE MOD_Particle_Emission,       ONLY: ParticleInserting
 USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,PDM,PartSpecies,Species
-USE MOD_TimeDisc_Vars,           ONLY: RKA,b_dt
+USE MOD_TimeDisc_Vars,           ONLY: RKA,RKc,nRKStages,b_dt
 #if PARTICLES_COUPLING == 4
 USE MOD_Particle_Collision,      ONLY: UpdateParticleShared
 USE MOD_Particle_Collision_Method,ONLY: ComputeParticleCollisions
@@ -519,6 +519,9 @@ INTEGER,INTENT(IN)            :: iStage
 INTEGER                       :: iPart,iStage_loc
 REAL,PARAMETER                :: RandVal = 1.                         ! Random time increment for new parts to accomplish temporal
                                                                       ! dispersion within on time step. Currently disabled
+#if PARTICLES_COUPLING == 4
+REAL                          :: current_dt
+#endif /*PARTICLES_COUPLING == 4*/
 #if USE_LOADBALANCE
 REAL                          :: tLBStart
 #endif /*USE_LOADBALANCE*/
@@ -595,7 +598,13 @@ MeasureSplitTime_PARTCOMM()      ! LoadBalance
 #endif /*USE_MPI*/
 
 #if PARTICLES_COUPLING == 4
-CALL ComputeParticleCollisions(b_dt(iStage))
+! Reconstruct the current time step
+IF (      iStage.EQ.1) THEN;         current_dt = RKC(2)*dt
+ELSE; IF (iStage.NE.nRKStages) THEN; current_dt = (RKC(iStage+1)-RKC(iStage))*dt
+  ELSE;                              current_dt = (1.-RKC(nRKStages))*dt
+END IF; END IF
+
+CALL ComputeParticleCollisions(current_dt)
 #endif /*PARTICLES_COUPLING == 4*/
 CALL PerformTracking()
 MeasureSplitTime_TRACK()         ! LoadBalance

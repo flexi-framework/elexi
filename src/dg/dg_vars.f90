@@ -58,7 +58,7 @@ REAL,ALLOCATABLE,TARGET               :: JU(:,:,:,:,:)          !< Solution vari
                                                                 !< size [1..NVar,0..N,0..N,0..N,nElems].
 REAL,ALLOCATABLE,TARGET               :: U(:,:,:,:,:)           !< Solution variable for each equation, node and element,
                                                                 !< size [1..NVar,0..N,0..N,0..N,nElems].
-#ifdef PP_EntropyVars
+#if PP_EntropyVars == 1
 REAL,ALLOCATABLE,TARGET               :: V   (:,:,:,:,:)        !< Entropy variables for each node and element,
                                                                 !< size \([1..PP_nVar,0..N,0..N,0..N,nElems]\).
 REAL,ALLOCATABLE                      :: V_master(:,:,:,:)      !< 2D Solution on face nodes for the master sides,

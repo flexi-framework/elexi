@@ -379,8 +379,8 @@ V2 = (PartData_Shared(PART_POSV,iPart2) - PartData_Shared(PART_OLDV,iPart2)) / d
 
 LocPartID1 = PEM2PartID(iPart1)
 
-! Compute normal vector from iPart1 to iPart2
-n_loc = UNITVECTOR(P2_old - P1_old)
+! Compute normal vector from iPart1 to iPart2 at the time of contact
+n_loc = UNITVECTOR(P2_old - P1_old + mdtColl*(V2 - V1))
 
 ! Compute reduced mass of particle pair
 m1 = MASS_SPHERE(Species(INT(PartData_Shared(PP_nVarPart+1,iPart1)))%DensityIC,PartData_Shared(PART_DIAM,iPart1))
@@ -390,6 +390,9 @@ m_red = m1*m2/(m1+m2)
 
 ! Compute normal component Jn of impulsive contact force J
 Jn = - m_red * (1+PartCollisionModel%e) * DOT_PRODUCT(V1 - V2,n_loc)
+! Alternative formulation with same result
+! > https://physics.stackexchange.com/a/256992
+! Jn = (1+PartCollisionModel%e) * DOT_PRODUCT(n_loc,V2 - V1)/(1/m1 + 1/m2)
 
 ! Compute friction (Jt) if enabled
 IF (PartCollisionModel%Friction) THEN

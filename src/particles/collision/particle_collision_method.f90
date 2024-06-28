@@ -83,7 +83,7 @@ REAL                           :: a,b,c,delta,dtColl
 LOGICAL,ALLOCATABLE            :: PartColl(:)
 ! Communication
 INTEGER                        :: ElemProc
-INTEGER                        :: CNRank
+INTEGER                        :: CNRank,CNRootRank
 ! INTEGER                        :: MPI_WINDOW(   0:nLeaderGroupProcs)
 !===================================================================================================================================
 
@@ -108,7 +108,7 @@ DO iElem = offsetElem+1,offsetElem+nElems
       CALL Abort(__STAMP__,'TODO: TriaTracking')
     CASE (TRACING)
       ! loop over all particles in the element
-      DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
+      DO iPart = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
         CALL ComputeParticleTracingIntersection(   PartID    = iPart                , &
                                                    ElemID    = iELem                , &
                                                    CNElemID  = CNElemID             , &
@@ -120,7 +120,7 @@ DO iElem = offsetElem+1,offsetElem+nElems
       END DO ! iPart
     CASE (REFMAPPING)
       ! loop over all particles in the element
-      DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
+      DO iPart = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
         ASSOCIATE(offsetSide => ElemToBCSides(ELEM_FIRST_BCSIDE,CNElemID)           , &
                   nSides     => ElemToBCSides(ELEM_NBR_BCSIDES,CNElemID))
         CALL ComputeParticleRefmappingIntersection(PartID    = iPart                , &
@@ -161,9 +161,10 @@ IF (myComputeNodeRank.EQ.0) THEN
 
   ! Loop over all remote elements and fill the PartData_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
-    ElemID   = GetGlobalElemID(iElem)
-    ElemProc = ELEMIPROC(ElemID)
-    CNRank   = INT(ElemProc/nComputeNodeProcessors)
+    ElemID     = GetGlobalElemID(iElem)
+    ElemProc   = ELEMIPROC(ElemID)
+    CNRank     = INT(ElemProc/nComputeNodeProcessors)
+    CNRootRank = CNRank*nComputeNodeProcessors
 
     ! Position in the RMA window is the ElemID minus the compute node offset
     ASSOCIATE(firstPart       => PartInt_Shared(1,iElem)+1                                 &
@@ -208,7 +209,7 @@ DO iElem = 1,nProcNeighElems
   CNElemID = GetCNElemID(ElemID)
 
   ! > Map global offset to neighbor offset
-  offsetNeighElemPart(ElemID) = PartInt_Shared(3,CNElemID) - nProcParts
+  offsetNeighElemPart(ElemID) = PartInt_Shared(1,CNElemID) - nProcParts
 
   !> Increment the counter by the current number of particles
   nProcParts = nProcParts + PartInt_Shared(2,CNElemID)-PartInt_Shared(1,CNElemID)
@@ -229,7 +230,7 @@ DO iElem = offsetElem+1,offsetElem+nElems
   IF (PartInt_Shared(2,CNElemID).EQ.PartInt_Shared(1,CNElemID)) CYCLE
 
   ! loop over all particles in the element
-  DO iPart1 = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
+  DO iPart1 = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
     ! Ignore already collided particles
     IF (PartColl(iPart1 - offsetNeighElemPart(iElem))) CYCLE
 
@@ -239,7 +240,9 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElem
       NeighElemID   = GetGlobalElemID(CNNeighElemID)
 
       ! loop over all particles in the element
-      DO iPart2 = PartInt_Shared(3,CNNeighElemID)+1,PartInt_Shared(4,CNNeighElemID)
+      DO iPart2 = PartInt_Shared(1,CNNeighElemID)+1,PartInt_Shared(2,CNNeighElemID)
+        ! Ignore myself
+        IF (iPart1.EQ.iPart2) CYCLE
         ! Ignore already collided particles
         IF (PartColl(iPart2 - offsetNeighElemPart(NeighElemID))) CYCLE
 
@@ -357,6 +360,7 @@ REAL   ,INTENT(IN)                 :: dtLoc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                            :: LocPartID1,LocPartID2
+INTEGER                            :: firstCNElem,lastCNElem
 REAL                               :: n_loc(3),t_loc(3)
 REAL                               :: P1_old(3),P2_old(3)
 REAL                               :: V1(    3),V2(    3)
@@ -368,6 +372,10 @@ REAL                               :: Jn,Jt,J(3)
 REAL                               :: Jxn_loc(3)
 #endif /*USE_PARTROT*/
 !===================================================================================================================================
+
+! Calculate the CN elems
+firstCNElem = GetCNElemID(offsetElem+1)
+ lastCNElem = GetCNElemID(offsetElem+nElems)
 
 ! Move the particles back to their positions at the collision time
 P1_old = PartData_Shared(PART_OLDV,iPart1)
@@ -427,8 +435,8 @@ PartState(PART_VELV,LocPartID1) = V1 + J / m1
 
 !IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
 !IF (iPart2.LE.nComputeNodeParts) THEN
-IF (iPart2.GE.PartInt_Shared(3,GetCNElemID(offsetElem+1))+1 .AND. &
-    iPart2.LE.PartInt_Shared(4,GetCNElemID(offsetElem+nElems))) THEN
+IF (iPart2.GE.PartInt_Shared(1,firstCNElem)+1 .AND. &
+    iPart2.LE.PartInt_Shared(2, lastCNElem))  THEN
   LocPartID2 = PEM2PartID(iPart2)
   PartState(PART_VELV,LocPartID2) = V2 - J / m2
 END IF
@@ -447,8 +455,8 @@ END IF
 PDM%IsNewPart(LocPartID1) = .TRUE.
 ! IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) &
 !IF (iPart2.LE.nComputeNodeParts) &
-IF (iPart2.GE.PartInt_Shared(3,GetCNElemID(offsetElem+1))+1 .AND. &
-    iPart2.LE.PartInt_Shared(4,GetCNElemID(offsetElem+nElems))) &
+IF (iPart2.GE.PartInt_Shared(1,firstCNElem)+1 .AND. &
+    iPart2.LE.PartInt_Shared(2, lastCNElem))        &
   PDM%IsNewPart(LocPartID2) = .TRUE.
 
 ! Update the particle's position at time tStage+dtloc
@@ -460,8 +468,8 @@ IF (PEM%lastElement(LocPartID1).EQ.-1) CALL Abort(__STAMP__,'LastElemID == -1!')
 LastPartPos(PART_POSV,LocPartID1) = P1_old
 ! IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
 !IF (iPart2.LE.nComputeNodeParts) THEN
-IF (iPart2.GE.PartInt_Shared(3,GetCNElemID(offsetElem+1))+1 .AND. &
-    iPart2.LE.PartInt_Shared(4,GetCNElemID(offsetElem+nElems))) THEN
+IF (iPart2.GE.PartInt_Shared(1,firstCNElem)+1 .AND. &
+    iPart2.LE.PartInt_Shared(2, lastCNElem))  THEN
   PartState(  PART_POSV,LocPartID2) = P2_old + mdtColl * PartState(PART_VELV,LocPartID2)
   ! Update the particle host element
   PEM%lastElement(LocPartID2)       = SinglePointToElement(P2_old,doHalo=.TRUE.)
@@ -470,7 +478,7 @@ IF (iPart2.GE.PartInt_Shared(3,GetCNElemID(offsetElem+1))+1 .AND. &
 END IF
 
 ! Count number of collisions, only count twice if both particles are on the local processor
-CollisionnLoc = CollisionnLoc + MERGE(2,1,iPart2.LE.nComputeNodeParts)
+CollisionnLoc = CollisionnLoc + MERGE(2,1,iPart2.GE.PartInt_Shared(1,firstCNElem)+1 .AND. iPart2.LE.PartInt_Shared(2,lastCNElem))
 
 #if USE_PARTTEMP
 ! TODO

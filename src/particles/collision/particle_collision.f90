@@ -595,7 +595,7 @@ INTEGER                        :: iPart,iElem
 ! Number of particles
 INTEGER                        :: locnPartRecv
 INTEGER                        :: CNElemID,ElemID,ElemProc
-INTEGER                        :: CNRank,dispElemCN
+INTEGER                        :: CNRank,CNRootRank,dispElemCN
 ! INTEGER                        :: MPI_WINDOW(   0:nLeaderGroupProcs)
 !===================================================================================================================================
 
@@ -636,7 +636,7 @@ IF (myComputeNodeRank.EQ.0) PartInt_Shared(:,:) = 0
 CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 
 ! Walk along the linked list and fill the PartInt array for the current compute node
-iPart = 0
+iPart = offsetComputeNodeParts
 ! Walk over all elements on local proc
 DO iElem = offsetElem+1,offsetElem+nElems
   CNElemID = GetCNElemID(iElem)
@@ -660,10 +660,11 @@ IF (myComputeNodeRank.EQ.0) THEN
 
   ! Loop over all remote elements and fill the PartInt_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
-    ElemID   = GetGlobalElemID(iElem)
-    ElemProc = ELEMIPROC(ElemID)
-    CNRank   = INT(ElemProc/nComputeNodeProcessors)
-    dispElemCN = ElemID - (offsetElemMPI(CNRank) + 1)
+    ElemID     = GetGlobalElemID(iElem)
+    ElemProc   = ELEMIPROC(ElemID)
+    CNRank     = INT(ElemProc/nComputeNodeProcessors)
+    CNRootRank = CNRank*nComputeNodeProcessors
+    dispElemCN = ElemID - (offsetElemMPI(CNRootRank) + 1)
 
     ! Position in the RMA window is the ElemID minus the compute node offset
     CALL MPI_GET(          PartInt_Shared(3,iElem)                                 &
@@ -676,8 +677,8 @@ IF (myComputeNodeRank.EQ.0) THEN
                          , PartInt_Window                                          &
                          , iError)
     ! Add the PartInt to the CN-local (!) PartInt_Shared array
-    PartInt_Shared(1,iElem) = PartInt_Shared(2,iElem-1)
-    PartInt_Shared(2,iElem) = PartInt_Shared(1,iElem) + PartInt_Shared(4,iElem) - PartInt_Shared(3,iElem)
+    ! PartInt_Shared(1,iElem) = PartInt_Shared(2,iElem-1)
+    ! PartInt_Shared(2,iElem) = PartInt_Shared(1,iElem) + PartInt_Shared(4,iElem) - PartInt_Shared(3,iElem)
   END DO ! iElem
 
   ! Complete the epoch - this will block until MPI_Get is complete
@@ -691,6 +692,10 @@ IF (myComputeNodeRank.EQ.0) THEN
   ! ! Free up our window
   ! CALL MPI_WIN_FREE(     MPI_WINDOW                                              &
   !                   ,    iError)
+  DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
+    PartInt_Shared(1,iElem) = PartInt_Shared(2,iElem-1)
+    PartInt_Shared(2,iElem) = PartInt_Shared(1,iElem) + PartInt_Shared(4,iElem) - PartInt_Shared(3,iElem)
+  END DO ! iElem
 END IF ! myComputeNodeRank.EQ.0
 CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 
@@ -784,17 +789,19 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
 END IF
 
 ! Walk along the linked list and fill the data arrays
-iPart = offsetnPart
 ! Allocate inverse mapping
-ALLOCATE(PEM2PartID(1:nComputeNodeParts))
+ASSOCIATE(firstCNElem => GetCNElemID(offsetElem+1)    ,&
+           lastCNElem => GetCNElemID(offsetElem+nElems))
+ALLOCATE(PEM2PartID(PartInt_Shared(1,firstCNElem)+1:PartInt_Shared(2,lastCNElem)))
 PEM2PartID = -1
+END ASSOCIATE
 ! Walk over all elements on local proc
 DO iElem = offsetElem+1,offsetElem+nElems
   ! Sum up particles and add properties to output array
   CNElemID = GetCNElemID(iElem)
   pcount   = PEM%pStart(iElem)
   ! PartData is CN-local ...
-  DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
+  DO iPart = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
     PartData_Shared(1:PP_nVarPart,iPart) = PartState(  :        ,pcount)
     ! We need to old position instead of the updated velocity
     PartData_Shared(PART_OLDV    ,iPart) = LastPartPos(PART_POSV,pcount)
@@ -803,13 +810,10 @@ DO iElem = offsetElem+1,offsetElem+nElems
   ! ! ... but the PartID is global
   ! pcount   = PEM%pStart(iElem)
   ! DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
-    PEM2PartID(iPart)                    = pcount
+    PEM2PartID(iPart)                     = pcount
     ! Set the index to the next particle
     pcount = PEM%pNext(pcount)
   END DO
-
-  ! Set counter to the end of particle number in the current element
-  iPart = PartInt_Shared(4,CNElemID)
 END DO ! iElem = offsetElem+1,offsetElem+nElems
 
 ! De-allocate linked list and return to normal particle array mode
@@ -850,16 +854,18 @@ IF (myComputeNodeRank.EQ.0) THEN
 
   ! Loop over all remote elements and fill the PartData_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
-    ElemID   = GetGlobalElemID(iElem)
-    ElemProc = ELEMIPROC(ElemID)
-    CNRank   = INT(ElemProc/nComputeNodeProcessors)
+    ElemID     = GetGlobalElemID(iElem)
+    ElemProc   = ELEMIPROC(ElemID)
+    CNRank     = INT(ElemProc/nComputeNodeProcessors)
+    CNRootRank = CNRank*nComputeNodeProcessors
+    dispElemCN = ElemID - (offsetElemMPI(CNRootRank) + 1)
 
     ! Position in the RMA window is the ElemID minus the compute node offset
     ASSOCIATE(firstPart       => PartInt_Shared(1,iElem)+1                                  &
              ,lastPart        => PartInt_Shared(2,iElem)                                    &
-             ,offsetFirstPart => PartInt_Shared(3,iElem)  -offsetPartMPI(CNRank)            &
-             ,offsetLastPart  => PartInt_Shared(4,iElem)  -offsetPartMPI(CNRank)            &
-             ,nPart           => PartInt_Shared(4,iElem)  -PartInt_Shared(3,iElem))
+             ,offsetFirstPart => PartInt_Shared(3,iElem) - offsetPartMPI(CNRank)            &
+             ,offsetLastPart  => PartInt_Shared(4,iElem) - offsetPartMPI(CNRank)            &
+             ,nPart           => PartInt_Shared(4,iElem) - PartInt_Shared(3,iElem))
 
     IF (nPart.EQ.0) CYCLE
     CALL MPI_GET(          PartData_Shared(:,firstPart)                            &

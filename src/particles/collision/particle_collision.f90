@@ -595,7 +595,7 @@ INTEGER                        :: iPart,iElem
 ! Number of particles
 INTEGER                        :: locnPartRecv
 INTEGER                        :: CNElemID,ElemID,ElemProc
-INTEGER                        :: CNRank,dispElemCN
+INTEGER                        :: CNRank,CNRootRank,dispElemCN
 ! INTEGER                        :: MPI_WINDOW(   0:nLeaderGroupProcs)
 !===================================================================================================================================
 
@@ -636,14 +636,14 @@ IF (myComputeNodeRank.EQ.0) PartInt_Shared(:,:) = 0
 CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 
 ! Walk along the linked list and fill the PartInt array for the current compute node
-iPart = 0
+iPart = offsetComputeNodeParts
 ! Walk over all elements on local proc
 DO iElem = offsetElem+1,offsetElem+nElems
   CNElemID = GetCNElemID(iElem)
   ! Set start of particle numbers in current element
   PartInt_Shared(1,CNElemID) = iPart
   PartInt_Shared(2,CNElemID) = PartInt_Shared(1,CNElemID) + PEM%pNumber(iElem)
-  PartInt_Shared(3,CNElemID) = iPart                                           + offsetnPart
+  PartInt_Shared(3,CNElemID) = iPart + offsetnPart - offsetComputeNodeParts
   PartInt_Shared(4,CNElemID) = PartInt_Shared(3,CNElemID) + PEM%pNumber(iElem) ! CAVE: offset already added
   ! Set counter to the end of particle number in the current element
   iPart = PartInt_Shared(2,CNElemID)
@@ -660,10 +660,11 @@ IF (myComputeNodeRank.EQ.0) THEN
 
   ! Loop over all remote elements and fill the PartInt_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
-    ElemID   = GetGlobalElemID(iElem)
-    ElemProc = ELEMIPROC(ElemID)
-    CNRank   = INT(ElemProc/nComputeNodeProcessors)
-    dispElemCN = ElemID - (offsetElemMPI(CNRank) + 1)
+    ElemID     = GetGlobalElemID(iElem)
+    ElemProc   = ELEMIPROC(ElemID)
+    CNRank     = INT(ElemProc/nComputeNodeProcessors)
+    CNRootRank = CNRank*nComputeNodeProcessors
+    dispElemCN = ElemID - (offsetElemMPI(CNRootRank) + 1)
 
     ! Position in the RMA window is the ElemID minus the compute node offset
     CALL MPI_GET(          PartInt_Shared(3,iElem)                                 &
@@ -676,8 +677,8 @@ IF (myComputeNodeRank.EQ.0) THEN
                          , PartInt_Window                                          &
                          , iError)
     ! Add the PartInt to the CN-local (!) PartInt_Shared array
-    PartInt_Shared(1,iElem) = PartInt_Shared(2,iElem-1)
-    PartInt_Shared(2,iElem) = PartInt_Shared(1,iElem) + PartInt_Shared(4,iElem) - PartInt_Shared(3,iElem)
+    ! PartInt_Shared(1,iElem) = PartInt_Shared(2,iElem-1)
+    ! PartInt_Shared(2,iElem) = PartInt_Shared(1,iElem) + PartInt_Shared(4,iElem) - PartInt_Shared(3,iElem)
   END DO ! iElem
 
   ! Complete the epoch - this will block until MPI_Get is complete
@@ -691,6 +692,11 @@ IF (myComputeNodeRank.EQ.0) THEN
   ! ! Free up our window
   ! CALL MPI_WIN_FREE(     MPI_WINDOW                                              &
   !                   ,    iError)
+  DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
+    ! Add the PartInt to the CN-local (!) PartInt_Shared array
+    PartInt_Shared(1,iElem) = PartInt_Shared(2,iElem-1)
+    PartInt_Shared(2,iElem) = PartInt_Shared(1,iElem) + PartInt_Shared(4,iElem) - PartInt_Shared(3,iElem)
+  END DO ! iElem
 END IF ! myComputeNodeRank.EQ.0
 CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 
@@ -718,20 +724,20 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
   IF (myComputeNodeRank.EQ.0) THEN
     !> Specify a window of existing memory that is exposed to RMA accesses
     !> A process may elect to expose no memory by specifying size = 0
-    CALL MPI_WIN_CREATE( PartData_Shared                                                        &
-                       , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
-                       , SIZE_REAL                                                              &
-                       , MPI_INFO_NULL                                                          &
-                       , MPI_COMM_LEADERS_SHARED                                                &
-                       , PartData_Window                                                        &
+    CALL MPI_WIN_CREATE( PartData_Shared                                                            &
+                       , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
+                       , SIZE_REAL                                                                  &
+                       , MPI_INFO_NULL                                                              &
+                       , MPI_COMM_LEADERS_SHARED                                                    &
+                       , PartData_Window                                                            &
                        , iError)
     ! Create an MPI Window object for one-sided communication
-    CALL MPI_WIN_CREATE( PartBC_Shared                                                          &
-                       , INT(SIZE_REAL*nComputeNodeTotalParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
-                       , SIZE_REAL                                                              &
-                       , MPI_INFO_NULL                                                          &
-                       , MPI_COMM_LEADERS_SHARED                                                &
-                       , PartBC_Window                                                          &
+    CALL MPI_WIN_CREATE( PartBC_Shared                                                              &
+                       , INT(SIZE_REAL*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
+                       , SIZE_REAL                                                                  &
+                       , MPI_INFO_NULL                                                              &
+                       , MPI_COMM_LEADERS_SHARED                                                    &
+                       , PartBC_Window                                                              &
                        , iError)
   END IF ! CN root
 ! Re-allocate the SHM window if it became too small
@@ -757,44 +763,47 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
   ! > Needs to be reallocated every single time as the number of particles changes
   IF (myComputeNodeRank.EQ.0) THEN
     !> Free up our window
-    CALL MPI_WIN_FREE(     PartData_Window                                                    &
+    CALL MPI_WIN_FREE(     PartData_Window                                                          &
                       ,    iError)
-    CALL MPI_WIN_FREE(     PartBC_Window                                                      &
+    CALL MPI_WIN_FREE(     PartBC_Window                                                            &
                       ,    iError)
 
     ! Specify a window of existing memory that is exposed to RMA accesses
     !> Create an MPI Window object for one-sided communication
     !> A process may elect to expose no memory by specifying size = 0
-    CALL MPI_WIN_CREATE( PartData_Shared                                                        &
-                       , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
-                       , SIZE_REAL                                                              &
-                       , MPI_INFO_NULL                                                          &
-                       , MPI_COMM_LEADERS_SHARED                                                &
-                       , PartData_Window                                                        &
+    CALL MPI_WIN_CREATE( PartData_Shared                                                            &
+                       , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
+                       , SIZE_REAL                                                                  &
+                       , MPI_INFO_NULL                                                              &
+                       , MPI_COMM_LEADERS_SHARED                                                    &
+                       , PartData_Window                                                            &
                        , iError)
     ! Create an MPI Window object for one-sided communication
-    CALL MPI_WIN_CREATE( PartBC_Shared                                                          &
-                       , INT(SIZE_REAL*nComputeNodeTotalParts,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
-                       , SIZE_REAL                                                              &
-                       , MPI_INFO_NULL                                                          &
-                       , MPI_COMM_LEADERS_SHARED                                                &
-                       , PartBC_Window                                                          &
+    CALL MPI_WIN_CREATE( PartBC_Shared                                                              &
+                       , INT(SIZE_REAL*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
+                       , SIZE_REAL                                                                  &
+                       , MPI_INFO_NULL                                                              &
+                       , MPI_COMM_LEADERS_SHARED                                                    &
+                       , PartBC_Window                                                              &
                        , iError)
   END IF ! CN root
 END IF
 
 ! Walk along the linked list and fill the data arrays
-iPart = offsetnPart
 ! Allocate inverse mapping
-ALLOCATE(PEM2PartID(1:nComputeNodeParts))
+ASSOCIATE(firstCNElem => GetCNElemID(offsetElem+1)    ,&
+           lastCNElem => GetCNElemID(offsetElem+nElems))
+ALLOCATE(PEM2PartID(PartInt_Shared(1,firstCNElem)+1:PartInt_Shared(2,lastCNElem)))
 PEM2PartID = -1
+END ASSOCIATE
+
 ! Walk over all elements on local proc
 DO iElem = offsetElem+1,offsetElem+nElems
   ! Sum up particles and add properties to output array
   CNElemID = GetCNElemID(iElem)
   pcount   = PEM%pStart(iElem)
   ! PartData is CN-local ...
-  DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
+  DO iPart = PartInt_Shared(1,CNElemID)+1,PartInt_Shared(2,CNElemID)
     PartData_Shared(1:PP_nVarPart,iPart) = PartState(  :        ,pcount)
     ! We need to old position instead of the updated velocity
     PartData_Shared(PART_OLDV    ,iPart) = LastPartPos(PART_POSV,pcount)
@@ -803,13 +812,10 @@ DO iElem = offsetElem+1,offsetElem+nElems
   ! ! ... but the PartID is global
   ! pcount   = PEM%pStart(iElem)
   ! DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
-    PEM2PartID(iPart)                    = pcount
+    PEM2PartID(iPart)                     = pcount
     ! Set the index to the next particle
     pcount = PEM%pNext(pcount)
   END DO
-
-  ! Set counter to the end of particle number in the current element
-  iPart = PartInt_Shared(4,CNElemID)
 END DO ! iElem = offsetElem+1,offsetElem+nElems
 
 ! De-allocate linked list and return to normal particle array mode
@@ -835,7 +841,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   nGlobalParts           = locnPart
 
   ! Communicate the offsetPartMPI
-  offsetPartMPI(myLeaderGroupRank) = offsetComputeNodeParts
+  offsetPartMPI(myLeaderGroupRank) = offsetnPart
   CALL MPI_ALLGATHER(MPI_IN_PLACE,0,MPI_DATATYPE_NULL,offsetPartMPI,1,MPI_INTEGER,MPI_COMM_LEADERS_SHARED,IERROR)
   offsetPartMPI(nLeaderGroupProcs) = nGlobalParts
 
@@ -850,37 +856,40 @@ IF (myComputeNodeRank.EQ.0) THEN
 
   ! Loop over all remote elements and fill the PartData_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
-    ElemID   = GetGlobalElemID(iElem)
-    ElemProc = ELEMIPROC(ElemID)
-    CNRank   = INT(ElemProc/nComputeNodeProcessors)
+    ElemID     = GetGlobalElemID(iElem)
+    ElemProc   = ELEMIPROC(ElemID)
+    CNRank     = INT(ElemProc/nComputeNodeProcessors)
+    CNRootRank = CNRank*nComputeNodeProcessors
+    dispElemCN = ElemID - (offsetElemMPI(CNRootRank) + 1)
 
     ! Position in the RMA window is the ElemID minus the compute node offset
     ASSOCIATE(firstPart       => PartInt_Shared(1,iElem)+1                                  &
              ,lastPart        => PartInt_Shared(2,iElem)                                    &
-             ,offsetFirstPart => PartInt_Shared(3,iElem)  -offsetPartMPI(CNRank)            &
-             ,offsetLastPart  => PartInt_Shared(4,iElem)  -offsetPartMPI(CNRank)            &
-             ,nPart           => PartInt_Shared(4,iElem)  -PartInt_Shared(3,iElem))
+             ,offsetFirstPart => PartInt_Shared(3,iElem) - offsetPartMPI(CNRank)            &
+             ,offsetLastPart  => PartInt_Shared(4,iElem) - offsetPartMPI(CNRank)            &
+             ,nPart           => PartInt_Shared(4,iElem) - PartInt_Shared(3,iElem))
 
     IF (nPart.EQ.0) CYCLE
-    CALL MPI_GET(          PartData_Shared(:,firstPart)                            &
-                         , (PP_nVarPart+1)*nPart                                   &
-                         , MPI_DOUBLE_PRECISION                                    &
-                         , CNRank                                                  &
-                         , INT((PP_nVarPart+1)*offsetFirstPart,MPI_ADDRESS_KIND)   &
-                         , 2                                                       &
-                         , MPI_DOUBLE_PRECISION                                    &
-                         , PartData_Window                                         &
+
+    CALL MPI_GET(          PartData_Shared(:,firstPart)                                     &
+                         , (PP_nVarPart+1)*nPart                                            &
+                         , MPI_DOUBLE_PRECISION                                             &
+                         , CNRank                                                           &
+                         , INT((PP_nVarPart+1)*offsetFirstPart,MPI_ADDRESS_KIND)            &
+                         , 1                                                                &
+                         , MPI_DOUBLE_PRECISION                                             &
+                         , PartData_Window                                                  &
                          , iError)
     END ASSOCIATE
   END DO ! iElem
 
   !> Complete the epoch - this will block until MPI_Get is complete
-  CALL MPI_WIN_FENCE(    0                                                      &
-                    ,    PartData_Window                                        &
+  CALL MPI_WIN_FENCE(    0                                                                  &
+                    ,    PartData_Window                                                    &
                     ,    iError)
   ! All done with the window - tell MPI there are no more epochs
-  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                     &
-                    ,    PartData_Window                                        &
+  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                 &
+                    ,    PartData_Window                                                    &
                     ,    iError)
   ! Free up our window
   ! CALL MPI_WIN_FREE(     MPI_WINDOW                                             &

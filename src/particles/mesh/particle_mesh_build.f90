@@ -2218,7 +2218,7 @@ IMPLICIT NONE
 INTEGER,PARAMETER              :: iNode=1
 REAL,PARAMETER                 :: CartesianTol=1.E-12
 CHARACTER(1)                   :: tmpStr
-INTEGER                        :: iVec
+INTEGER                        :: i,iVec
 INTEGER                        :: firstElem,lastElem,NbSideID,BCALPHA,flip
 INTEGER                        :: SideID,ElemID,NbElemID,localSideID,localSideNbID,nStart
 INTEGER                        :: CornerNodeIDswitch(8),NodeMap(4,6)
@@ -2251,11 +2251,22 @@ NodeMap(:,5)=(/CNS(1),CNS(5),CNS(8),CNS(4)/)
 NodeMap(:,6)=(/CNS(5),CNS(6),CNS(7),CNS(8)/)
 
 ! Find number of periodic vectors
-GEO%nPeriodicVectors = MERGE(MAXVAL(BoundaryType(:,BC_ALPHA),mask=BoundaryType(:,BC_TYPE).EQ.1),0,MeshHasPeriodic)
+GEO%nPeriodicVectors = MERGE(COUNT(BoundaryType(:,BC_TYPE).EQ.1 .AND. BoundaryType(:,BC_ALPHA).GE.1),0,MeshHasPeriodic)
 IF (GEO%nPeriodicVectors.EQ.0) RETURN
 
 firstElem = offsetElem+1
 lastElem  = offsetElem+nElems
+
+! Build a mapping from BC_ALPHA to BC_PERIODIC
+ALLOCATE(GEO%PeriodicMapping(MAXVAL(BoundaryType(:,BC_ALPHA),mask=BoundaryType(:,BC_TYPE).EQ.1)))
+GEO%PeriodicMapping = -1
+i = 0
+DO iVec=1,SIZE(BoundaryType,DIM=1)
+  IF (BoundaryType(iVec,BC_TYPE).EQ.1 .AND. BoundaryType(iVec,BC_ALPHA).GE.1) THEN
+    i = i + 1
+    GEO%PeriodicMapping(BoundaryType(iVec,BC_ALPHA)) = i
+  END IF
+END DO
 
 ALLOCATE(PeriodicFound(1:GEO%nPeriodicVectors))
 PeriodicFound(:) = .FALSE.
@@ -2277,6 +2288,8 @@ SideLoop: DO SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Share
     BCALPHA = BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)
 
     IF (BCALPHA.GT.0) THEN
+      ! Map to periodic vector
+      BCALPHA = GEO%PeriodicMapping(BCALPHA)
       ! Periodic vector already found
       IF (PeriodicFound(BCALPHA)) CYCLE
 

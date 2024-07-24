@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -106,6 +107,7 @@ CALL prms%CreateLogicalOption(      'FVBoundaries'        ,"Use FV discretizatio
                                                           ,'.FALSE.')
 CALL prms%CreateIntOption    (      'FVBoundaryType'      ,"BC_TYPE that should be discretized with FV."                             //&
                                                            "Set it to BC_TYPE, setting 0 will apply FV to all BC Sides",multiple=.TRUE.)
+
 END SUBROUTINE DefineParametersIndicator
 
 
@@ -132,68 +134,77 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                  :: nModes_In
-#if FV_ENABLED == 1
 INTEGER                                  :: iBC,nFVBoundaryType
-#endif
 !==================================================================================================================================
-IF(IndicatorInitIsDone)THEN
-  CALL CollectiveStop(__STAMP__,&
-    "InitIndicator not ready to be called or already called.")
-END IF
+IF(IndicatorInitIsDone) CALL CollectiveStop(__STAMP__,"InitIndicator not ready to be called or already called.")
 LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INIT INDICATOR...'
 
 ! Read in  parameters
-#if FV_ENABLED >= 2
-IndicatorType = INDTYPE_PERSSON
-#else
 IndicatorType = GETINTFROMSTR('IndicatorType')
-#endif
+
 
 SELECT CASE(IndicatorType)
-CASE(INDTYPE_JAMESON)
+  CASE(INDTYPE_BLEND)
+#if FV_ENABLED != 2
+    CALL ABORT(__STAMP__, &
+          "Fixed blending factor only supported for FV_BLENDING.")
+#endif /* FV_ENABLED == 2 */
+  CASE(INDTYPE_JAMESON)
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
-  CALL Abort(__STAMP__, &
-      "Jameson indicator only works with Navier-Stokes equations.")
+    CALL Abort(__STAMP__, &
+        "Jameson indicator only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
-CASE(INDTYPE_DUCROS)
-#if !(PARABOLIC)
-  CALL Abort(__STAMP__, &
-      "Ducros indicator not available without PARABOLIC!")
-#endif
-#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
-  CALL Abort(__STAMP__, &
-      "Ducros indicator only works with Navier-Stokes equations.")
-#endif /* EQNSYSNR != 2 */
-CASE(INDTYPE_DUCROSTIMESJST)
-#if !(PARABOLIC)
-  CALL Abort(__STAMP__, &
-      "Ducros*JST indicator not available without PARABOLIC!")
-#endif
-#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
-  CALL Abort(__STAMP__, &
-      "Ducros*JST indicator only works with Navier-Stokes equations.")
-#endif /* EQNSYSNR != 2 */
-CASE(INDTYPE_PERSSON)
-  ! number of modes to be checked by Persson indicator
-  nModes_In = GETINT('nModes')
-  ! For overintegration, the last PP_N-Nunder modes are empty. Add them to nModes, so we check non-empty ones
-  nModes_In = nModes_In+PP_N-MIN(NUnder,NFilter)
-  ! Safety checks: At least one mode must be left and only values >0 make sense
-  nModes = MAX(1,MIN(PP_N-1,nModes_In))
-  IF (nModes.NE.nModes_In) THEN
-    SWRITE(UNIT_stdOut,'(A,I0)') 'WARNING: nModes set by user not within range [1,PP_N-1]. Was instead set to nModes=', nModes
-  END IF
 #if FV_ENABLED >= 2
-  T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25) ! Eq.(42) in: S. Hennemann et al., J.Comp.Phy., 2021
-  sdT_FV = s_FV/T_FV
+    CALL ABORT(__STAMP__, &
+          "Jameson indicator only works with FV switching.")
+#endif /* FV_ENABLED == 2 */
+  CASE(INDTYPE_DUCROS)
+#if !(PARABOLIC)
+    CALL Abort(__STAMP__, &
+        "Ducros indicator not available without PARABOLIC!")
+#endif
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
-  CALL Abort(__STAMP__, &
-      "Persson indicator for FV-Blending only works with Navier-Stokes equations.")
+    CALL Abort(__STAMP__, &
+        "Ducros indicator only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
+#if FV_ENABLED >= 2
+    CALL ABORT(__STAMP__, &
+        "Ducros indicator only works with FV switching.")
+#endif /* FV_ENABLED == 2 */
+  CASE(INDTYPE_DUCROSTIMESJST)
+#if !(PARABOLIC)
+    CALL Abort(__STAMP__, &
+        "Ducros*JST indicator not available without PARABOLIC!")
+#endif
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
+    CALL Abort(__STAMP__, &
+        "Ducros*JST indicator only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
+#if FV_ENABLED >= 2
+    CALL ABORT(__STAMP__, &
+        "Ducros*JST indicator only works with FV switching.")
+#endif /* FV_ENABLED == 2 */
+  CASE(INDTYPE_PERSSON)
+    ! number of modes to be checked by Persson indicator
+    nModes_In = GETINT('nModes')
+    ! For overintegration, the last PP_N-Nunder modes are empty. Add them to nModes, so we check non-empty ones
+    nModes_In = nModes_In+PP_N-MIN(NUnder,NFilter)
+    ! Safety checks: At least one mode must be left and only values >0 make sense
+    nModes = MAX(1,MIN(PP_N-1,nModes_In))
+    IF (nModes.NE.nModes_In) THEN
+      SWRITE(UNIT_stdOut,'(A,I0)') 'WARNING: nModes set by user not within range [1,PP_N-1]. Was instead set to nModes=', nModes
+    END IF
+#if FV_ENABLED >= 2
+    T_FV   = 0.5*10**(-1.8*(PP_N+1)**.25) ! Eq.(42) in: S. Hennemann et al., J.Comp.Phy., 2021
+    sdT_FV = s_FV/T_FV
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
+    CALL Abort(__STAMP__, &
+        "Persson indicator for FV-Blending only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
 #endif /*FV_ENABLED*/
-CASE(-1) ! legacy
-  IndicatorType=INDTYPE_DG
+  CASE(-1) ! legacy
+    IndicatorType=INDTYPE_DG
 END SELECT
 
 #if USE_LOADBALANCE && FV_ENABLED == 1
@@ -211,7 +222,6 @@ IndStartTime = GETREAL('IndStartTime')
 
 IndVar = GETINT('IndVar')
 
-#if FV_ENABLED == 1
 ! FV element at boundaries
 FVBoundaries    = GETLOGICAL('FVBoundaries')
 nFVBoundaryType = CountOption('FVBoundaryType')
@@ -219,7 +229,6 @@ ALLOCATE(FVBoundaryType(nFVBoundaryType))
 DO iBC=1,nFVBoundaryType
   FVBoundaryType(iBC) = GETINT('FVBoundaryType','0')! which BCType should be at an FV element? Default value means every BC will be FV
 END DO
-#endif /* FV_ENABLED == 1 */
 
 IndicatorInitIsDone=.TRUE.
 LBWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
@@ -244,10 +253,10 @@ USE MOD_FV_Blending      ,ONLY: FV_ExtendAlpha
 #if PP_NodeType == 1
 USE MOD_FV_Blending      ,ONLY: FV_CommAlpha
 #endif
-USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_doExtendAlpha
+USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_alpha_fix,FV_doExtendAlpha
 USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
 #elif FV_ENABLED == 3
-USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max
+USE MOD_FV_Vars          ,ONLY: FV_alpha,FV_alpha_min,FV_alpha_max,FV_alpha_fix
 USE MOD_Indicator_Vars   ,ONLY: sdT_FV,T_FV
 #else
 USE MOD_FV_Vars          ,ONLY: FV_Elems,FV_sVdm
@@ -258,7 +267,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(INOUT),TARGET :: U(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Solution
-REAL,INTENT(IN)           :: t                                            !< Simulation time
+REAL,INTENT(IN)           :: t                                             !< Simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
@@ -280,9 +289,21 @@ END IF
 
 SELECT CASE (IndicatorType)
 CASE(INDTYPE_DG) ! no indicator, just a high value to trigger filtering
+#if FV_ENABLED == 1
   IndValue=-100
+#else
+  FV_alpha = 0.
+#endif /*FV_ENABLED == 1*/
 CASE(INDTYPE_FV) ! indicator everywhere
+#if FV_ENABLED == 1
   IndValue = 100
+#else
+  FV_alpha = FV_alpha_max
+#endif /*FV_ENABLED == 1*/
+CASE(INDTYPE_BLEND) ! fixed blending factor
+#if FV_ENABLED >= 2
+  FV_alpha = FV_alpha_fix
+#endif
 CASE(INDTYPE_PERSSON) ! Modal Persson indicator
 #if FV_ENABLED == 2
   DO iElem=1,nElems
@@ -299,6 +320,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
 #if PP_NodeType == 1
   IF (.NOT.FV_doExtendAlpha) CALL FV_CommAlpha(FV_alpha)
 #endif
+
 #elif FV_ENABLED == 3
   DO iElem=1,nElems
     IndValue(iElem) = IndPerssonBlend(U(:,:,:,:,iElem))
@@ -336,18 +358,41 @@ CASE(INDTYPE_DUCROSTIMESJST)
 CASE(INDTYPE_HALFHALF)  ! half/half
   DO iElem=1,nElems
     IF (Elem_xGP(1,0,0,0,iElem).GT.0.0) THEN
+#if FV_ENABLED == 1
       IndValue(iElem) = 100
+#elif FV_ENABLED == 2
+      FV_alpha(iElem) = FV_alpha_max
+#elif FV_ENABLED == 3
+      FV_alpha(:,:,:,:,iElem) = FV_alpha_max
+#endif /*FV_ENABLED*/
     ELSE
+#if FV_ENABLED == 1
       IndValue(iElem) = -100
+#elif FV_ENABLED == 2
+      FV_alpha(iElem) = 0.
+#elif FV_ENABLED == 3
+      FV_alpha(:,:,:,:,iElem) = 0.
+#endif /*FV_ENABLED*/
     END IF
   END DO ! iElem
-
 CASE(INDTYPE_CHECKERBOARD) ! every second element (checkerboard like)
    DO iElem = 1, nElems
     IF (MOD(iElem+offsetElem,2).EQ.0) THEN
+#if FV_ENABLED == 1
       IndValue(iElem) = -100
+#elif FV_ENABLED == 2
+      FV_alpha(iElem) = 0.
+#elif FV_ENABLED == 3
+      FV_alpha(:,:,:,:,iElem) = 0.
+#endif /*FV_ENABLED*/
     ELSE
-      IndValue(iElem) =  100
+#if FV_ENABLED == 1
+      IndValue(iElem) = 100
+#elif FV_ENABLED == 2
+      FV_alpha(iElem) = FV_alpha_max
+#elif FV_ENABLED == 3
+      FV_alpha(:,:,:,:,iElem) = FV_alpha_max
+#endif /*FV_ENABLED*/
     END IF
   END DO ! iElem = 1, nElems
 CASE DEFAULT ! unknown Indicator Type
@@ -355,10 +400,8 @@ CASE DEFAULT ! unknown Indicator Type
     "Unknown IndicatorType!")
 END SELECT
 
-#if FV_ENABLED == 1
 ! obtain indicator value for elements that contain domain boundaries
-CALL IndFVBoundaries(IndValue)
-#endif /*!FV_ENABLED == 1*/
+CALL IndFVBoundaries()
 
 END SUBROUTINE CalcIndicator
 
@@ -754,13 +797,18 @@ END FUNCTION IndPerssonBlend
 !>     will permanently be  FV elements
 !> 2.) FVBoundaryType=BC_TYPE, i.e. only elements that contain a BCSide of BC_TYPE will be FV elements
 !==================================================================================================================================
-SUBROUTINE IndFVBoundaries(IndValue)
+SUBROUTINE IndFVBoundaries()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+#if FV_ENABLED == 1
+USE MOD_Indicator_Vars,  ONLY: IndValue
+#else
+USE MOD_FV_Vars,         ONLY: FV_alpha,FV_alpha_max
+#endif
 USE MOD_Indicator_Vars,  ONLY: FVBoundaries,FVBoundaryType
 USE MOD_Equation_Vars,   ONLY: nBCByType,BCSideID
-USE MOD_Mesh_Vars,       ONLY: SideToElem,nElems
+USE MOD_Mesh_Vars,       ONLY: SideToElem
 USE MOD_Mesh_Vars,       ONLY: nBCs,BoundaryType
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -768,7 +816,6 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT) :: IndValue(nElems)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID,iBC,nBCLoc,BCType,iSide,ElemID
@@ -782,13 +829,20 @@ IF (FVBoundaries) THEN
       DO iSide=1,nBCLoc
         SideID=BCSideID(iBC,iSide)
         ElemID = SideToElem(S2E_ELEM_ID,SideID)
+#if FV_ENABLED == 1
         IndValue(ElemID) = 100.E3
+#elif FV_ENABLED == 2
+        FV_alpha(ElemID) = FV_alpha_max
+#elif FV_ENABLED == 3
+        FV_alpha(:,:,:,:,ElemID) = FV_alpha_max
+#endif
       END DO !iSide
     ENDIF
   END DO
 ELSE
   RETURN
 END IF
+
 END SUBROUTINE IndFVBoundaries
 
 

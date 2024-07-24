@@ -20,5 +20,6 @@
 #define INDTYPE_DUCROSTIMESJST      10
 #define INDTYPE_HALFHALF            3
 #define INDTYPE_CHECKERBOARD        33
+#define INDTYPE_BLEND               42
 #define INDTYPE_BOX                 66
 #define INDTYPE_BLENDING_PERSSON    102

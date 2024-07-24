@@ -414,7 +414,7 @@ SpongeDistance                                Length of sponge ramp. The sponge 
                                               maximum strength at the end of the ramp and after
                                               that point.
 
-xStart                                        Coordinates of start position of sponge ramp
+SpongexStart                                  Coordinates of start position of sponge ramp
                                               (SpongeShape=ramp) or center
                                               (SpongeShape=cylindrical).
 

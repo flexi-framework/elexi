@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -206,8 +207,10 @@ DO iElem=1,nElems
 #endif /* PARABOLIC*/
   END DO; END DO; END DO ! i,j,k
 
-#if FV_ENABLED >= 2
+#if FV_ENABLED == 2
   dtElem(iElem)=MERGE(CFLScale(0),CFLScale(1),FV_alpha(iElem).LE.FV_alpha_min)*2./SUM(Max_Lambda)
+#elif FV_ENABLED == 3
+  dtElem(iElem)=MERGE(CFLScale(0),CFLScale(1),ALL(FV_alpha(:,:,:,:,iElem).LE.FV_alpha_min))*2./SUM(Max_Lambda)
 #else
   dtElem(iElem)=CFLScale(FVE)*2./SUM(Max_Lambda)
 #endif

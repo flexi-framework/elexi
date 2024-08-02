@@ -562,6 +562,7 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/recordpoints/*.f90
                            ./src/restart/*.f90
                            ./src/output/*.f90
+                           ./src/baseflow/*.f90
                            ./src/sponge/*.f90
                            ./src/filter/*.f90
                            ./src/io_hdf5/*.f90

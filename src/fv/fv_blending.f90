@@ -129,7 +129,7 @@ END SUBROUTINE FV_ExtendAlpha
 SUBROUTINE FV_ProlongFValphaToFace(FV_alpha,doMPISides)
 ! MODULES
 USE MOD_FV_Vars         ,ONLY: FV_alpha_master,FV_alpha_slave
-USE MOD_Mesh_Vars       ,ONLY: SideToElem,nSides,nElems
+USE MOD_Mesh_Vars       ,ONLY: SideToElem,nElems!,nSides
 USE MOD_Mesh_Vars       ,ONLY: firstMPISide_MINE,lastMortarMPISide,lastInnerSide
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -139,7 +139,7 @@ REAL,INTENT(INOUT)    :: FV_alpha(nElems)    !< elementwise blending coefficient
 LOGICAL,INTENT(IN)    :: doMPISides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: iSide,ElemID,nbElemID,SideID
+INTEGER               :: ElemID,nbElemID,SideID!,iSide
 INTEGER               :: firstSideID,lastSideID
 !==================================================================================================================================
 ! array not allocated in postiMode

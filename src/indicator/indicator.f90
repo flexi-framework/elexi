@@ -33,6 +33,9 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
+
+LOGICAL :: doIndicatorBaseflow = .FALSE. !< switch whether to compute indicator
+
 INTERFACE DefineParametersIndicator
   MODULE PROCEDURE DefineParametersIndicator
 END INTERFACE
@@ -66,6 +69,7 @@ INTERFACE FinalizeIndicator
   MODULE PROCEDURE FinalizeIndicator
 END INTERFACE
 
+PUBLIC::doIndicatorBaseflow
 PUBLIC::DefineParametersIndicator
 PUBLIC::InitIndicator
 PUBLIC::CalcIndicator

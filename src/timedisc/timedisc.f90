@@ -42,6 +42,8 @@ USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Analyze_Vars        ,ONLY: analyze_dt,tWriteData,WriteData_dt
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
+USE MOD_Baseflow            ,ONLY: UpdateBaseflow
+USE MOD_Baseflow_Vars       ,ONLY: doBaseflow
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
@@ -132,6 +134,8 @@ END SELECT
 ! FV Blending requires the indicator before the DG operator
 CALL CalcIndicator(U,t)
 #endif
+! initial update of baseflow
+IF (doBaseflow) CALL UpdateBaseflow(0.)
 
 ! Do first RK stage of first timestep to fill gradients
 #if USE_PARTICLES
@@ -176,11 +180,12 @@ IF (.NOT.DoRestart                                                              
 END IF
 CALL Visualize(t,U)
 
+! compute initial timestep
+CALL InitTimeStep()
+
 ! Run initial analyze
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' Errors of initial solution:'
-! compute initial timestep
-CALL InitTimeStep()
 ! print initial analyze
 CALL Analyze(t,iter)
 
@@ -213,6 +218,7 @@ CALL CPU_TIME(time_start)
 
 ! Run computation
 DO
+  IF (doBaseflow)       CALL UpdateBaseflow(dt)
   ! Update time step
   CALL UpdateTimeStep()
 

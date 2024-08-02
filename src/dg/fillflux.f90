@@ -52,6 +52,7 @@ SUBROUTINE FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_EOS,             ONLY: PrimToCons
 USE MOD_Mesh_Vars,       ONLY: NormVec, TangVec1, TangVec2, SurfElem, Face_xGP
 USE MOD_Mesh_Vars,       ONLY: firstInnerSide,lastInnerSide,firstMPISide_MINE,lastMPISide_MINE
 USE MOD_Mesh_Vars,       ONLY: nSides,firstBCSide
@@ -69,9 +70,11 @@ USE MOD_EddyVisc_Vars,   ONLY: muSGS_master,muSGS_slave
 #endif
 #if FV_ENABLED
 USE MOD_FV
-USE MOD_FV_Vars,         ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems_Sum,FV_sVdm
-#endif
-USE MOD_EOS,             ONLY: PrimToCons
+USE MOD_FV_Vars,         ONLY: FV_Elems_master,FV_Elems_slave
+#endif /*FV_ENABLED*/
+#if FV_ENABLED == 1
+USE MOD_FV_Vars,         ONLY: FV_Elems_Sum,FV_sVdm
+#endif /*FV_ENABLED == 1*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

@@ -78,6 +78,7 @@ USE MOD_FV_Limiter  ,ONLY: DefineParametersFV_Limiter
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('FV')
+CALL prms%CreateLogicalOption('doIndicatorBaseflow'  ,"Switch on to evaluate the indicator on the baseflow", '.FALSE.')
 ! FV Switching
 CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element"                                 &
                                                      ,'.TRUE.')
@@ -115,6 +116,7 @@ CALL DefineParametersFV_Limiter()
 CALL DefineParametersFV_Basis()
 END SUBROUTINE DefineParametersFV
 
+
 !==================================================================================================================================
 !> Read in parameters needed for FV sub-cells (indicator min/max and type of limiter) and allocate several arrays.
 !> Build metrics for FV sub-cells and performe initial switch from DG to FV sub-cells for all troubled cells.
@@ -127,6 +129,7 @@ USE MOD_Analyze_Vars        ,ONLY: wGPVol
 USE MOD_Interpolation_Vars  ,ONLY: wGP
 USE MOD_FV_Vars
 USE MOD_FV_Basis
+USE MOD_Indicator           ,ONLY: doIndicatorBaseflow
 #if FV_ENABLED == 1
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Filter_Vars         ,ONLY: NFilter
@@ -167,6 +170,9 @@ IF(.NOT.FVInitBasisIsDone)THEN
 END IF
 LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
+
+! The indicator value is used to decide where FV sub-cells are needed
+doIndicatorBaseflow = GETLOGICAL('doIndicatorBaseflow')
 
 ! Read flag, which allows to perform the switching from FV to DG in the reference element
 switchConservative = GETLOGICAL("FV_SwitchConservative")
@@ -422,6 +428,7 @@ LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitFV
 
+
 !==================================================================================================================================
 !> Interpolate face solution from DG representation to FV subcells.
 !> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
@@ -490,6 +497,7 @@ DO SideID=firstSideID,lastSideID
 END DO
 
 END SUBROUTINE FV_DGtoFV
+
 
 !==================================================================================================================================
 !> Prim to cons for FV

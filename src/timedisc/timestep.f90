@@ -113,10 +113,10 @@ USE MOD_PreProc
 USE MOD_Vector
 USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars       ,ONLY: U,Ut,nTotalU
-USE MOD_PruettDamping ,ONLY: TempFilterTimeDeriv
 USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_Indicator     ,ONLY: CalcIndicator
+USE MOD_Baseflow_Vars ,ONLY: BaseFlowFiltered
+USE MOD_Indicator     ,ONLY: CalcIndicator,doIndicatorBaseflow
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
 USE MOD_FV_Switching  ,ONLY: FV_Switch
@@ -160,7 +160,11 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step because time integration was already performed
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
-  CALL CalcIndicator(U,tFV)
+  IF(doIndicatorBaseflow) THEN
+    CALL CalcIndicator(BaseFlowFiltered,tFV)
+  ELSE
+    CALL CalcIndicator(U,tFV)
+  END IF
   END ASSOCIATE
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
@@ -185,19 +189,20 @@ SUBROUTINE TimeStepByLSERKK3(t)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
-USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
-USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
+USE MOD_DG               ,ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars          ,ONLY: U,Ut,nTotalU
+USE MOD_TimeDisc_Vars    ,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_Indicator     ,ONLY: CalcIndicator
+USE MOD_Baseflow_Vars    ,ONLY: BaseFlowFiltered
+USE MOD_Indicator        ,ONLY: CalcIndicator,doIndicatorBaseflow
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
-USE MOD_FV_Switching  ,ONLY: FV_Switch
-USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
+USE MOD_FV_Switching     ,ONLY: FV_Switch
+USE MOD_FV_Vars          ,ONLY: FV_toDGinRK
 #endif /*FV_ENABLED==1*/
 #if PP_LIMITER
-USE MOD_PPLimiter    ,ONLY: PPLimiter
-USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
+USE MOD_PPLimiter        ,ONLY: PPLimiter
+USE MOD_Filter_Vars      ,ONLY: DoPPLimiter
 #endif /*PP_LIMITER*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -239,7 +244,11 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step because time integration was already performed
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
-  CALL CalcIndicator(U,tFV)
+  IF(doIndicatorBaseflow) THEN
+    CALL CalcIndicator(BaseFlowFiltered,tFV)
+  ELSE
+    CALL CalcIndicator(U,tFV)
+  END IF
   ! NOTE: Apply switch and update FV_Elems
   END ASSOCIATE
 #endif /*FV_ENABLED*/
@@ -252,6 +261,7 @@ DO iStage = 1,nRKStages
 END DO
 
 END SUBROUTINE TimeStepByLSERKK3
+
 
 !===================================================================================================================================
 !> This procedure takes the current time t, the time step dt and the solution at

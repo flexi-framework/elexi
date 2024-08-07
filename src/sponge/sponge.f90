@@ -157,11 +157,6 @@ IF(.NOT.doSponge) RETURN
 LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INIT SPONGE...'
 
-! create visu dir, where all vtu files are placed
-#if USE_MPI
-IF(nProcessors.GT.1) CALL SYSTEM('mkdir -p visu')
-#endif
-
 SpongeViz      = GETLOGICAL('SpongeViz')
 ! Readin of Baseflow parameters
 SpBaseFlowType = GETINTFROMSTR('SpongeBaseFlow')
@@ -479,6 +474,11 @@ SDEALLOCATE(SpongeMat_loc)
 
 ! Visualize the Sponge Ramp - until now only 3D visualization!
 IF(SpongeViz) THEN
+  ! Create visu dir, where all vtu files are placed
+#if USE_MPI
+  IF(nProcessors.GT.1) CALL SYSTEM('mkdir -p visu')
+#endif
+
   FileString=TRIM(ProjectName)//'_SpongeRamp'
   ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
   ALLOCATE(SpongeMat_NVisu(3,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))

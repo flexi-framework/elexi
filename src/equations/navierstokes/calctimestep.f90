@@ -65,15 +65,11 @@ REAL                         :: KappasPr_max
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 
-#if USE_PARTICLES
-! Currently these arrays do not get correctly deallocated when running in Release mode. Working fine in Debug. As a workaround, just
-! deallocate them here if they are still allocated
-SDEALLOCATE(MetricsAdv)
-#if PARABOLIC
-SDEALLOCATE(MetricsVisc)
-#endif
-#endif /* USE_PARTICLES */
-
+! Currently these arrays do not get correctly deallocated when running posti in Release mode. Working fine in Debug.
+! As a workaround, only allocate them here if they are not allocated yet
+! #if USE_PARTICLES
+IF (.NOT.ALLOCATED(MetricsAdv)) &
+! #endif /* USE_PARTICLES */
 ALLOCATE(MetricsAdv(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
 DO FVE=0,FV_SIZE
   DO iElem=1,nElems
@@ -85,6 +81,11 @@ DO FVE=0,FV_SIZE
   END DO
 END DO
 #if PARABOLIC
+! Currently these arrays do not get correctly deallocated when running posti in Release mode. Working fine in Debug.
+! As a workaround, only allocate them here if they are not allocated yet
+! #if USE_PARTICLES
+IF (.NOT.ALLOCATED(MetricsVisc)) &
+! #endif /* USE_PARTICLES */
 ALLOCATE(MetricsVisc(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_SIZE))
 KappasPr_max=KAPPASPR_MAX_TIMESTEP_H()
 DO FVE=0,FV_SIZE

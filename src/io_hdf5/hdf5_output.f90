@@ -30,8 +30,8 @@ INTERFACE WriteTimeAverage
   MODULE PROCEDURE WriteTimeAverage
 END INTERFACE
 
-INTERFACE WriteBaseflow
-  MODULE PROCEDURE WriteBaseflow
+INTERFACE WriteBaseFlow
+  MODULE PROCEDURE WriteBaseFlow
 END INTERFACE
 
 INTERFACE FlushFiles
@@ -81,7 +81,7 @@ END INTERFACE
 PUBLIC :: GatheredWriteArray
 PUBLIC :: WriteAdditionalElemData
 PUBLIC :: WriteAdditionalFieldData
-PUBLIC :: WriteBaseflow
+PUBLIC :: WriteBaseFlow
 PUBLIC :: WriteTimeAverage
 PUBLIC :: GenerateFileSkeleton
 PUBLIC :: MarkWriteSuccessful
@@ -415,19 +415,15 @@ END SUBROUTINE WriteAdditionalFieldData
 !==================================================================================================================================
 !> Subroutine to write the baseflow to HDF5 format
 !==================================================================================================================================
-SUBROUTINE WriteBaseflow(ProjectName,MeshFileName,OutputTime,FutureTime)
+SUBROUTINE WriteBaseFlow(ProjectName,MeshFileName,OutputTime,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_BaseFlow_Vars ,ONLY: TimeFilterWidthBaseflow
-USE MOD_Equation_Vars ,ONLY: StrVarNames
-USE MOD_Mesh_Vars     ,ONLY: offsetElem,nGlobalElems,nElems
-USE MOD_Output_Vars   ,ONLY: WriteStateFiles
-USE MOD_Sponge_Vars   ,ONLY: SpBaseFlow
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-USE MOD_Equation_Vars ,ONLY: StrVarNamesFluc
-USE MOD_BaseFlow_Vars ,ONLY: doBaseFlowRMS,BaseFlowRMS
-#endif /* NAVIER-STOKES */
+USE MOD_BaseFlow_Vars,ONLY: TimeFilterWidthBaseFlow
+USE MOD_Equation_Vars,ONLY: StrVarNames
+USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
+USE MOD_Output_Vars  ,ONLY: WriteStateFiles
+USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -443,7 +439,7 @@ REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
 REAL,ALLOCATABLE               :: timeFilter(:)
 INTEGER                        :: NZ_loc
-TYPE(tElementOut),POINTER      :: ElementOutBaseflow
+TYPE(tElementOut),POINTER      :: ElementOutBaseFlow
 #if PP_dim == 2
 INTEGER                        :: iElem,i,j,iVar
 #endif
@@ -496,38 +492,21 @@ IF(.NOT.output2D) DEALLOCATE(UOut)
 #endif
 
 ! Write element local temporal filter width
-NULLIFY(ElementOutBaseflow)
+NULLIFY(ElementOutBaseFlow)
 ALLOCATE(timeFilter(nElems))
-timeFilter = 1./TimeFilterWidthBaseflow
-CALL AddToElemData(ElementOutBaseflow,'TimeFilterWidth',RealArray=timeFilter)
-CALL WriteAdditionalElemData(FileName,ElementOutBaseflow)
-DEALLOCATE(ElementOutBaseflow)
+timeFilter = 1./TimeFilterWidthBaseFlow
+CALL AddToElemData(ElementOutBaseFlow,'TimeFilterWidth',RealArray=timeFilter)
+CALL WriteAdditionalElemData(FileName,ElementOutBaseFlow)
+DEALLOCATE(ElementOutBaseFlow)
 SDEALLOCATE(timeFilter)
 
-#if EQNSYSNR == 2 && PP_dim == 3 /* NAVIER-STOKES */
-IF (doBaseFlowRMS) THEN
-  IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'Baseflow',6,PP_N,StrVarNamesFluc, &
-                           MeshFileName,OutputTime,FutureTime,create=.FALSE.,Dataset='Fluc')
-
-#if USE_MPI
-  CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-#endif
-  ! Write Reynoldsstresses
-  CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                        DataSetName='Fluc', rank=5,&
-                        nValGlobal=(/PP_nVarRMS,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
-                        nVal=      (/PP_nVarRMS,PP_N+1,PP_N+1,NZ_loc+1,nElems      /),&
-                        offset=    (/0         ,0     ,0     ,0       ,offsetElem  /),&
-                        collective=.TRUE., RealArray=BaseFlowRMS)
-END IF
-#endif /* EQNSYSNR == 2 && PP_dim == 3 */
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessful(FileName)
   GETTIME(EndT)
   CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 END IF
 
-END SUBROUTINE WriteBaseflow
+END SUBROUTINE WriteBaseFlow
 
 
 !==================================================================================================================================

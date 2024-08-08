@@ -115,8 +115,8 @@ USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars       ,ONLY: U,Ut,nTotalU
 USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_Baseflow_Vars ,ONLY: BaseFlowFiltered
-USE MOD_Indicator     ,ONLY: CalcIndicator,doIndicatorBaseflow
+USE MOD_BaseFlow_Vars    ,ONLY: BaseFlowFiltered
+USE MOD_Indicator        ,ONLY: CalcIndicator,doIndicatorBaseFlow
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
 USE MOD_FV_Switching  ,ONLY: FV_Switch
@@ -160,7 +160,7 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step because time integration was already performed
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
-  IF(doIndicatorBaseflow) THEN
+  IF(doIndicatorBaseFlow) THEN
     CALL CalcIndicator(BaseFlowFiltered,tFV)
   ELSE
     CALL CalcIndicator(U,tFV)
@@ -193,12 +193,12 @@ USE MOD_DG               ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars          ,ONLY: U,Ut,nTotalU
 USE MOD_TimeDisc_Vars    ,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_Baseflow_Vars    ,ONLY: BaseFlowFiltered
-USE MOD_Indicator        ,ONLY: CalcIndicator,doIndicatorBaseflow
+USE MOD_BaseFlow_Vars    ,ONLY: BaseFlowFiltered
+USE MOD_Indicator        ,ONLY: CalcIndicator,doIndicatorBaseFlow
 #endif /*FV_ENABLED*/
 #if FV_ENABLED == 1
-USE MOD_FV_Switching     ,ONLY: FV_Switch
-USE MOD_FV_Vars          ,ONLY: FV_toDGinRK
+USE MOD_FV_Switching      ,ONLY: FV_Switch
+USE MOD_FV_Vars           ,ONLY: FV_toDGinRK
 #endif /*FV_ENABLED==1*/
 #if PP_LIMITER
 USE MOD_PPLimiter        ,ONLY: PPLimiter
@@ -244,7 +244,7 @@ DO iStage = 1,nRKStages
 #if FV_ENABLED
   ! Time needs to be evaluated at the next step because time integration was already performed
   ASSOCIATE(tFV => MERGE(t+dt,t,iStage.EQ.nRKStages))
-  IF(doIndicatorBaseflow) THEN
+  IF(doIndicatorBaseFlow) THEN
     CALL CalcIndicator(BaseFlowFiltered,tFV)
   ELSE
     CALL CalcIndicator(U,tFV)
@@ -284,11 +284,6 @@ USE MOD_Implicit          ,ONLY: Newton
 USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged,nInnerGMRES
 USE MOD_Mathtools         ,ONLY: GlobalVectorDotProduct
 USE MOD_Mesh_Vars         ,ONLY: nElems
-#if USE_PRECOND
-USE MOD_Precond           ,ONLY: BuildPrecond
-USE MOD_Precond_Vars      ,ONLY: PrecondIter
-USE MOD_TimeDisc_Vars     ,ONLY: ESDIRK_gamma,iter
-#endif /*USE_PRECOND*/
 USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
 USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,CFLScale,CFLScale_Readin
 USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety
@@ -301,6 +296,12 @@ USE MOD_Indicator         ,ONLY: CalcIndicator
 #if FV_ENABLED == 1
 USE MOD_FV_Switching      ,ONLY: FV_Switch
 #endif /*FV_ENABLED==1*/
+#if USE_PRECOND
+USE MOD_Precond           ,ONLY: BuildPrecond
+USE MOD_Precond_Vars      ,ONLY: PrecondIter
+USE MOD_TimeDisc_Vars     ,ONLY: iter,ESDIRK_gamma
+#endif /*USE_PRECOND*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

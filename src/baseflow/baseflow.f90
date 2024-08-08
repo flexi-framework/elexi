@@ -1,5 +1,6 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -18,31 +19,31 @@
 !> Subroutines needed for the general base flow based on a moving time average of the instationary flow field, also known as Pruett
 !> damping. See "The temporally filtered Navier–Stokes equations: Properties of the residual stress" for details.
 !==================================================================================================================================
-MODULE MOD_Baseflow
+MODULE MOD_BaseFlow
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE DefineParametersBaseflow
-  MODULE PROCEDURE DefineParametersBaseflow
+INTERFACE DefineParametersBaseFlow
+  MODULE PROCEDURE DefineParametersBaseFlow
 END INTERFACE
 
-INTERFACE InitBaseflow
-  MODULE PROCEDURE InitBaseflow
+INTERFACE InitBaseFlow
+  MODULE PROCEDURE InitBaseFlow
 END INTERFACE
 
-INTERFACE UpdateBaseflow
-  MODULE PROCEDURE UpdateBaseflow
+INTERFACE UpdateBaseFlow
+  MODULE PROCEDURE UpdateBaseFlow
 END INTERFACE
 
-INTERFACE FinalizeBaseflow
-  MODULE PROCEDURE FinalizeBaseflow
+INTERFACE FinalizeBaseFlow
+  MODULE PROCEDURE FinalizeBaseFlow
 END INTERFACE
 
-PUBLIC :: DefineParametersBaseflow
-PUBLIC :: InitBaseflow
-PUBLIC :: UpdateBaseflow
-PUBLIC :: FinalizeBaseflow
+PUBLIC :: DefineParametersBaseFlow
+PUBLIC :: InitBaseFlow
+PUBLIC :: UpdateBaseFlow
+PUBLIC :: FinalizeBaseFlow
 !==================================================================================================================================
 
 CONTAINS
@@ -50,45 +51,39 @@ CONTAINS
 !==================================================================================================================================
 !> Define parameters of basflow to compute a moving time-average during simulation runtime
 !==================================================================================================================================
-SUBROUTINE DefineParametersBaseflow()
+SUBROUTINE DefineParametersBaseFlow()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-CALL prms%SetSection("Baseflow")
-CALL prms%CreateLogicalOption( 'doBaseflow'             ,"Switch on to calculate a baseflow."                                     &
-                                                        ,'.FALSE.')
-CALL prms%CreateLogicalOption( 'doBaseflowRMS'          ,"Switch on to calculate a baseflow of velocity fluctuations."            &
+CALL prms%SetSection("BaseFlow")
+CALL prms%CreateLogicalOption( 'doBaseFlow'             ,"Switch on to calculate a baseflow."                                     &
                                                         ,'.FALSE.')
 CALL prms%CreateStringOption(  'BaseFlowFile'           ,"FLEXI file (e.g. baseflow, TimeAvg) from which baseflow is read."       &
                                                         ,'none')
 CALL prms%CreateIntOption(     'BaseFlowRefState'       ,"Specify which refstate should be used in no baseflowfile is given.")
 CALL prms%CreateIntArrayOption('SelectiveFilter'        ,"Filter Mean to another polynomial degree.",'(/-999,-999,-999/)')
-CALL prms%CreateRealOption(    'TimeFilterWidthBaseflow',"Temporal filter width of exponential, explicit time filter.")
-END SUBROUTINE DefineParametersBaseflow
+CALL prms%CreateRealOption(    'TimeFilterWidthBaseFlow',"Temporal filter width of exponential, explicit time filter.",'1.0')
+END SUBROUTINE DefineParametersBaseFlow
 
 
 !==================================================================================================================================
 !> Perform init of baseflow
 !==================================================================================================================================
-SUBROUTINE InitBaseflow()
+SUBROUTINE InitBaseFlow()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Baseflow_Vars
-USE MOD_Baseflow_Filter,    ONLY: InitBaseflowFilter,BaseflowFilter
-USE MOD_Baseflow_Readin,    ONLY: ReadBaseFlow
-USE MOD_EOS,                ONLY: ConsToPrim
+USE MOD_BaseFlow_Vars
+USE MOD_BaseFlow_Filter,    ONLY: InitBaseFlowFilter,BaseFlowFilter
+USE MOD_BaseFlow_Readin,    ONLY: ReadBaseFlow
 USE MOD_Equation_Vars,      ONLY: RefStateCons
 USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_ReadInTools,        ONLY: GETSTR,GETINT,GETREAL,GETINTARRAY,GETLOGICAL
 USE MOD_Restart_Vars,       ONLY: doRestart,RestartTime
 USE MOD_StringTools,        ONLY: STRICMP
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-USE MOD_Baseflow_Readin,    ONLY: ReadBaseFlowRMS
-#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -102,23 +97,23 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT BASEFLOW ...'
 
 ! Check if baseflow is switched on, otherwise throw a notification
-IF (.NOT. doBaseflow)    doBaseflow    = GETLOGICAL('doBaseflow')
-IF (.NOT. doBaseflowRMS) doBaseFlowRMS = GETLOGICAL('doBaseFlowRMS')
-IF(.NOT. doBaseflow) THEN
-  LBWRITE(UNIT_stdOut,'(A)') ' | Baseflow is not computed. Switch on if desired ...'
+IF (.NOT. doBaseFlow)    doBaseFlow    = GETLOGICAL('doBaseFlow')
+
+IF(.NOT. doBaseFlow) THEN
+  SWRITE(UNIT_stdOut,'(A)') ' | BaseFlow is not computed. Switch on if desired ...'
   SWRITE(UNIT_stdOut,'(A)')' INIT BASEFLOW DONE!'
   SWRITE(UNIT_stdOut,'(132("-"))')
   RETURN
 END IF
 
-ALLOCATE(TimeFilterWidthBaseflow(nElems))
+ALLOCATE(TimeFilterWidthBaseFlow(nElems))
 ALLOCATE(fac(nElems))
 fac                     = 0.
-TimeFilterWidthBaseflow = 1./GETREAL("TimeFilterWidthBaseflow")
+TimeFilterWidthBaseFlow = 1./GETREAL("TimeFilterWidthBaseFlow")
 BaseFlowFile            = GETSTR('BaseFlowFile')
 
 ! Check if the previous baseflow file is available
-IF (doRestart .AND. STRICMP(TRIM(BaseflowFile),'none')) THEN
+IF (doRestart .AND. STRICMP(TRIM(BaseFlowFile),'none')) THEN
   FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
   SWRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO') ' | Searching for baseflow file "',TRIM(FileName),'" ...'
   IF (FILEEXISTS(FileName)) THEN
@@ -129,26 +124,16 @@ IF (doRestart .AND. STRICMP(TRIM(BaseflowFile),'none')) THEN
   END IF
 END IF
 
-ALLOCATE(BaseFlow(    PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ALLOCATE(BaseFlowPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-IF (doBaseFlowRMS) THEN
-  ALLOCATE(BaseFlowFiltered(    PP_nVar+PP_nVarRMS,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-  ALLOCATE(BaseFlowPrimFiltered(PP_nVarPrim       ,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ELSE
-#endif /* NAVIER-STOKES */
-  ALLOCATE(BaseFlowFiltered     (PP_nVar          ,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-  ALLOCATE(BaseFlowPrimFiltered(PP_nVarPrim       ,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-END IF
-#endif /* NAVIER-STOKES */
-BaseFlow     = 0.
-BaseFlowPrim = 0.
+ALLOCATE(BaseFlow(        PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(BaseFlowFiltered(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
-IF (.NOT. (STRICMP(TRIM(BaseflowFile),'none'))) THEN
+BaseFlow         = 0.
+BaseFlowFiltered = 0.
+
+IF (.NOT. (STRICMP(TRIM(BaseFlowFile),'none'))) THEN
   CALL ReadBaseFlow(BaseFlowFile)
 ELSE
-  BaseFlowRefState = GETINT('BaseflowRefState')
+  BaseFlowRefState = GETINT('BaseFlowRefState')
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       BaseFlow(:,i,j,k,iElem) = RefStateCons(:,BaseFlowRefState)
@@ -156,43 +141,28 @@ ELSE
   END DO
 END IF
 
-! Convert conservative BaseFlow to primitive variables
-CALL ConsToPrim(PP_N,BaseFlowPrim,BaseFlow)
+! Filtering of BaseFlow
+BaseFlowFiltered = BaseFlow
+CALL InitBaseFlowFilter()
+CALL BaseFlowFilter()
 
-BaseFlowFiltered(1:PP_nVar,:,:,:,:) = BaseFlow
-
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-IF (doBaseFlowRMS) THEN
-  ALLOCATE(BaseFlowRMS(PP_nVarRMS,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-  BaseFlowRMS = 0.
-  IF (.NOT. (STRICMP(TRIM(BaseflowFile),'none'))) CALL ReadBaseFlowRMS(BaseFlowFile)
-  BaseFlowFiltered(PP_nVar+1:PP_nVar+PP_nVarRMS,:,:,:,:) = BaseflowRMS
-END IF
-#endif /* NAVIER-STOKES */
-
-! Filtering of Baseflow
-CALL InitBaseflowFilter()
-CALL BaseflowFilter()
-CALL ConsToPrim(PP_N,BaseFlowPrimFiltered,BaseFlowFiltered(1:PP_nVar,:,:,:,:))
-
-initBaseflowDone = .TRUE.
+InitBaseFlowDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT BASEFLOW DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 
-END SUBROUTINE InitBaseflow
+END SUBROUTINE InitBaseFlow
 
 
 !==================================================================================================================================
 !>Integrate the Pruett baseflow (time-filtered solution) in time using a simple Euler forward approach:
 !>\f$ \frac{d}{dt} \bar{u} \approx \frac{\bar{u}^{n+1} - \bar{u}^{n}}{\Delta t}= \frac{u^n-\bar{u}^n}{\Delta} \f$
 !==================================================================================================================================
-SUBROUTINE UpdateBaseflow(dt)
+SUBROUTINE UpdateBaseFlow(dt)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Baseflow_Filter,ONLY: BaseflowFilter
-USE MOD_Baseflow_Vars
-USE MOD_DG_Vars,        ONLY: U,UPrim
-USE MOD_EOS,            ONLY: ConsToPrim
+USE MOD_BaseFlow_Filter,ONLY: BaseFlowFilter
+USE MOD_BaseFlow_Vars
+USE MOD_DG_Vars,        ONLY: U
 USE MOD_Mesh_Vars,      ONLY: nElems
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -201,75 +171,35 @@ IMPLICIT NONE
 REAL,INTENT(IN) :: dt                                        !< Current timestep
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER         :: i,j,k,iElem
+INTEGER         :: iElem
 !==================================================================================================================================
-CALL ConsToPrim(PP_N,UPrim,U)
 DO iElem=1,nElems
-  fac(iElem) = MIN(dt*TimeFilterWidthBaseflow(iElem),1.0)
+  fac(iElem) = MIN(dt*TimeFilterWidthBaseFlow(iElem),1.0)
   BaseFlow(:,:,:,:,iElem) = BaseFlow(:,:,:,:,iElem)  + (U(:,:,:,:,iElem) - BaseFlow(:,:,:,:,iElem))*fac(iElem)
 END DO ! iElem
-! In zles_dev the filtered basflow gets converted to Prim
-CALL ConsToPrim(PP_N,BaseFlowPrim,BaseFlow)
-
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-! Compute Baseflow of RMS values
-IF(doBaseFlowRMS) THEN
-  DO iElem=1,nElems
-    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      BaseFlowRMS(1:3,i,j,k,iElem) = BaseFlowRMS(1:3,i,j,k,iElem) &
-                                   + ((UPrim(2:4,i,j,k,iElem) - BaseFlowPrimFiltered(2:4,i,j,k,iElem))**2 &
-                                   - BaseFlowRMS(1:3,i,j,k,iElem)) * fac(iElem)
-      BaseFlowRMS(4  ,i,j,k,iElem) = BaseFlowRMS(4  ,i,j,k,iElem) &
-                                   + (((UPrim(2,i,j,k,iElem) - BaseFlowPrimFiltered(2,i,j,k,iElem))*(UPrim(3,i,j,k,iElem) &
-                                   - BaseflowPrimFiltered(3,i,j,k,iElem)))&
-                                   - BaseFlowRMS(4,i,j,k,iElem)) * fac(iElem)
-      BaseFlowRMS(5  ,i,j,k,iElem) = BaseFlowRMS(5  ,i,j,k,iElem) &
-                                   + (((UPrim(2,i,j,k,iElem) - BaseFlowPrimFiltered(2,i,j,k,iElem))*(UPrim(4,i,j,k,iElem) &
-                                   - BaseflowPrimFiltered(4,i,j,k,iElem)))&
-                                   - BaseFlowRMS(5,i,j,k,iElem)) * fac(iElem)
-      BaseFlowRMS(6  ,i,j,k,iElem) = BaseFlowRMS(6  ,i,j,k,iElem) &
-                                   + (((UPrim(3,i,j,k,iElem) - BaseFlowPrimFiltered(3,i,j,k,iElem))*(UPrim(4,i,j,k,iElem) &
-                                   - BaseflowPrimFiltered(4,i,j,k,iElem)))&
-                                   - BaseFlowRMS(6,i,j,k,iElem))*fac(iElem)
-    END DO; END DO; END DO! i,j,k=0,PP_N
-  END DO ! iElem
-  BaseFlowFiltered(PP_nVar+1:PP_nVar+PP_nVarRMS,:,:,:,:) = BaseflowRMS
-END IF
-#endif /* NAVIER-STOKES */
-
-BaseflowFiltered(1:PP_nVar,:,:,:,:) = BaseFlow
 
 ! Selective Filter
-CALL BaseflowFilter()
-CALL ConsToPrim(PP_N,BaseflowPrimFiltered,BaseFlowFiltered(1:PP_nVar,:,:,:,:))
+BaseFlowFiltered = BaseFlow
+CALL BaseFlowFilter()
 
-END SUBROUTINE UpdateBaseflow
+END SUBROUTINE UpdateBaseFlow
 
 !==================================================================================================================================
 !> Finalizes variables necessary for baseflow.
 !==================================================================================================================================
-SUBROUTINE FinalizeBaseflow()
+SUBROUTINE FinalizeBaseFlow()
 ! MODULES
-USE MOD_Baseflow_Vars
+USE MOD_BaseFlow_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SDEALLOCATE(Baseflow)
-SDEALLOCATE(BaseflowFiltered)
-SDEALLOCATE(BaseflowPrim)
-SDEALLOCATE(BaseflowPrimFiltered)
-SDEALLOCATE(TimeFilterWidthBaseflow)
+SDEALLOCATE(BaseFlow)
+SDEALLOCATE(BaseFlowFiltered)
+SDEALLOCATE(TimeFilterWidthBaseFlow)
 SDEALLOCATE(fac)
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-IF (doBaseFlowRMS) THEN
-  SDEALLOCATE(BaseflowRMS)
-END IF
-#endif /* NAVIER-STOKES */
-IF (ANY(doSelectiveFilter)) THEN
-  SDEALLOCATE(SelectiveFilterMatrix)
-END IF
-END SUBROUTINE FinalizeBaseflow
+SDEALLOCATE(SelectiveFilterMatrix)
+END SUBROUTINE FinalizeBaseFlow
 
-END MODULE MOD_Baseflow
+END MODULE MOD_BaseFlow

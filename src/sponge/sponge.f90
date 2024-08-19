@@ -194,13 +194,8 @@ SELECT CASE(SpBaseFlowType)
     END IF
 #endif /*USE_LOADBALANCE*/
   CASE(SPONGEBASEFLOW_PRUETT)    ! Pruett sponge
-    IF (.NOT.doBaseFlow) THEN
-      CALL PrintWarning('Trying to use Pruett Sponge without enabling BaseFlow!\n'//&
-                        'To avoid crash, BaseFlow functionality is now enabled and reinitialized!') 
-      ! Enable BaseFlow and initialize
-      doBaseFlow = .TRUE.
-      CALL InitBaseFlow()
-    END IF
+    ! no readin but check if BaseFlow is enabled
+    IF (.NOT.doBaseFlow) CALL CollectiveStop(__STAMP__,"Pruett sponge only supported with BaseFlow enabled!")
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,"Undefined SpongeBaseFlow!")
 END SELECT

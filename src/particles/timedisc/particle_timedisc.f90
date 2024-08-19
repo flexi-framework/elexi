@@ -496,7 +496,7 @@ USE MOD_Particle_Emission,       ONLY: ParticleInserting
 USE MOD_Particle_TimeDisc_Vars,  ONLY: Pa_rebuilt,Pa_rebuilt_coeff,Pv_rebuilt,v_rebuilt
 USE MOD_Particle_Tracking,       ONLY: PerformTracking
 USE MOD_Particle_Vars,           ONLY: PartState,Pt,Pt_temp,PDM,PartSpecies,Species
-USE MOD_TimeDisc_Vars,           ONLY: RKA,RKc,nRKStages,b_dt
+USE MOD_TimeDisc_Vars,           ONLY: RKA,b_dt
 #if PARTICLES_COUPLING == 4
 USE MOD_Particle_Collision,      ONLY: UpdateParticleShared
 USE MOD_Particle_Collision_Method,ONLY: ComputeParticleCollisions

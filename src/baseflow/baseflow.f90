@@ -81,7 +81,7 @@ USE MOD_BaseFlow_Readin,    ONLY: ReadBaseFlow
 USE MOD_Equation_Vars,      ONLY: RefStateCons
 USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_ReadInTools,        ONLY: GETSTR,GETINT,GETREAL,GETINTARRAY,GETLOGICAL
+USE MOD_ReadInTools,        ONLY: GETSTR,GETINT,GETREAL,GETINTARRAY,GETLOGICAL,CountOption
 USE MOD_Restart_Vars,       ONLY: doRestart,RestartTime
 USE MOD_StringTools,        ONLY: STRICMP
 ! IMPLICIT VARIABLE HANDLING
@@ -133,12 +133,16 @@ BaseFlowFiltered = 0.
 IF (.NOT. (STRICMP(TRIM(BaseFlowFile),'none'))) THEN
   CALL ReadBaseFlow(BaseFlowFile)
 ELSE
-  BaseFlowRefState = GETINT('BaseFlowRefState')
-  DO iElem=1,nElems
-    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      BaseFlow(:,i,j,k,iElem) = RefStateCons(:,BaseFlowRefState)
-    END DO; END DO; END DO
-  END DO
+  ! Check if there are multiple RefState available
+  IF (CountOption('RefState').GT.1) THEN; BaseFlowRefState = GETINT('BaseFlowRefState')
+  ELSE                                  ; BaseFlowRefState = 1
+  END IF
+
+  DO iElem = 1,nElems
+     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+       BaseFlow(:,i,j,k,iElem) = RefStateCons(:,BaseFlowRefState)
+     END DO; END DO; END DO
+  END DO ! iElem = 1,nElems
 END IF
 
 ! Filtering of BaseFlow

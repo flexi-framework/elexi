@@ -500,6 +500,7 @@ USE MOD_TimeDisc_Vars,           ONLY: RKA,b_dt
 #if PARTICLES_COUPLING == 4
 USE MOD_Particle_Collision,      ONLY: UpdateParticleShared
 USE MOD_Particle_Collision_Method,ONLY: ComputeParticleCollisions
+USE MOD_TimeDisc_Vars,           ONLY: RKc,nRKStages
 #endif /*PARTICLES_COUPLING == 4*/
 #if USE_MPI
 USE MOD_Particle_MPI,            ONLY: IRecvNbOfParticles

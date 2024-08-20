@@ -208,7 +208,7 @@ SELECT CASE(DepositionType)
       ! CALL MPI_WIN_FLUSH(0,VertexVol_Shared_Win,iError)
       CALL BARRIER_AND_SYNC(VertexVol_Shared_Win  ,MPI_COMM_SHARED)
       IF (myComputeNodeRank.EQ.0) THEN
-        CALL MPI_ALLREDUCE(MPI_IN_PLACE,VertexVol_Shared,nUniqueFEMNodes,MPI_REAL,MPI_SUM,MPI_COMM_LEADERS_SHARED,iError)
+        CALL MPI_ALLREDUCE(MPI_IN_PLACE,VertexVol_Shared,nUniqueFEMNodes,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,iError)
       END IF ! myComputeNodeRank.EQ.0
       CALL BARRIER_AND_SYNC(VertexVol_Shared_Win  ,MPI_COMM_SHARED)
 

@@ -64,8 +64,7 @@ SUBROUTINE InitRHS(drag_factor, FD_Pointer)
 ! Init RHS
 !===================================================================================================================================
 ! MODULES
-USE MOD_Particle_Vars, ONLY:type_F
-!----------------------------------------------------------------------------------------------------------------------------------
+USE MOD_Particle_Vars,                ONLY: type_F
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -122,7 +121,6 @@ USE MOD_Particle_Vars,                ONLY: PDM, Pt
 USE MOD_Particle_Vars,                ONLY: bIter,N_Basset
 #endif /* USE_BASSETFORCE */
 ! #endif
-!----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -903,9 +901,9 @@ USE MOD_Particle_Vars,      ONLY: gradUx_master_loc,gradUx_slave_loc
 USE MOD_Particle_Vars,      ONLY: gradUy_master_loc,gradUy_slave_loc
 USE MOD_Particle_Vars,      ONLY: gradUz_master_loc,gradUz_slave_loc
 #endif
-!USE MOD_EoS,                ONLY: ConsToPrim
-!USE MOD_Equation_Vars,      ONLY: s13
-!USE MOD_Particle_Vars,      ONLY: U_local,gradp_local
+! USE MOD_EoS,                ONLY: ConsToPrim
+! USE MOD_Equation_Vars,      ONLY: s13
+! USE MOD_Particle_Vars,      ONLY: U_local,gradp_local
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -992,7 +990,6 @@ USE MOD_Particle_Vars,     ONLY : RepWarn
 #if USE_MPI
 USE MOD_Globals,           ONLY : MPIRoot
 #endif /*USE_MPI*/
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1028,7 +1025,6 @@ USE MOD_Particle_Vars,     ONLY : RepWarn
 #if USE_MPI
 USE MOD_Globals,           ONLY : MPIRoot
 #endif /*USE_MPI*/
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1059,7 +1055,6 @@ FUNCTION DF_Putnam(Rep, SphericityIC, Mp) RESULT(f)
 ! Compute the drag factor according to Putnam et al. (1961)
 !===================================================================================================================================
 ! MODULES
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1084,9 +1079,9 @@ FUNCTION DF_Haider(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
 ! Compute the drag factor according to Haider and Levenspiel (1989) valid for Rep<2.6e5
 !===================================================================================================================================
+! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 REAL,INTENT(IN)             :: Rep, SphericityIC, Mp
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1113,7 +1108,6 @@ FUNCTION DF_Hoelzer(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Equation_Vars,      ONLY: s13,s23
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1177,7 +1171,6 @@ FUNCTION DF_Loth(Rep, SphericityIC, Mp) RESULT(f)
 ! > Loth, E., Supersonic and hypersonic drag coefficients for a sphere, AIAA Journal, 2021, 59, 3261-3274
 !===================================================================================================================================
 ! MODULES
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1221,7 +1214,6 @@ FUNCTION DF_Ganser(Rep, SphericityIC, Mp) RESULT(f)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Equation_Vars,      ONLY: s13,s23
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1255,11 +1247,7 @@ SUBROUTINE CalcSourcePart()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Particle_Deposition_Vars  ,ONLY: PartSource,DepositionMethod
-#if FV_ENABLED
-USE MOD_FV_Vars                   ,ONLY: FV_Elems
-USE MOD_ChangeBasisByDim          ,ONLY: ChangeBasisVolume
-USE MOD_FV_Vars                   ,ONLY: FV_Vdm
-#endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1301,6 +1289,7 @@ USE MOD_FV_Vars                   ,ONLY: FV_Elems
 USE MOD_ChangeBasisByDim          ,ONLY: ChangeBasisVolume
 USE MOD_FV_Vars                   ,ONLY: FV_Vdm
 #endif /*FV_ENABLED*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

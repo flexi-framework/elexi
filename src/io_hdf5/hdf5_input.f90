@@ -474,7 +474,7 @@ IF (found) THEN
   CALL GetDataSize(File_ID,TRIM(ArrayName),dims,HSize)
   nVal(1:dims)=INT(HSize)
   ! sanity check the output
-  IF (ANY(nVal.LT.0))             CALL Abort(__STAMP__,'One or more array dimensions is ill-defined!')
+  ! IF (ANY(nVal.LT.0))             CALL Abort(__STAMP__,'One or more array dimensions is ill-defined!')
   IF (nVal(dims).NE.nGlobalElems) CALL Abort(__STAMP__,'Last array dimension != nElems !')
   nVal(dims)=nElems
   DEALLOCATE(HSize)

@@ -274,6 +274,12 @@ DO iPart = 1,PDM%ParticleVecLength
 #endif /*USE_MPI*/
   END DO
 
+  ! Locally completes at the origin all outstanding RMA operations initiated by the calling
+  ! process to the target process specified by rank on the specified window. For example,
+  ! after this routine completes, the user may reuse any buffers provided to put, get, or
+  ! accumulate operations.
+  CALL MPI_WIN_FLUSH_LOCAL(0,FEMNodeSource_Shared_Win,iError)
+
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
 ! #endif /*USE_LOADBALANCE*/
@@ -569,6 +575,12 @@ DO iPart = 1,PDM%ParticleVecLength
 #endif /*USE_MPI*/
   END DO
 
+  ! Locally completes at the origin all outstanding RMA operations initiated by the calling
+  ! process to the target process specified by rank on the specified window. For example,
+  ! after this routine completes, the user may reuse any buffers provided to put, get, or
+  ! accumulate operations.
+  CALL MPI_WIN_FLUSH_LOCAL(0,FEMNodeSource_Shared_Win,iError)
+
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
 ! #endif /*USE_LOADBALANCE*/
@@ -701,6 +713,12 @@ DO iPart = 1,PDM%ParticleVecLength
     FEMNodeSource_Shared(:,FEMNodeID(iNode)) = FEMNodeSource_Shared(:,FEMNodeID(iNode)) + NodeSource_tmp(:,iNode)
 #endif /*USE_MPI*/
   END DO
+
+  ! Locally completes at the origin all outstanding RMA operations initiated by the calling
+  ! process to the target process specified by rank on the specified window. For example,
+  ! after this routine completes, the user may reuse any buffers provided to put, get, or
+  ! accumulate operations.
+  CALL MPI_WIN_FLUSH_LOCAL(0,FEMNodeSource_Shared_Win,iError)
 
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem

@@ -205,7 +205,11 @@ SELECT CASE(DepositionType)
           CALL MPI_FETCH_AND_OP(Vol(iNode),dummyReal,MPI_DOUBLE_PRECISION,0,INT((NodeID-1)*SIZE_REAL,MPI_ADDRESS_KIND),MPI_SUM,VertexVol_Shared_Win,iError)
           END ASSOCIATE
         END DO ! iNode = 1,8
-        ! CALL MPI_WIN_FLUSH(0,VertexVol_Shared_Win,iError)
+        ! Locally completes at the origin all outstanding RMA operations initiated by the calling
+        ! process to the target process specified by rank on the specified window. For example,
+        ! after this routine completes, the user may reuse any buffers provided to put, get, or
+        ! accumulate operations.
+        CALL MPI_WIN_FLUSH_LOCAL(0,VertexVol_Shared_Win,iError)
       END DO ! iElem = 1,nElems
 
       ! > Complete the epoch - this will block until MPI is complete

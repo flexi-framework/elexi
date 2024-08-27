@@ -173,6 +173,10 @@ SELECT CASE(DepositionType)
       IF (myComputeNodeRank.EQ.0) VertexVol_Shared = 0.
       CALL BARRIER_AND_SYNC(VertexVol_Shared_Win  ,MPI_COMM_SHARED)
 
+      CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+                        ,    VertexVol_Shared_Win                                              &
+                        ,    iError)
+
       CALL GetNodesAndWeights(1,NodeType,FEM_xGP,FEM_wGP)
       DO k=0,1; DO j=0,1; DO i=0,1
         FEM_wGPVol(i,j,k) = FEM_wGP(i)*FEM_wGP(j)*FEM_wGP(k)
@@ -201,11 +205,21 @@ SELECT CASE(DepositionType)
           CALL MPI_FETCH_AND_OP(Vol(iNode),dummyReal,MPI_DOUBLE_PRECISION,0,INT((NodeID-1)*SIZE_REAL,MPI_ADDRESS_KIND),MPI_SUM,VertexVol_Shared_Win,iError)
           END ASSOCIATE
         END DO ! iNode = 1,8
-        CALL MPI_WIN_FLUSH(0,VertexVol_Shared_Win,iError)
+        ! CALL MPI_WIN_FLUSH(0,VertexVol_Shared_Win,iError)
       END DO ! iElem = 1,nElems
+
+      ! > Complete the epoch - this will block until MPI is complete
+      CALL MPI_WIN_FENCE(    0                                                                 &
+                        ,    VertexVol_Shared_Win                                              &
+                        ,    iError)
+      ! All done with the window - tell MPI there are no more epochs
+      CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+                        ,    VertexVol_Shared_Win                                              &
+                        ,    iError)
 
       ! Finish all RMA operation, flush the buffers and synchronize between compute nodes
       ! CALL MPI_WIN_FLUSH(0,VertexVol_Shared_Win,iError)
+
       CALL BARRIER_AND_SYNC(VertexVol_Shared_Win  ,MPI_COMM_SHARED)
       IF (myComputeNodeRank.EQ.0) THEN
         CALL MPI_ALLREDUCE(MPI_IN_PLACE,VertexVol_Shared,nUniqueFEMNodes,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,iError)

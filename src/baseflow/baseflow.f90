@@ -84,6 +84,9 @@ USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_ReadInTools,        ONLY: GETSTR,GETINT,GETREAL,GETINTARRAY,GETLOGICAL,CountOption
 USE MOD_Restart_Vars,       ONLY: doRestart,RestartTime
 USE MOD_StringTools,        ONLY: STRICMP
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars,   ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -93,8 +96,8 @@ IMPLICIT NONE
 INTEGER            :: i,j,k,iElem,BaseFlowRefState
 CHARACTER(LEN=255) :: FileName
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT BASEFLOW ...'
+LBWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)') ' INIT BASEFLOW ...'
 
 ! Check if baseflow is switched on, otherwise throw a notification
 IF (.NOT. doBaseFlow)    doBaseFlow    = GETLOGICAL('doBaseFlow')
@@ -124,35 +127,43 @@ IF (doRestart .AND. STRICMP(TRIM(BaseFlowFile),'none')) THEN
   END IF
 END IF
 
-ALLOCATE(BaseFlow(        PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ALLOCATE(BaseFlowFiltered(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  ALLOCATE(BaseFlow(        PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+  ALLOCATE(BaseFlowFiltered(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
-BaseFlow         = 0.
-BaseFlowFiltered = 0.
+  BaseFlow         = 0.
+  BaseFlowFiltered = 0.
 
-IF (.NOT. (STRICMP(TRIM(BaseFlowFile),'none'))) THEN
-  CALL ReadBaseFlow(BaseFlowFile)
-ELSE
-  ! Check if there are multiple RefState available
-  IF (CountOption('RefState').GT.1) THEN; BaseFlowRefState = GETINT('BaseFlowRefState')
-  ELSE                                  ; BaseFlowRefState = 1
+  IF (.NOT. (STRICMP(TRIM(BaseFlowFile),'none'))) THEN
+    CALL ReadBaseFlow(BaseFlowFile)
+  ELSE
+    ! Check if there are multiple RefState available
+    IF (CountOption('RefState').GT.1) THEN; BaseFlowRefState = GETINT('BaseFlowRefState')
+    ELSE                                  ; BaseFlowRefState = 1
+    END IF
+
+    DO iElem = 1,nElems
+       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+         BaseFlow(:,i,j,k,iElem) = RefStateCons(:,BaseFlowRefState)
+       END DO; END DO; END DO
+    END DO ! iElem = 1,nElems
   END IF
 
-  DO iElem = 1,nElems
-     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-       BaseFlow(:,i,j,k,iElem) = RefStateCons(:,BaseFlowRefState)
-     END DO; END DO; END DO
-  END DO ! iElem = 1,nElems
+  ! Filtering of BaseFlow
+  BaseFlowFiltered = BaseFlow
+  CALL InitBaseFlowFilter()
+  CALL BaseFlowFilter()
+#if USE_LOADBALANCE
+ELSE
+  CALL InitBaseFlowFilter()
 END IF
-
-! Filtering of BaseFlow
-BaseFlowFiltered = BaseFlow
-CALL InitBaseFlowFilter()
-CALL BaseFlowFilter()
+#endif /*USE_LOADBALANCE*/
 
 InitBaseFlowDone = .TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT BASEFLOW DONE!'
-SWRITE(UNIT_stdOut,'(132("-"))')
+LBWRITE(UNIT_stdOut,'(A)')' INIT BASEFLOW DONE!'
+LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitBaseFlow
 
@@ -195,16 +206,28 @@ END SUBROUTINE UpdateBaseFlow
 SUBROUTINE FinalizeBaseFlow()
 ! MODULES
 USE MOD_BaseFlow_Vars
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars,   ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SDEALLOCATE(BaseFlow)
-SDEALLOCATE(BaseFlowFiltered)
+
 SDEALLOCATE(TimeFilterWidthBaseFlow)
 SDEALLOCATE(fac)
 SDEALLOCATE(SelectiveFilterMatrix)
+
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  SDEALLOCATE(BaseFlow)
+  SDEALLOCATE(BaseFlowFiltered)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
+
 END SUBROUTINE FinalizeBaseFlow
 
 END MODULE MOD_BaseFlow

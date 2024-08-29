@@ -58,9 +58,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INOUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-CHARACTER(LEN=*),INTENT(IN)                 :: AreaStr         !< Area name
-TYPE(tArea),INTENT(INOUT),TARGET            :: locArea         !< Area type, will be filled in the routine
-INTEGER,INTENT(IN)                          :: AreaShape
+CHARACTER(LEN=*),INTENT(IN)             :: AreaStr         !< Area name
+TYPE(tArea),INTENT(INOUT),TARGET        :: locArea         !< Area type, will be filled in the routine
+INTEGER,INTENT(IN)                      :: AreaShape
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(tAreaList),ALLOCATABLE             :: AreasTmp(:)   ! Temporary list of all active areas
@@ -90,7 +90,7 @@ DEALLOCATE(AreasTmp)
 
 ! set name for area
 locArea%AreaStr = AreaStr
-SWRITE(UNIT_stdOut,'(A)')' Building '//TRIM(AreaStr)//' area!'
+LBWRITE(UNIT_stdOut,'(A)')' Building '//TRIM(AreaStr)//' area!'
 
 !==================== Get information on the Shape and flag elements ===================!
 
@@ -253,9 +253,10 @@ DO iElem = 1,nElems
   END IF
 END DO
 
-SWRITE(UNIT_stdOut,'(A)')' Building '//TRIM(AreaStr)//' area done!'
+LBWRITE(UNIT_stdOut,'(A)')' Building '//TRIM(AreaStr)//' area done!'
 
 END SUBROUTINE InitArea
+
 
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! Check if a point is inside a polygon(PolyX,PolyY)
@@ -338,6 +339,7 @@ IF (InOrOut .GE. 0) Inside = .TRUE.
 
 END SUBROUTINE PointInPoly
 
+
 !===================================================================================================================================
 !> \brief Finalize the area
 !>
@@ -346,6 +348,9 @@ SUBROUTINE FinalizeArea(locArea)
 ! MODULES
 USE MOD_Globals
 USE MOD_Areas_Vars
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -358,7 +363,13 @@ TYPE(tArea),INTENT(INOUT),TARGET            :: locArea          !< area type, wi
 
 SDEALLOCATE(locArea%AreaMap)
 SDEALLOCATE(locArea%Shape%AreaVertex)
-SDEALLOCATE(Areas)
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  SDEALLOCATE(Areas)
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE FinalizeArea
 

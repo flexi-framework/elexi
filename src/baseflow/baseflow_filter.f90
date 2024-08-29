@@ -82,6 +82,7 @@ IF (ANY(doSelectiveFilter)) THEN
 END IF
 END SUBROUTINE InitBaseFlowFilter
 
+
 !==================================================================================================================================
 !> Perform selective filter of baseflow
 !==================================================================================================================================
@@ -106,6 +107,7 @@ IF(ANY(doSelectiveFilter)) THEN
       END DO ! iElem
     END DO ! PP_dim
 END IF
+
 END SUBROUTINE BaseFlowFilter
 
 END MODULE MOD_BaseFlow_Filter

@@ -238,7 +238,7 @@ SELECT CASE(SpBaseFlowType)
 
   CASE(SPONGEBASEFLOW_FILE)      ! Base Flow from .h5 File
 #if USE_LOADBALANCE
-! In case of load balancing, all dimensions match. Only shift the solution along the SFC!
+    ! In case of load balancing, all dimensions match. Only shift the solution along the SFC!
     IF (.NOT.PerformLoadBalance) &
 #endif /*USE_LOADBALANCE*/
     ALLOCATE(SpRefState(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
@@ -321,26 +321,33 @@ LBWRITE(UNIT_stdOut,'(A)') ' | Initialize Sponge Ramping Function...'
 ! Precalculation of the sponge strength on the whole domain to determine actual sponge region
 nSpongeRamps = CountOption('SpongeShape')
 ALLOCATE(SpongeShape(   nSpongeRamps))
-ALLOCATE(Sponges(       nSpongeRamps))
-ALLOCATE(damping(       nSpongeRamps))
-ALLOCATE(SpongeDistance(nSpongeRamps))
 ALLOCATE(dampingFac(    nSpongeRamps,nElems))
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  ALLOCATE(Sponges(       nSpongeRamps))
+  ALLOCATE(damping(       nSpongeRamps))
+  ALLOCATE(SpongeDistance(nSpongeRamps))
+#if USE_LOADBALANCE
+END IF ! PerformLoadBalace
+#endif /*USE_LOADBALANCE*/
 
 IF (SpBaseFlowType.EQ.SPONGEBASEFLOW_PRUETT) THEN
-  ALLOCATE(tempFilterWidthSp(nElems))
-  ALLOCATE(PruettTimeFilterWidth(nSpongeRamps))
+    ALLOCATE(PruettTimeFilterWidth(nSpongeRamps))
 
-  nTimeFilter = CountOption('tempFilterWidthSponge')
-  IF (nTimeFilter.EQ.1 ) THEN
-    PruettTimeFilterWidth = 1./GETREAL("tempFilterWidthSponge")
-  ELSE IF (nTimeFilter .EQ. nSpongeRamps ) THEN
-    DO iRamp = 1,nSpongeRamps
-      PruettTimeFilterWidth(iRamp) = 1./GETREAL("tempFilterWidthSponge")
-    END DO
-  ELSE
-    CALL CollectiveStop(__STAMP__,'Number of Pruett time filter width given does not match number of sponge ramps')
-  END IF
+    nTimeFilter = CountOption('tempFilterWidthSponge')
+    IF (nTimeFilter.EQ.1 ) THEN
+      PruettTimeFilterWidth = 1./GETREAL("tempFilterWidthSponge")
+    ELSE IF (nTimeFilter .EQ. nSpongeRamps ) THEN
+      DO iRamp = 1,nSpongeRamps
+        PruettTimeFilterWidth(iRamp) = 1./GETREAL("tempFilterWidthSponge")
+      END DO
+    ELSE
+      CALL CollectiveStop(__STAMP__,'Number of Pruett time filter width given does not match number of sponge ramps')
+    END IF
+
   ! Set initial value
+  ALLOCATE(tempFilterWidthSp(nElems))
   tempFilterWidthSp = 0. !PruettTimeFilterWidth(1)
 END IF
 
@@ -362,8 +369,8 @@ DO iRamp=1,nSpongeRamps
 
   ! Read in Sponge Distance
   SELECT CASE(SpongeShape(iRamp))
-  CASE(SHAPE_REGION,SHAPE_CYLINDRICAL_OUTER,SHAPE_CUBOID_CARTESIAN)
-    SpongeDistance(iRamp) = GETREAL("SpongeDistance")
+    CASE(SHAPE_REGION,SHAPE_CYLINDRICAL_OUTER,SHAPE_CUBOID_CARTESIAN)
+      SpongeDistance(iRamp) = GETREAL("SpongeDistance")
   END SELECT
 
   ! Initialize sponge areas
@@ -752,9 +759,10 @@ END SUBROUTINE Sponge
 SUBROUTINE FinalizeSponge()
 ! MODULES
 USE MOD_Areas
-USE MOD_Sponge_Vars      ,ONLY:Sponges,nSpongeRamps
-USE MOD_Sponge_Vars      ,ONLY:SpongeMat,SpongeMap,SpRefState
-USE MOD_Sponge_Vars      ,ONLY:SpongeMat_Out
+USE MOD_Sponge_Vars      ,ONLY: damping
+USE MOD_Sponge_Vars      ,ONLY: Sponges,nSpongeRamps
+USE MOD_Sponge_Vars      ,ONLY: SpongeMat,SpongeMap,SpongeDistance,SpRefState
+USE MOD_Sponge_Vars      ,ONLY: SpongeMat_Out,tempFilterWidthSp
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars ,ONLY: PerformLoadBalance
 #endif /*USE_LOADBALANCE*/
@@ -767,13 +775,17 @@ INTEGER       :: iRamp
 DO iRamp=1,nSpongeRamps
   CALL FinalizeArea(Sponges(iRamp))
 END DO
-SDEALLOCATE(Sponges)
 SDEALLOCATE(SpongeMap)
 SDEALLOCATE(SpongeMat)
 SDEALLOCATE(SpongeMat_Out)
+SDEALLOCATE(tempFilterWidthSp)
+
 #if USE_LOADBALANCE
 IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
+  SDEALLOCATE(Sponges)
+  SDEALLOCATE(damping)
+  SDEALLOCATE(SpongeDistance)
   SDEALLOCATE(SpRefState)
 #if USE_LOADBALANCE
 END IF

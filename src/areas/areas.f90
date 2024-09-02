@@ -34,7 +34,9 @@ INTERFACE FinalizeArea
   MODULE PROCEDURE FinalizeArea
 END INTERFACE
 
-PUBLIC::InitArea,FinalizeArea,PointInPoly
+PUBLIC :: InitArea
+PUBLIC :: FinalizeArea
+PUBLIC :: PointInPoly
 !==================================================================================================================================
 
 CONTAINS

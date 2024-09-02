@@ -788,8 +788,8 @@ END IF
 IF (file_exists) THEN
   ! If we have a restart we need to find the position from where to move on.
   ! Read the values from the previous analyse interval, get the CPUtime
-  WRITE(UNIT_stdOut,'(A)')              ' | Opening file '//TRIM(FileName_loc)
-  WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Searching file for time stamp...'
+  LBWRITE(UNIT_stdOut,'(A)')              ' | Opening file '//TRIM(FileName_loc)
+  LBWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Searching file for time stamp...'
 
   REWIND(ioUnit)
   ! Loop over header and try to read the first data line. Header size depends on output format.
@@ -857,9 +857,9 @@ IF (file_exists) THEN
     ! Delete from here to end of file
     BACKSPACE(ioUnit)
     ENDFILE(ioUnit)
-    WRITE(UNIT_stdOut,'(A,ES15.5)',ADVANCE='YES')' Searching file for time stamp successfull. Resuming file at time ',Dummytime
+    LBWRITE(UNIT_stdOut,'(A,ES15.5)',ADVANCE='YES')' Searching file for time stamp successfull. Resuming file at time ',Dummytime
   ELSE
-    WRITE(UNIT_stdOut,'(A)'       ,ADVANCE='YES')' Searching file time for stamp failed. Appending data to end of file.'
+    LBWRITE(UNIT_stdOut,'(A)'       ,ADVANCE='YES')' Searching file time for stamp failed. Appending data to end of file.'
   END IF
 END IF
 CLOSE(ioUnit)

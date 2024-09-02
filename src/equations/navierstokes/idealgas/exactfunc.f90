@@ -79,6 +79,7 @@ CALL addStrListEntry('IniExactFunc','sinevelyt'         ,42)
 CALL addStrListEntry('IniExactFunc','sinevelz'          ,43)
 CALL addStrListEntry('IniExactFunc','sinevelnorho'      ,44)
 CALL addStrListEntry('IniExactFunc','roundjet'          ,5)
+CALL addStrListEntry('IniExactFunc','parabjet'          ,51)
 CALL addStrListEntry('IniExactFunc','cylinder'          ,6)
 CALL addStrListEntry('IniExactFunc','shuvortex'         ,7)
 CALL addStrListEntry('IniExactFunc','couette'           ,8)
@@ -166,9 +167,14 @@ SELECT CASE (IniExactFunc)
     AdvVel          = GETREALARRAY('AdvVel',3)
     IniFrequency    = GETREAL('IniFrequency','1.0')
     IniAmplitude    = GETREAL('IniAmplitude','0.1')
-  CASE(5) ! Roundjet
-    JetRadius        = GETREAL('JetRadius','1.0')
-    JetEnd           = GETREAL('JetEnd   ','10.0')
+  CASE(5,33)
+    JetRadius       = GETREAL('JetRadius')
+    JetEnd          = GETREAL('JetEnd')
+    RoundjetInitDone =.TRUE.
+  CASE(51)
+    JetRadius       = GETREAL('JetRadius')
+    JetEnd          = GETREAL('JetEnd')
+    JetAmplitude    = GETREAL('JetAmplitude')
     RoundjetInitDone =.TRUE.
   CASE(7) ! Shu Vortex
     IniCenter        = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
@@ -176,22 +182,18 @@ SELECT CASE (IniExactFunc)
     IniAmplitude     = GETREAL('IniAmplitude','0.2')
     IniHalfwidth     = GETREAL('IniHalfwidth','0.2')
   CASE(8) ! couette-poiseuille flow
-    P_Parameter      = GETREAL('P_Parameter')
-    U_Parameter      = GETREAL('U_Parameter')
+    P_Parameter     = GETREAL('P_Parameter')
+    U_Parameter     = GETREAL('U_Parameter')
   CASE(10,14) ! shock
-    MachShock        = GETREAL('MachShock')
-    PreShockDens     = GETREAL('PreShockDens')
+    MachShock       = GETREAL('MachShock')
+    PreShockDens    = GETREAL('PreShockDens')
     xShock           = GETREAL('xs')
   CASE(11) ! sod
     xShock           = GETREAL('xs')
   CASE(15)
-    HarmonicFrequency= GETREAL('HarmonicFrequency')
-    AmplitudeFactor  = GETREAL('AmplitudeFactor')
-    SiqmaSqr         = GETREAL('SigmaSqr')
-  CASE(33) ! Roundjet
-    JetRadius        = GETREAL('JetRadius')
-    JetEnd           = GETREAL('JetEnd')
-    RoundjetInitDone =.TRUE.
+    HarmonicFrequency = GETREAL('HarmonicFrequency')
+    AmplitudeFactor   = GETREAL('AmplitudeFactor')
+    SiqmaSqr          = GETREAL('SigmaSqr')
 #if PARABOLIC
   CASE(1338) ! Blasius boundary layer solution
     delta99_in       = GETREAL('delta99_in')
@@ -238,7 +240,7 @@ USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
 USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniFrequency,IniAxis,AdvVel,AdvArray
 USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens,xShock
 USE MOD_Exactfunc_Vars ,ONLY: P_Parameter,U_Parameter
-USE MOD_Exactfunc_Vars ,ONLY: JetRadius,JetEnd
+USE MOD_Exactfunc_Vars ,ONLY: JetRadius,JetEnd,JetAmplitude
 USE MOD_Equation_Vars  ,ONLY: IniRefState,RefStateCons,RefStatePrim
 USE MOD_Timedisc_Vars  ,ONLY: fullBoundaryOrder,CurrentStage,dt,RKb,RKc,t
 USE MOD_TestCase       ,ONLY: ExactFuncTestcase
@@ -612,6 +614,21 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   CALL PrimToCons(prim,ResuR)
   ! after x/r0=10 blend to ResuR
   Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)/JetRadius-JetEnd))
+CASE(51)
+  ! Parabolic velocity distribution following
+  ! "Benchmark Computations of Laminar Flow Around a Cylinder", Schäfer and Turek, 1996.
+  ! https://doi.org/10.1007/978-3-322-89849-4_39
+  ! ATTENTION: In contrast to paper, velocity profile is defined around y,z=0. and NOT y,z=H/2.
+  prim = RefStatePrim(:,RefState)
+  prim(VELV) = 0.
+  IF (NORM2(x(2:PP_dim)).LE.JetRadius) THEN
+    prim(VEL1) = JetAmplitude*4.*(JetRadius-(x(2)))*(JetRadius+(x(2)))/(2.*JetRadius)**2 ! 2D-1, 2D-2
+#if PP_dim == 3
+    ! Multiply contribution of z-dimension
+    prim(VEL1) = prim(VEL1)  *4.*(JetRadius-(x(3)))*(JetRadius+(x(3)))/(2.*JetRadius)**2 ! 3D-1, 3D-2
+#endif
+  END IF
+  CALL PrimToCons(prim,resu)
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow
     prim(DENS)=RefStatePrim(DENS,RefState)  ! Density

@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -91,10 +92,11 @@ USE MOD_MPI_Vars           ,ONLY: offsetElemMPI
 USE MOD_Visu_Vars          ,ONLY: FVAmountAvg2D,mapElemIJToFVElemAvg2D,nElemsAvg2D_FV
 USE MOD_Visu_Vars          ,ONLY: NVisu_FV,nElems_FV,mapFVElemsToAllElems,hasFV_Elems
 USE MOD_Visu_Vars          ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems,changedAvg2D
-#endif
+#endif /*FV_ENABLED*/
 #if USE_MPI
 USE MOD_MPI_Vars           ,ONLY: offsetElemMPI
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -246,7 +248,8 @@ USE MOD_Visu_Vars          ,ONLY: NVisu
 USE MOD_Visu_Vars          ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapAllBCSidesToFVVisuBCSides
 USE MOD_Visu_Vars          ,ONLY: NVisu_FV,hasFV_Elems
 USE MOD_Visu_Vars          ,ONLY: changedMeshFile,changedFV_Elems,changedBCnames
-#endif
+#endif /*FV_ENABLED*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

@@ -827,7 +827,7 @@ USE MOD_FV_Vars   ,ONLY: FV_Metrics_NormVec_slave,FV_Metrics_TangVec1_slave
 USE MOD_FV_Vars   ,ONLY: FV_Metrics_NormVec_master,FV_Metrics_TangVec1_master
 USE MOD_FV_Vars   ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave
 #if VOLINT_VISC
-USE MOD_Mesh_Vars          ,ONLY: ElemToSide,S2V
+USE MOD_Mesh_Vars ,ONLY: ElemToSide,S2V
 #endif /* VOLINT_VISC */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

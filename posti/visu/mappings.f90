@@ -88,6 +88,7 @@ CALL CloseDataFile()
 
 SDEALLOCATE(FV_Elems_loc)
 ALLOCATE(FV_Elems_loc(1:nElems))
+FV_Elems_loc = 0
 #if FV_ENABLED
 IF (.NOT.DGonly) THEN
   NVisu_FV = (PP_N+1)*2-1
@@ -104,7 +105,6 @@ IF (.NOT.DGonly) THEN
     ALLOCATE(ElemData_loc(nVal(1),nVal(2)))
     ElemData_loc = RESHAPE(tmp,(/nVal(1),nVal(2)/))
     ! search for FV_Elems
-    FV_Elems_loc = 0
     DO iVar=1,nVal(1)
       IF (STRICMP(VarNamesElemData_loc(iVar),"FV_Elems")) THEN
         FV_Elems_loc = INT(ElemData_loc(iVar,:))
@@ -159,7 +159,6 @@ ELSE
 END IF
 #endif
 
-
 ! check if the distribution of DG/FV elements has changed
 changedFV_Elems=.TRUE.
 IF (ALLOCATED(FV_Elems_old).AND.(SIZE(FV_Elems_loc).EQ.SIZE(FV_Elems_old))) THEN
@@ -167,9 +166,9 @@ IF (ALLOCATED(FV_Elems_old).AND.(SIZE(FV_Elems_loc).EQ.SIZE(FV_Elems_old))) THEN
 END IF
 SDEALLOCATE(FV_Elems_old)
 ALLOCATE(FV_Elems_old(1:nElems))
-FV_Elems_old = FV_Elems_loc
-
+FV_Elems_old   = FV_Elems_loc
 nElems_FV_glob = SUM(FV_Elems_loc)
+
 #if USE_MPI
 ! check if any processor has FV elements
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,nElems_FV_glob,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,iError)

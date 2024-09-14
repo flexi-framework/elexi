@@ -27,8 +27,8 @@ SAVE
 ! Output format for state visualization
 INTEGER                           :: OutputFormat              = 3
 INTEGER,PARAMETER                 :: OUTPUTFORMAT_NONE         = 0
-INTEGER,PARAMETER                 :: OUTPUTFORMAT_TECPLOT      = 1
-INTEGER,PARAMETER                 :: OUTPUTFORMAT_TECPLOTASCII = 2
+! INTEGER,PARAMETER                 :: OUTPUTFORMAT_TECPLOT      = 1
+! INTEGER,PARAMETER                 :: OUTPUTFORMAT_TECPLOTASCII = 2
 INTEGER,PARAMETER                 :: OUTPUTFORMAT_PARAVIEW     = 3
 INTEGER,PARAMETER                 :: OUTPUTFORMAT_HDF5         = 4
 !==================================================================================================================================
@@ -53,6 +53,8 @@ INTEGER                           :: NCalc_old                   !< Different po
 INTEGER                           :: nVarIni                     !< number of requested variables in parameter file
 INTEGER                           :: nVar_State                  !< number of variables in the state file
 INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State
+CHARACTER(LEN=255)                :: NodeType_State              !< NodeType in the state file
+CHARACTER(LEN=255)                :: NodeType_State_old          !< saves previous NodeType_State
 INTEGER                           :: nState_old = -1             !< saves previous PP_N
 INTEGER                           :: nElems_DG                   !< number of DG elements in state
 INTEGER                           :: nElems_FV                   !< number of FV elements in state
@@ -76,11 +78,11 @@ LOGICAL                           :: doSurfVisu                  !< Flag indicat
 LOGICAL                           :: Avg2D                       !< Flag indicating if solution should be averaged in zeta dir
 LOGICAL                           :: Avg2D_old = .FALSE.         !< Previus state of Avg2D flag, used to check for change
 
-
 ! The following flags indicate if during successive visualizations of (different) state files the respective properties
 ! changed. For example the mesh file of different state files in a timeseries is the same ...
 LOGICAL                           :: changedStateFile            !< .h5 state file to visualize changed
 LOGICAL                           :: changedMeshFile             !< Mesh file changed
+LOGICAL                           :: changedNodeType             !< Node type changed
 LOGICAL                           :: changedNVisu                !< Polyomial degree for visualization changed
 LOGICAL                           :: changedNCalc                !< Polyomial degree for calculation changed
 LOGICAL                           :: changedVarNames             !< variables selected for visualization changed (ParaView plugin)

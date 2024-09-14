@@ -39,10 +39,10 @@ SUBROUTINE GetRecordPoints()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadIntools
+USE MOD_RPSet,             ONLY: CheckRecordPoints
 USE MOD_RPSet_Vars,        ONLY: RPSetInitIsDone
 USE MOD_Mesh_Vars,         ONLY: MeshInitIsDone
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys,ChebyGaussLobNodesAndWeights,BarycentricWeights,InitializeVandermonde
-USE MOD_rpset,             ONLY: CheckRecordPoints
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

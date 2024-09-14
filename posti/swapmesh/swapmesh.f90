@@ -489,16 +489,18 @@ SDEALLOCATE(VarNames_ElemData)
 SDEALLOCATE(UMean)
 !SDEALLOCATE(UFluc)
 DEALLOCATE(U_local)
+
 END SUBROUTINE ReadOldStateFile
+
 
 !===================================================================================================================================
 !> Write the new state file by calling the WriteState routine from FLEXI. All necessary variables must have been set correctly!
 !===================================================================================================================================
 SUBROUTINE WriteNewStateFile()
-! MODULES                                                                                                   
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_IO_HDF5            
+USE MOD_IO_HDF5
 USE MOD_HDF5_Output_State,  ONLY: WriteState
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Swapmesh_Vars,      ONLY: Time_State,MeshFileNew,NodeTypeOut,NodeTypeState
@@ -524,6 +526,7 @@ IF (NodeTypeOut.NE.NodeTypeState) THEN
 END IF
 
 END SUBROUTINE WriteNewStateFile
+
 
 !===================================================================================================================================
 !> Finalize swapmesh variables

@@ -26,7 +26,7 @@ PROGRAM PrepareRecordPoints
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
-USE MOD_ReadInTools,        ONLY:prms,PrintDefaultParameterFile,FinalizeParameters,GETSTR,GETINT
+USE MOD_ReadInTools,        ONLY:prms,PrintDefaultParameterFile,FinalizeParameters,GETSTR
 USE MOD_StringTools,        ONLY:STRICMP,GetFileExtension
 ! Flexilib initialization
 USE MOD_IO_HDF5,            ONLY:DefineParametersIO_HDF5,InitIOHDF5

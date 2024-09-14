@@ -233,8 +233,6 @@ END IF
 #endif /*USE_LOADBALANCE*/
 ALLOCATE(FV_alpha_master(nSides))
 ALLOCATE(FV_alpha_slave( nSides))
-FV_alpha = 0.
-CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
 
 #if PP_NodeType == 1
 ALLOCATE(FV_U_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))

@@ -176,26 +176,29 @@ CALL InitMPIInfo()
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies
 CALL prms%SetSection("posti")
-CALL prms%CreateStringOption(       "MeshFile"        , "Custom mesh file")
+CALL prms%CreateStringOption(       "MeshFile"        , "Custom mesh file ")
 CALL prms%CreateStringOption(       "OutputDirectory" , "Custom output directory")
-CALL prms%CreateIntFromStringOption("OutputFormat"    , "File format for visualization: None, Tecplot, TecplotASCII, ParaView, HDF5. "//&
-                                                        " Note: Tecplot output is currently unavailable due to licensing issues.",      &
-                                                        'paraview')
+CALL prms%CreateIntFromStringOption("OutputFormat"    , "File format for visualization: None,ParaView, HDF5."                           &
+                                                      , 'paraview')
 CALL addStrListEntry('OutputFormat','none'            , OUTPUTFORMAT_NONE)
-CALL addStrListEntry('OutputFormat','tecplot'         , OUTPUTFORMAT_TECPLOT)
-CALL addStrListEntry('OutputFormat','tecplotascii'    , OUTPUTFORMAT_TECPLOTASCII)
+! CALL addStrListEntry('OutputFormat','tecplot'         , OUTPUTFORMAT_TECPLOT)
+! CALL addStrListEntry('OutputFormat','tecplotascii'    , OUTPUTFORMAT_TECPLOTASCII)
 CALL addStrListEntry('OutputFormat','paraview'        , OUTPUTFORMAT_PARAVIEW)
 CALL addStrListEntry('OutputFormat','hdf5'            , OUTPUTFORMAT_HDF5)
-CALL prms%CreateStringOption(       "VarName"         , "Names of variables, which should be visualized.", multiple=.TRUE.)
-CALL prms%CreateLogicalOption(      "noVisuVars"      , "If no VarNames are given, this flags supresses visu of standard variables",&
-                                                        ".FALSE.")
+CALL prms%CreateStringOption(       "VarName"         , "Names of variables, which should be visualized."              , multiple=.TRUE.)
+CALL prms%CreateLogicalOption(      "noVisuVars"      , "If no VarNames are given, this flags supresses visu of standard variables"     &
+                                                      , '.FALSE.')
 CALL prms%CreateIntOption(          "NVisu"           , "Polynomial degree at which solution is sampled for visualization.")
 CALL prms%CreateIntOption(          "NCalc"           , "Polynomial degree at which calculations are done.")
-CALL prms%CreateLogicalOption(      "Avg2D"           , "Average solution in z-direction",".FALSE.")
-CALL prms%CreateStringOption(       "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
-CALL prms%CreateLogicalOption(      "DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
+CALL prms%CreateLogicalOption(      "Avg2D"           , "Average solution in z-direction"                                               &
+                                                      , '.FALSE.')
+CALL prms%CreateStringOption(       "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"              &
+                                                      , 'VISU')
+CALL prms%CreateLogicalOption(      "DGonly"          , "Visualize FV elements as DG elements."                                         &
+                                                      , '.FALSE.')
 CALL prms%CreateStringOption(       "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
-CALL prms%CreateLogicalOption(      "HighOrder"       , "Write high-order element representation",".FALSE.")
+CALL prms%CreateLogicalOption(      "HighOrder"       , "Write high-order element representation"                                       &
+                                                      , '.FALSE.')
 #if USE_PARTICLES
 CALL prms%CreateLogicalOption(      'VisuPart'        , "Visualize particles",".FALSE.")
 #endif
@@ -249,6 +252,8 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   CALL set_formatting(MERGE("blue ","green",changedStateFile))       ; SWRITE(UNIT_stdOut,'(L1)') changedStateFile       ; CALL clear_formatting()
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedMeshFile         "
   CALL set_formatting(MERGE("blue ","green",changedMeshFile))        ; SWRITE(UNIT_stdOut,'(L1)') changedMeshFile        ; CALL clear_formatting()
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedNodeType         "
+  CALL set_formatting(MERGE("blue ","green",changedNodeType))        ; SWRITE(UNIT_stdOut,'(L1)') changedNodeType        ; CALL clear_formatting()
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedNVisu            "
   CALL set_formatting(MERGE("blue ","green",changedNVisu))           ; SWRITE(UNIT_stdOut,'(L1)') changedNVisu           ; CALL clear_formatting()
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') " | changedNCalc            "
@@ -285,7 +290,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   CALL Build_mapBCSides()
 
   ! ===== calc solution =====
-  IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedNCalc) THEN
+  IF (changedStateFile.OR.changedWithDGOperator.OR.changedVarNames.OR.changedDGonly.OR.changedNCalc) THEN
     CALL CalcQuantities_DG()
 #if FV_ENABLED
     CALL CalcQuantities_FV()
@@ -293,7 +298,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
   IF (doSurfVisu) THEN
     ! calc surface solution
-    IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
+    IF (changedStateFile.OR.changedWithDGOperator.OR.changedVarNames.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
       CALL CalcSurfQuantities_DG()
 #if FV_ENABLED
       CALL CalcSurfQuantities_FV()
@@ -302,7 +307,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 
   ! ===== convert solution to visu grid =====
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedAvg2D) THEN
+  IF (changedStateFile.OR.changedWithDGOperator.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedAvg2D) THEN
     ! ===== Avg2d =====
     IF (Avg2d) THEN
       SDEALLOCATE(UVisu_DG)
@@ -339,7 +344,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
 
   IF (doSurfVisu) THEN
     ! convert Surface DG solution to visu grid
-    IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
+    IF (changedStateFile.OR.changedWithDGOperator.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
       CALL ConvertToSurfVisu_DG()
 #if FV_ENABLED
       CALL ConvertToSurfVisu_FV()
@@ -348,7 +353,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF ! doSurfVisu
 
   ! convert generic data to visu grid
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
+  IF (changedStateFile.OR.changedWithDGOperator.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
@@ -381,13 +386,13 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
 #endif
 
   ! Convert coordinates to visu grid
-  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D) &
+  IF (changedMeshFile.OR.changedNodeType.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D)   &
     CALL BuildVisuCoords()
 
   IF (doSurfVisu .AND. &
     ! Convert surface coordinates to visu grid
-    (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames)) &
-    CALL BuildSurfVisuCoords()
+    (changedMeshFile.OR.changedNodeType.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames)) &
+      CALL BuildSurfVisuCoords()
 END IF
 
 MeshFile_old          = MeshFile
@@ -400,6 +405,7 @@ withDGOperator_old    = withDGOperator
 DGonly_old            = DGonly
 Avg2D_old             = Avg2D
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
+NodeType_State_old    = NodeType_State
 NState_old            = PP_N
 RestartMode           = -1
 

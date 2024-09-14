@@ -338,7 +338,6 @@ IF (meshMode.GT.0) THEN
   lastMPISide_YOUR     = firstMortarMPISide-1
   lastMortarMPISide    = nSides
 
-
   firstMasterSide = 1
   lastMasterSide  = nSides
   firstSlaveSide  = firstInnerSide

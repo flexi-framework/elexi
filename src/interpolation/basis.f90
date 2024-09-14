@@ -372,7 +372,6 @@ REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)       !< Gauss point weights
 INTEGER,PARAMETER         :: nIter = 10        ! max. number of newton iterations
 REAL,PARAMETER            :: Tol   = 1.E-15    ! tolerance for Newton iteration: TODO: use variable tolerance here!
 INTEGER                   :: iGP,iter
-! REAL                      :: L_Np1,Lder_Np1    ! L_{N_in+1},Lder_{N_in+1}
 REAL                      :: q,qder,L          ! \f$ q=L_{N_in+1}-L_{N_in-1} \f$ ,qder is derivative, \f$ L=L_{N_in} \f$
 REAL                      :: dx                ! Newton step
 REAL                      :: xGP_init(1:N_in)  ! Initial guess for all inner nodes based on Hale and Townsend
@@ -394,7 +393,7 @@ DO iGP=1,N_in
   ! Newton iteration
   DO iter=0,nIter
     CALL qAndLEvaluationRadau(N_in,xGP(iGP),q,qder,L)
-    dx       = - q/qder
+    dx       = -q/qder
     xGP(iGP) = xGP(iGP)+dx
     IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
   END DO ! iter
@@ -670,7 +669,6 @@ END IF ! (mod(N_in,2) .EQ. 0)
 
 END SUBROUTINE LegGaussLobNodesAndWeights
 
-
 !==================================================================================================================================
 !> Computes barycentric (interpolation) weights for interpolation polynomial given by set of nodes. (Algorithm 30, Kopriva book)
 !==================================================================================================================================
@@ -697,7 +695,6 @@ END DO ! iGP
 wBary(:) = 1./wBary(:)
 
 END SUBROUTINE BarycentricWeights
-
 
 !==================================================================================================================================
 !> Computes polynomial differentiation matrix for interpolation polynomial given by set of nodes. (Algorithm 37, Kopriva book)

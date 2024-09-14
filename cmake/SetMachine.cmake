@@ -1,7 +1,13 @@
 # =========================================================================
 # Detect machine environments
 # =========================================================================
-CMAKE_HOST_SYSTEM_INFORMATION(RESULT CMAKE_FQDN_HOST QUERY FQDN)
+# Try to read from environment variable, prevent possible FQDN hostname stall
+SET(CMAKE_HOSTNAME "$ENV{CMAKE_HOSTNAME}")
+IF("${CMAKE_HOSTNAME}" STREQUAL "")
+  CMAKE_HOST_SYSTEM_INFORMATION(RESULT CMAKE_FQDN_HOST QUERY FQDN)
+ELSE()
+  SET(CMAKE_FQDN_HOST CMAKE_HOSTNAME)
+ENDIF()
 MARK_AS_ADVANCED(FORCE CMAKE_FQDN_HOST)
 MARK_AS_ADVANCED(FORCE CMAKE_HOSTNAME)
 SITE_NAME(CMAKE_HOSTNAME)
@@ -68,7 +74,7 @@ IF (MACHINE_USE_SCOREP)
 
   # Set default build type to profile
   IF (NOT CMAKE_BUILD_TYPE)
-    SET (CMAKE_BUILD_TYPE Profile CACHE STRING "Choose the type of build, options are: Debug Release Profile Sanitize." FORCE)
+    SET (CMAKE_BUILD_TYPE Profile CACHE STRING "Choose the type of build, options are: Release RelWithDebInfo Profile Debug Sanitize." FORCE)
   ENDIF (NOT CMAKE_BUILD_TYPE)
   IF (CMAKE_BUILD_TYPE MATCHES "Release")
     MESSAGE (WARNING "Score-P requires debug compile flags which are not available with BUILD_TYPE='Release'")

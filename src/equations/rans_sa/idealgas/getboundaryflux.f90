@@ -105,6 +105,9 @@ USE MOD_Viscosity
 #if PARABOLIC
 USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
 #endif
+#if FV_RECONSTRUCT
+USE MOD_Equation_Vars     ,ONLY: IniRefState
+#endif /*FV_RECONSTRUCT*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -260,7 +263,7 @@ USE MOD_EOS          ,ONLY: ConsToPrim,PrimtoCons
 USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
 USE MOD_ExactFunc    ,ONLY: ExactFunc
-USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
+USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -277,12 +280,12 @@ REAL,INTENT(OUT)        :: UPrim_boundary(PRIM,0:Nloc,0:ZDIM(Nloc)) !< resulting
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
-REAL                    :: absdiff(1:nRefState)
 INTEGER                 :: BCType,BCState
 REAL,DIMENSION(PP_nVar) :: Cons
 REAL                    :: MaOut
-REAL                    :: c,vmag,Ma,cb,pt,pb ! for BCType==23,24,25
-REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rminus,nv(3) ! for BCType==27
+REAL                    :: c,Ma,cb,pt,pb                         ! for BCType==23,24,25
+REAL                    :: U,Tb,Tt,tmp1,tmp2,tmp3,A,Rplus,nv(3)  ! for BCType==27
+! REAL                    :: Rminus                                ! for BCType==31
 !===================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
@@ -492,7 +495,16 @@ CASE(3,4,9,91,23,24,25,27)
       UPrim_boundary(VEL3,p,q) = U*DOT_PRODUCT(nv(:),Tangvec2(:,p,q)) ! correctly into global coordinates below
       UPrim_boundary(PRES,p,q) = pb
       UPrim_boundary(TEMP,p,q) = Tb
+      UPrim_boundary(NUSA,p,q) = RefStatePrim(NUSA,BCState) ! Use SA variable from the outside
     END DO; END DO !p,q
+  END SELECT
+
+  ! rotate state back to physical system
+  DO q=0,ZDIM(Nloc); DO p=0,Nloc
+    UPrim_boundary(VELV,p,q) = UPrim_boundary(VEL1,p,q)*NormVec( :,p,q) &
+                             + UPrim_boundary(VEL2,p,q)*TangVec1(:,p,q) &
+                             + UPrim_boundary(VEL3,p,q)*TangVec2(:,p,q)
+  END DO; END DO
 
 CASE(1) !Periodic already filled!
   CALL Abort(__STAMP__, &

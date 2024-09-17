@@ -579,6 +579,20 @@ IMPLICIT NONE
 
 ! Deallocate arrays
 SDEALLOCATE(tCurrent)
+SDEALLOCATE(ElemTime)
+SDEALLOCATE(ProcTime)
+SDEALLOCATE(LoadDistri)
+
+SDEALLOCATE(MPInElemSend)
+SDEALLOCATE(MPIoffsetElemSend)
+SDEALLOCATE(MPInElemRecv)
+SDEALLOCATE(MPIoffsetElemRecv)
+#if USE_PARTICLES
+SDEALLOCATE(MPInPartSend)
+SDEALLOCATE(MPIoffsetPartSend)
+SDEALLOCATE(MPInPartRecv)
+SDEALLOCATE(MPIoffsetPartRecv)
+#endif /*USE_PARTICLES*/
 
 #if USE_LOADBALANCE
 ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification

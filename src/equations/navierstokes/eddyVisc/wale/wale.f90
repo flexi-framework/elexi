@@ -16,44 +16,45 @@
 #include "eos.h"
 
 !===================================================================================================================================
-!> Subroutines necessary for calculating Vreman's Eddy-Viscosity, originally derived in
-!>   - Vreman, A. W. "An eddy-viscosity subgrid-scale model for turbulent shear flow: Algebraic theory and applications."
-!>     Physics of fluids 16.10 (2004): 3670-3681.
-!===================================================================================================================================
-MODULE MOD_Vreman
+!> Subroutines necessary for calculating the eddy-viscosity in the Wall-Adapting Local Eddy-Viscosity (WALE) model, derived in:
+!>   - Nicoud, F., Ducros, F. Subgrid-Scale Stress Modelling Based on the Square of the Velocity Gradient Tensor. Flow, Turbulence
+!>     and Combustion 62, 183–200 (1999). https://doi.org/10.1023/A:1009995426001
+!==================================================================================================================================
+MODULE MOD_WALE
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 
-INTERFACE InitVreman
-  MODULE PROCEDURE InitVreman
+INTERFACE InitWALE
+  MODULE PROCEDURE InitWALE
 END INTERFACE
 
-INTERFACE Vreman
-  MODULE PROCEDURE Vreman_Point
-  MODULE PROCEDURE Vreman_Volume
+INTERFACE WALE
+  MODULE PROCEDURE WALE_Point
+  MODULE PROCEDURE WALE_Volume
 END INTERFACE
 
-INTERFACE FinalizeVreman
-  MODULE PROCEDURE FinalizeVreman
+INTERFACE FinalizeWALE
+  MODULE PROCEDURE FinalizeWALE
 END INTERFACE
 
-PUBLIC::InitVreman, Vreman_Volume, FinalizeVreman
+PUBLIC::InitWALE, WALE_Volume, FinalizeWALE
 !===================================================================================================================================
 
 CONTAINS
 
 !===================================================================================================================================
-!> Get model parameters and initialize Vreman's model
+!> Get model parameters and initialize WALE model
 !===================================================================================================================================
-SUBROUTINE InitVreman()
+SUBROUTINE InitWALE()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_EddyVisc_Vars
-USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL,GETREALARRAY
+USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
-USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
+USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ,Elem_xGP
+USE MOD_EOS_Vars           ,ONLY: mu0
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -62,93 +63,92 @@ IMPLICIT NONE
 INTEGER :: i,j,k,iElem
 REAL    :: CellVol
 !===================================================================================================================================
-IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.VremanInitIsDone)THEN
+IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.WALEInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
-    "InitVreman not ready to be called or already called.")
+    "InitWALE not ready to be called or already called.")
 END IF
-LBWRITE(UNIT_stdOut,'(132("-"))')
-LBWRITE(UNIT_stdOut,'(A)') ' INIT VREMAN...'
+SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INIT WALE...'
 
 ! Read model coefficient
-! Vreman model, paper CS=Smagorinsky constant: 0.18
-! Vreman model, paper CS=Smagorinsky constant for FLEXI: 0.11
 CS = GETREAL('CS')
 
 ! Allocate precomputed (model constant*filter width)**2
 ALLOCATE(CSdeltaS2(nElems))
 
-! Readin custom limits of eddy viscosity
-muSGS_limits(:) = GETREALARRAY('eddyViscLimits',2)
-
-! Vreman: (CS*deltaS)**2 * SQRT(B/A) * dens
-! Calculate the filter width deltaS: deltaS = (Cell volume)^(1/3) / (PP_N+1)
+! WALE: (CS*deltaS)**2 * beta * dens
+! Calculate the filter width deltaS := (Cell volume)^(1/3) / (PP_N+1)
 DO iElem=1,nElems
   CellVol = 0.
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CellVol = CellVol + wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
   DeltaS(iElem)    = CellVol**(1./3.) / (REAL(PP_N)+1.)
-  CSdeltaS2(iElem) = 2.5 * (CS*DeltaS(iElem))**2
+  CsDeltaS2(iElem) = (DeltaS(iElem)*CS)**2.
 END DO
 
-VremanInitIsDone=.TRUE.
-LBWRITE(UNIT_stdOut,'(A)')' INIT VREMAN DONE!'
-LBWRITE(UNIT_stdOut,'(132("-"))')
-END SUBROUTINE InitVreman
+WALEInitIsDone=.TRUE.
+SWRITE(UNIT_stdOut,'(A)')' INIT WALE DONE!'
+SWRITE(UNIT_stdOut,'(132("-"))')
+
+END SUBROUTINE InitWALE
 
 
 !===================================================================================================================================
-!> Compute Vreman Eddy-Visosity
+!> Compute WALE eddy-visosity
 !===================================================================================================================================
-PPURE SUBROUTINE Vreman_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
+PPURE SUBROUTINE WALE_Point(gradUx,gradUy,gradUz,dens,CsDeltaS2,muSGS)
 ! MODULES
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx, gradUy, gradUz   !> Gradients in x,y,z directions
 REAL                          ,INTENT(IN)  :: dens       !> pointwise density
-REAL                          ,INTENT(IN)  :: CSdeltaS2  !> filter width
+REAL                          ,INTENT(IN)  :: CsDeltaS2  !> constant factor (CS*deltaS)**2
 REAL                          ,INTENT(OUT) :: muSGS      !> pointwise eddyviscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER      :: i,j,k
-REAL         :: alpha(3,3),beta(3,3)
-REAL         :: A,B
+REAL                                    :: g(3,3)    !> Velocity gradient tensor (g_ij)
+REAL                                    :: g_sq(3,3) !> Squared velocity gradient tensor (g^2_ij = g_ik * g_kj)
+REAL                                    :: tr_g_sq   !> Volumetric part of squared velocity gradient tensor (g^2_kk/3.)
+REAL                                    :: norm_S    !> Norm of strain rate tensor (S_ij*S_ij)
+                                                     !>   with: S_ij = 1/2*(g_ij + g_ji)
+REAL                                    :: norm_S_d  !> Norm of symmetric, deviatoric part of g_sq (S^d_ij*S^d_ij)
+                                                     !>   with: S^d_ij = 1/2*(g^2_ij + g^2_ji) - delta_ij*g^2_kk/3.   (Eq.10)
 !===================================================================================================================================
-alpha(1,:)=gradUx(LIFT_VELV)
-alpha(2,:)=gradUy(LIFT_VELV)
-alpha(3,:)=gradUz(LIFT_VELV)
-beta=0.
-DO j=1,3; DO i=1,3; DO k=1,3
-  beta(i,j)=beta(i,j)+alpha(k,i)*alpha(k,j)
-END DO; END DO; END DO! i,j,k=1,3
-B=beta(1,1)*beta(2,2)-beta(1,2)**2+beta(1,1)*beta(3,3)-beta(1,3)**2+beta(2,2)*beta(3,3)-beta(2,3)**2
+! Build velocity gradient tensor (g_ij)
+g(:,1)=gradUx(LIFT_VELV)
+g(:,2)=gradUy(LIFT_VELV)
+g(:,3)=gradUz(LIFT_VELV)
 
-A=0.
-DO j=1,3; DO i=1,3
-  A=A+alpha(i,j)*alpha(i,j)
-END DO; END DO! i,j=1,3
+! Squared gradient tensor (g^2_ij = g_ik * g_kj)
+g_sq(:,:) = MATMUL(g,g)
 
-! Vreman: 2.5*(CS * deltaS)**2 * SQRT(B/A) * dens
-! Check if gradients are small, since then quotient A/B tends towards 0/0, which is undefined.
-! Set mu_sgs=0 manually in this case instead. The limits here are chosen in an ad hoc manner.
-IF (B .LT. 1d-12 .OR. A .LT. 1d-5) THEN
-  muSGS = 0.
-ELSE
-  muSGS = CSdeltaS2 * SQRT(B/A) * dens
-END IF
-END SUBROUTINE Vreman_Point
+! Volumetric contribution of squared gradient tensor (g_kk/3.).
+tr_g_sq = (g_sq(1,1) + g_sq(2,2) + g_sq(3,3))/3.
+
+! Compute contractions of type (A_ij*A_ij) of S and S_d, respectively
+! (both matrices are symmetric => just take off-diagonal entries from upper triangle twice!)
+! 1.) S_ij*S_ij
+norm_S   = 0.5*( (g(1,2)+g(2,1))**2 + (g(2,3)+g(3,2))**2 + (g(3,1)+g(1,3))**2 ) & ! Off-diagonal elements
+         + g(1,1)**2 + g(2,2)**2 + g(3,3)**2                                      ! Diagonal elements
+! 2.) S^d_ij*S^d_ij (Account for trace as in Eq. (10))
+norm_S_d = 0.5*( (g_sq(1,2)+g_sq(2,1))**2 + (g_sq(2,3)+g_sq(3,2))**2 + (g_sq(3,1)+g_sq(1,3))**2 ) & ! Off-diagonal
+         + (g_sq(1,1)-tr_g_sq)**2 + (g_sq(2,2)-tr_g_sq)**2 + (g_sq(3,3)-tr_g_sq)**2                 ! Diagonal
+
+! WALE model: mu = rho * (DeltaS*C_w)**2 * beta
+muSGS = dens * CsDeltaS2 * norm_S_d**(3./2.) / (norm_S**(5./2.) + norm_S_d**(5./4.)) ! Eq. (13)
+END SUBROUTINE WALE_Point
 
 
 !===================================================================================================================================
-!> Compute Vreman Eddy-Visosity for the volume
+!> Compute WALE Eddy-Visosity for the volume
 !===================================================================================================================================
-SUBROUTINE Vreman_Volume()
+SUBROUTINE WALE_Volume()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,         ONLY: nElems
-USE MOD_EddyVisc_Vars,     ONLY: CSdeltaS2, muSGS, muSGS_limits
-USE MOD_EOS_Vars,          ONLY: mu0
+USE MOD_EddyVisc_Vars,     ONLY: CsDeltaS2, muSGS
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
 IMPLICIT NONE
@@ -160,19 +160,17 @@ INTEGER             :: i,j,k,iElem
 !===================================================================================================================================
 DO iElem = 1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    CALL Vreman_Point(gradUx(   :,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                           U(DENS,i,j,k,iElem),      CSdeltaS2(iElem),  muSGS(1,i,j,k,iElem))
-    ! Limit muSGS
-    muSGS(1,i,j,k,iElem) = MIN(MAX(muSGS(1,i,j,k,iElem),mu0*muSGS_limits(1)),mu0*muSGS_limits(2))
+    CALL WALE_Point(gradUx(   :,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
+                         U(DENS,i,j,k,iElem), CsDeltaS2(     iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
-END SUBROUTINE Vreman_Volume
+END SUBROUTINE WALE_Volume
 
 
 !===============================================================================================================================
-!> Deallocate arrays and finalize variables used by Vreman SGS model
+!> Deallocate arrays and finalize variables used by WALE SGS model
 !===============================================================================================================================
-SUBROUTINE FinalizeVreman()
+SUBROUTINE FinalizeWALE()
 ! MODULES
 USE MOD_EddyVisc_Vars
 IMPLICIT NONE
@@ -181,9 +179,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===============================================================================================================================
-SDEALLOCATE(CSdeltaS2)
-VremanInitIsDone = .FALSE.
+SDEALLOCATE(CsDeltaS2)
+WALEInitIsDone = .FALSE.
 
-END SUBROUTINE FinalizeVreman
+END SUBROUTINE FinalizeWALE
 
-END MODULE MOD_Vreman
+END MODULE MOD_WALE

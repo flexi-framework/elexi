@@ -30,16 +30,16 @@ IMPLICIT NONE
 PRIVATE
 
 INTERFACE InitSmagorinsky
-   MODULE PROCEDURE InitSmagorinsky
+  MODULE PROCEDURE InitSmagorinsky
 END INTERFACE
 
 INTERFACE Smagorinsky
-   MODULE PROCEDURE Smagorinsky_Point
-   MODULE PROCEDURE Smagorinsky_Volume
+  MODULE PROCEDURE Smagorinsky_Point
+  MODULE PROCEDURE Smagorinsky_Volume
 END INTERFACE
 
 INTERFACE FinalizeSmagorinsky
-   MODULE PROCEDURE FinalizeSmagorinsky
+  MODULE PROCEDURE FinalizeSmagorinsky
 END INTERFACE
 
 PUBLIC::InitSmagorinsky, Smagorinsky_Volume, FinalizeSmagorinsky
@@ -59,7 +59,7 @@ USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL,GETREALARRAY
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ,Elem_xGP
 USE MOD_EOS_Vars           ,ONLY: mu0
- IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ DO iElem=1,nElems
       damp(1,i,j,k,iElem) = 1. - EXP(-yPlus/26.) ! Van Driest damping factor
     END IF
   END DO; END DO; END DO
-  DeltaS(iElem) = CellVol**(1./3.)  / (REAL(PP_N)+1.)
+  DeltaS(iElem) = CellVol**(1./3.) / (REAL(PP_N)+1.)
 
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     damp(1,i,j,k,iElem) = (damp(1,i,j,k,iElem) * CS * deltaS(iElem))**2

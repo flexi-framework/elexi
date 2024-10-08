@@ -528,8 +528,6 @@ FUNCTION(add_exec target)
   # Strip executable/shared library when building in release mode
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:${target}>)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:libflexishared>)
-  # Create a symlink to elexi
-  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD DEPENDS "${target}" COMMAND ${CMAKE_COMMAND} -E create_symlink ${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/"elexi")
 ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)
@@ -725,6 +723,8 @@ ADD_EXEC(        flexi ./src/flexi.f90)
 ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib nooplib ${INTERNALLIBS})
 # Make sure that the script is executed even though cmake is not explicitly executed after the commit is changed in git
 ADD_DEPENDENCIES(flexi UpdateGitCommitHash)
+# Create a symlink to elexi
+ADD_CUSTOM_COMMAND(TARGET flexi POST_BUILD DEPENDS "flexi" COMMAND ${CMAKE_COMMAND} -E create_symlink flexi ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/"elexi")
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")

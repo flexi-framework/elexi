@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+title: 'ƎLexi'
+message: 'If you use this software, please cite it using the metadata from this file.'
+type: software
+authors:
+  - given-names: Patrick
+    family-names: Kopper
+    email: kopper@iag.uni-stuttgart.de
+    name-particle: Patrick
+    affiliation: University of Stuttgart
+    orcid: 'https://orcid.org/0000-0002-7613-0739'
+  - given-names: Anna
+    family-names: Schwarz
+    email: schwarz@iag.uni-stuttgart.de
+    affiliation: University of Stuttgart
+    orcid: 'https://orcid.org/0000-0002-3181-8230'
+  - given-names: Stephen M.
+    family-names: Copplestone
+    affiliation: boltzplatz - numerical plasma dynamics GmbH
+    email: copplestone@boltzplatz.eu
+  - given-names: Philip
+    family-names: Ortwein
+  - given-names: Andrea
+    family-names: Beck
+    email: beck@iag.uni-stuttgart.de
+    affiliation: University of Stuttgart
+    orcid: 'https://orcid.org/0000-0003-3634-7447'
+identifiers:
+  - type: doi
+    value: 10.1016/j.cpc.2023.108762
+    description: 'A framework for high-fidelity particle tracking on massively parallel systems'
+repository-code: 'https://github.com/flexi-framework/elexi'
+url: 'https://www.flexi-project.org'
+abstract: ' ƎLexi is a high-order numerical Eulerian-Lagrangian framework for solving PDEs, with a special focus on Computational Fluid Dynamics. FLEXI is based on the Discontinuous Galerkin Spectral Element Method (DGSEM), which allows for high-order of accuracy and fully unstructured hexahedral meshes. The solver is parallelized very efficiently for large-scale applications and scales to 500,000+ cores. Moreover, FLEXI comes with a capable pre- and postprocessing suite that enables complex simulation setups up to the finished visualization.'
+license: GPL-3.0

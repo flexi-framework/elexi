@@ -292,7 +292,8 @@ TYPE tGeometry
   REAL                                   :: zmax                              ! maximum z coord of all nodes
   ! periodic
   INTEGER                                :: nPeriodicVectors                  ! Number of periodic Vectors
-  REAL, ALLOCATABLE                      :: PeriodicVectors(:,:)              ! PeriodicVectors(1:3,1:nPeriodicVectors), 1:3=x,y,z
+  REAL   ,ALLOCATABLE                    :: PeriodicVectors(:,:)              ! PeriodicVectors(1:3,1:nPeriodicVectors), 1:3=x,y,z
+  INTEGER,ALLOCATABLE                    :: PeriodicMapping(:)                ! BC_ALPHA to periodic vectors
   INTEGER,ALLOCATABLE                    :: DirPeriodicVectors(:)             ! direction of periodic vectors
   LOGICAL                                :: directions(3)                     ! flag for direction
   ! required for cartesian BGM for desposition
@@ -316,8 +317,8 @@ TYPE tGeometry
   INTEGER                                :: FIBGMkminglob
   INTEGER                                :: FIBGMkmaxglob
 
-  REAL, ALLOCATABLE                      :: CharLength(:)                     ! Characteristic length for each cell: L=V^(1/3)
-  INTEGER, ALLOCATABLE                   :: ElemToRegion(:)                   ! ElemToRegion(1:nElems)
+  REAL   ,ALLOCATABLE                    :: CharLength(:)                     ! Characteristic length for each cell: L=V^(1/3)
+  INTEGER,ALLOCATABLE                    :: ElemToRegion(:)                   ! ElemToRegion(1:nElems)
 END TYPE
 
 TYPE (tGeometry)                         :: GEO

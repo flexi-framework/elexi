@@ -32,7 +32,7 @@ Kopper, P., Schwarz, A., Copplestone, S. M., Ortwein, P., Staudacher, S., and Be
 A framework for high-fidelity particle tracking on massively parallel systems
 Computer Physics Communications, 289, (2023), 108762
 ```
-or use the following Bibtex files
+or use the following Bibtex entry
 
     @article{elexi,
      title     = {A framework for high-fidelity particle tracking on massively parallel systems},

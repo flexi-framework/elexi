@@ -194,6 +194,7 @@ USE MOD_Particle_Analyze_Tools ,ONLY: CalcEkinPart
 USE MOD_Particle_Analyze_Vars  ,ONLY: CalcPartBalance,nPartIn,PartEkinIn
 USE MOD_Particle_Restart_Vars  ,ONLY: PartDataExists,EmissionTime
 USE MOD_Particle_Timedisc_Vars ,ONLY: RKdtFrac,RKdtFracTotal
+USE MOD_Particle_Tools         ,ONLY: IncreaseMaxParticleNumber
 USE MOD_Particle_Vars          ,ONLY: Species,nSpecies,PartSpecies,PDM,sumOfMatchedParticlesSpecies
 USE MOD_Particle_Vars          ,ONLY: DoPoissonRounding,DoTimeDepInflow,doPartIndex,PartIndex
 USE MOD_Timedisc_Vars          ,ONLY: dt,t,RKc,nRKStages,currentStage
@@ -370,6 +371,9 @@ DO i = 1,nSpecies
         ! Line below not required anymore, but might want to change back to silent fail later
         ! NbrOfParticle = 0
     END SELECT
+
+    ! Increase max particle number
+    IF (NbrOfParticle.GT.0) CALL IncreaseMaxParticleNumber(NbrOfParticle)
 
     CALL SetParticlePosition(i,iInit,NbrOfParticle)
     CALL SetParticleVelocity(i,iInit,NbrOfParticle,1)

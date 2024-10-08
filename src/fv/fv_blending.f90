@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -128,7 +129,7 @@ END SUBROUTINE FV_ExtendAlpha
 SUBROUTINE FV_ProlongFValphaToFace(FV_alpha,doMPISides)
 ! MODULES
 USE MOD_FV_Vars         ,ONLY: FV_alpha_master,FV_alpha_slave
-USE MOD_Mesh_Vars       ,ONLY: SideToElem,nSides,nElems
+USE MOD_Mesh_Vars       ,ONLY: SideToElem,nElems!,nSides
 USE MOD_Mesh_Vars       ,ONLY: firstMPISide_MINE,lastMortarMPISide,lastInnerSide
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -138,7 +139,7 @@ REAL,INTENT(INOUT)    :: FV_alpha(nElems)    !< elementwise blending coefficient
 LOGICAL,INTENT(IN)    :: doMPISides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER               :: iSide,ElemID,nbElemID,SideID
+INTEGER               :: ElemID,nbElemID,SideID!,iSide
 INTEGER               :: firstSideID,lastSideID
 !==================================================================================================================================
 ! array not allocated in postiMode

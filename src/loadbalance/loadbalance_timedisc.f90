@@ -42,10 +42,12 @@ USE MOD_Globals
 USE MOD_Globals_Vars               ,ONLY: InitializationWallTime
 USE MOD_Preproc
 USE MOD_Analyze                    ,ONLY: InitAnalyze,FinalizeAnalyze
+USE MOD_BaseFlow                   ,ONLY: InitBaseFlow,FinalizeBaseFlow
 USE MOD_DG                         ,ONLY: InitDG,FinalizeDG
 USE MOD_Equation                   ,ONLY: InitEquation,FinalizeEquation
 USE MOD_Filter                     ,ONLY: InitFilter,FinalizeFilter
 USE MOD_Lifting                    ,ONLY: InitLifting,FinalizeLifting
+USE MOD_LoadBalance_BaseFlow       ,ONLY: BaseFlowRestart
 USE MOD_LoadBalance_Restart        ,ONLY: FieldRestart
 USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ElemTimeField
 USE MOD_LoadBalance_Vars           ,ONLY: nLoadBalanceSteps,LoadBalanceMaxSteps,NewImbalance,MinWeight,MaxWeight
@@ -145,6 +147,7 @@ SDEALLOCATE(dtElem)
 
 CALL FinalizeMesh()
 CALL FinalizeSponge()
+CALL FinalizeBaseFlow()
 CALL FinalizeOverintegration()
 CALL FinalizeFilter()
 #if USE_PARTICLES
@@ -165,6 +168,7 @@ CALL InitFilter()
 CALL InitOverintegration()
 CALL InitMPIVars()
 CALL InitEquation()
+CALL InitBaseFlow()
 CALL InitDG()
 #if FV_ENABLED
 CALL InitIndicator()
@@ -173,7 +177,6 @@ CALL InitFV()
 #if PARABOLIC
 CALL InitLifting()
 #endif /*PARABOLIC*/
-CALL InitSponge()
 
 ! Calling timedisc causes circular depends. We only need to reallocate arrays
 !CALL InitTimeDisc()
@@ -194,7 +197,9 @@ dtElem = 0.
 
 CALL InitAnalyze()
 CALL InitRecordpoints()
+CALL BaseFlowRestart()
 CALL FieldRestart()
+CALL InitSponge()
 #if USE_PARTICLES
 CALL InitParticleMPI()
 CALL InitParticles(doLoadBalance_opt=.TRUE.)

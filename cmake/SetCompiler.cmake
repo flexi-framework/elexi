@@ -1,90 +1,7 @@
 # =========================================================================
-# Detect machine environments
-# =========================================================================
-CMAKE_HOST_SYSTEM_INFORMATION(RESULT CMAKE_FQDN_HOST QUERY FQDN)
-MARK_AS_ADVANCED(FORCE CMAKE_FQDN_HOST)
-MARK_AS_ADVANCED(FORCE CMAKE_HOSTNAME)
-SITE_NAME(CMAKE_HOSTNAME)
-
-# =========================================================================
-# CMake generator settings
-# =========================================================================
-SET(USED_CMAKE_GENERATOR "${CMAKE_GENERATOR}" CACHE STRING "Expose CMAKE_GENERATOR (cannot be changed here)" FORCE)
-MESSAGE(STATUS "Using cmake generator: ${CMAKE_GENERATOR}")
-IF("${CMAKE_GENERATOR}" MATCHES "Ninja")
-  # CMake introduced the CMAKE_COLOR_DIAGNOSTICS flag with 3.24.0, https://gitlab.kitware.com/cmake/cmake/-/merge_requests/6990
-  IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.24.0"))
-    SET(CMAKE_COLOR_DIAGNOSTICS ON CACHE INTERNAL "Flag if CMake should attempt to color output")
-  ELSE()
-    SET(NINJA_COLOR_DIAGNOSTICS "-fdiagnostics-color=always" CACHE INTERNAL "Flag if Ninja should attempt to color output")
-  ENDIF()
-ENDIF()
-MESSAGE(STATUS "Generating for [${CMAKE_GENERATOR}] build system")
-
-# =========================================================================
-# Some clusters requires setting the compilers by hand and invoking
-# ENABLE_LANGUAGE afterwards, which is required for
-# CMAKE_Fortran_COMPILER_ID that is used below
-# > This block must be called before ENABLE_LANGUAGE
-# =========================================================================
-# HLRS HAWK
-IF (CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
-  SET(CMAKE_C_COMPILER       mpicc)
-  SET(CMAKE_CXX_COMPILER     mpicxx)
-  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
-# SuperMUC
-# ELSEIF(CMAKE_FQDN_HOST MATCHES "sng\.lrz\.de$"
-# LUMI
-ELSEIF(CMAKE_FQDN_HOST MATCHES "\.can$")
-  SET(CMAKE_C_COMPILER       cc)
-  SET(CMAKE_CXX_COMPILER     CC)
-  SET(CMAKE_Fortran_COMPILER ftn)
-# IAG Prandtl
-ELSEIF(CMAKE_FQDN_HOST MATCHES "^(prandtl|grafik.*)\.iag\.uni\-stuttgart\.de")
-  SET(CMAKE_C_COMPILER       gcc)
-  SET(CMAKE_CXX_COMPILER     c++)
-  SET(CMAKE_Fortran_COMPILER gfortran)
-# IAG Grafik01/Grafik02
-ELSEIF (CMAKE_FQDN_HOST MATCHES "^ila(head.*|cfd.*)\.ila.uni\-stuttgart\.de")
-  SET(CMAKE_C_COMPILER       mpicc)
-  SET(CMAKE_CXX_COMPILER     mpicxx)
-  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
-ELSEIF (CMAKE_FQDN_HOST MATCHES "^(xenon.*|argon.*)\.ila.uni\-stuttgart\.de")
-  SET(CMAKE_C_COMPILER       mpicc)
-  SET(CMAKE_CXX_COMPILER     mpicxx)
-  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
-ENDIF()
-
-# =========================================================================
-# Score-P instrumentation infrastructure
-# > This option must be called before ENABLE_LANGUAGE, thus is only available
-# > through -DMACHINE_USE_SCOREP=ON
-# =========================================================================
-IF (MACHINE_USE_SCOREP)
-  FIND_PROGRAM(SCOREP_C_COMPILER scorep-${CMAKE_C_COMPILER})
-  MARK_AS_ADVANCED(FORCE SCOREP_C_COMPILER )
-  IF (SCOREP_C_COMPILER MATCHES "NOTFOUND")
-    MESSAGE (FATAL_ERROR "Score-P not available in PATH. Did you load the module?")
-  ENDIF()
-
-  # Set default build type to profile
-  IF (NOT CMAKE_BUILD_TYPE)
-    SET (CMAKE_BUILD_TYPE Profile CACHE STRING "Choose the type of build, options are: Debug Release Profile Sanitize." FORCE)
-  ENDIF (NOT CMAKE_BUILD_TYPE)
-  IF (CMAKE_BUILD_TYPE MATCHES "Release")
-    MESSAGE (WARNING "Score-P requires debug compile flags which are not available with BUILD_TYPE='Release'")
-  ENDIF()
-
-  SET(CMAKE_C_COMPILER       "scorep-${CMAKE_C_COMPILER}")
-  SET(CMAKE_CXX_COMPILER     "scorep-${CMAKE_CXX_COMPILER}")
-  SET(CMAKE_Fortran_COMPILER "scorep-${CMAKE_Fortran_COMPILER}")
-ENDIF()
-
-# =========================================================================
 # After settings specific compilers, enable named languages for cmake
 # =========================================================================
 ENABLE_LANGUAGE(Fortran C CXX)
-INCLUDE(GNUInstallDirs)
 MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
 
 # =========================================================================
@@ -209,17 +126,18 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   # set Flags (disable lto type warnings due to false positives with MATMUL, which is a known bug)
   IF (NOT DEFINED C_FLAGS_INITIALIZED )
     SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
-    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -finit-real=snan -finit-integer=snan -Wno-lto-type-mismatch -lstdc++ -DGNU")
+    SET (CMAKE_Fortran_FLAGS              "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -finit-real=snan -finit-integer=snan -Wno-lto-type-mismatch -lstdc++ -DGNU")
     # LUMI has an issue with argument types in MPI(CH) calls
     IF(CMAKE_FQDN_HOST MATCHES "\.can$")
-      SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
+      SET (CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
     ENDIF()
   ENDIF()
   # initialize all variables as signalling NaNs to force the user to correctly initialize these data types
-  SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
-  SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
-  SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -g  -Og -ggdb3 -ffpe-trap=invalid -fbounds-check -fbacktrace -Wall")
-  SET (CMAKE_Fortran_FLAGS_SANITIZE  "${CMAKE_Fortran_FLAGS} -g  -Og -ggdb3 -ffpe-trap=invalid,zero,overflow,denorm -fbounds-check -fbacktrace  -Wall -fsanitize=address,undefined,leak -fno-omit-frame-pointer -Wc-binding-type -Wuninitialized -pedantic")
+  SET (CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
+  SET (CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS} -g  -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays -ffpe-trap=invalid,zero,overflow -fbacktrace")
+  SET (CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
+  SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g  -Og -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -fbacktrace -Wall")
+  SET (CMAKE_Fortran_FLAGS_SANITIZE       "${CMAKE_Fortran_FLAGS} -g  -Og -ggdb3 -ffpe-trap=invalid,zero,overflow,denorm -fbounds-check -fbacktrace -Wall -fsanitize=address,undefined,leak -fno-omit-frame-pointer -Wc-binding-type -Wuninitialized -pedantic")
   # Compile flags depend on the generator
   IF(NOT "${CMAKE_GENERATOR}" MATCHES "Ninja")
     # add flags only for compiling not linking!
@@ -234,11 +152,12 @@ ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
   # set Flags
   IF (NOT DEFINED C_FLAGS_INITIALIZED )
     SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
-    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -std=f2008 -lstdc++ -DFLANG")
+    SET (CMAKE_Fortran_FLAGS              "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -std=f2008 -lstdc++ -DFLANG")
   ENDIF()
-  SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
-  SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
-  SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -g  -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace -Wall")
+  SET (CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
+  SET (CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -ffpe-trap=invalid,zero,overflow -fbacktrace")
+  SET (CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
+  SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g  -O0 -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -finit-real=snan -fbacktrace -Wall")
   # Compile flags depend on the generator
   IF(NOT "${CMAKE_GENERATOR}" MATCHES "Ninja")
     # add flags only for compiling not linking!
@@ -253,11 +172,12 @@ ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
   # set Flags
   IF (NOT DEFINED C_FLAGS_INITIALIZED )
     SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
-    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -r8 -i4 -traceback -warn all -shared-intel -lstdc++ -DINTEL")
+    SET (CMAKE_Fortran_FLAGS              "${CMAKE_Fortran_FLAGS} -r8 -i4 -traceback -warn all -shared-intel -lstdc++ -DINTEL")
   ENDIF()
-  SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
-  SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -p -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
-  SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
+  SET (CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
+  SET (CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div -fpe0 -traceback")
+  SET (CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS} -p -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
+  SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
   # Compile flags depend on the generator
   IF(NOT "${CMAKE_GENERATOR}" MATCHES "Ninja")
     # add flags only for compiling not linking!
@@ -271,11 +191,12 @@ ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
   # set Flags
   IF (NOT DEFINED C_FLAGS_INITIALIZED )
     SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
-    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -ffree -s real64 -s integer64 -em -lstdc++ -hfp0 -DCRAY")
+    SET (CMAKE_Fortran_FLAGS              "${CMAKE_Fortran_FLAGS} -ffree -s real64 -s integer64 -em -lstdc++ -hfp0 -DCRAY")
   ENDIF()
-  SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}    -O2 -hfp3 -p . -rm")
-  SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS}    -O2 -hfp3 -h profile_generate -p . -rm")
-  SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -g -O0 -eD -rm")
+  SET (CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS}    -O2 -hfp3 -p . -rm")
+  SET (CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS}    -O2 -hfp3 -p . -rm -eD")
+  SET (CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS}    -O2 -hfp3 -h profile_generate -p . -rm")
+  SET (CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS} -g -O0 -eD -rm")
   # add flags only for compiling not linking!
   SET (FLEXI_COMPILE_FLAGS "${NINJA_COLOR_DIAGNOSTICS} -F")
 ELSE()
@@ -289,8 +210,9 @@ CMAKE_DEPENDENT_OPTION(FLEXI_PERFORMANCE_PGO "Enable profile-guided optimization
                                              "FLEXI_PERFORMANCE" OFF)
 IF (FLEXI_PERFORMANCE_PGO)
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
-    SET(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -fprofile-use")
-    SET(CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS_PROFILE} -fprofile-generate")
+    SET(CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS_RELEASE}       -fprofile-use")
+    SET(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS_REWITHDEBINFO} -fprofile-use")
+    SET(CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS_PROFILE}       -fprofile-generate")
   ELSE()
     MESSAGE(SEND_ERROR "Profile-guided optimization (PGO) currently only supported for GNU compiler. Either set FLEXI_PERFORMANCE_PGO=OFF or use the GNU compiler." )
   ENDIF()
@@ -299,11 +221,13 @@ ENDIF()
 # Save the current compiler flags to the cache every time cmake configures the project.
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS)
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_RELEASE)
+MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_RELWITHDEBINFO)
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_PROFILE)
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_DEBUG)
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_SANITIZE)
-SET(CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS}"          CACHE STRING "Default compiler flags"  FORCE)
-SET(CMAKE_Fortran_FLAGS_RELEASE    "${CMAKE_Fortran_FLAGS_RELEASE}"  CACHE STRING "Release compiler flags"  FORCE)
-SET(CMAKE_Fortran_FLAGS_PROFILE    "${CMAKE_Fortran_FLAGS_PROFILE}"  CACHE STRING "Profile compiler flags"  FORCE)
-SET(CMAKE_Fortran_FLAGS_DEBUG      "${CMAKE_Fortran_FLAGS_DEBUG}"    CACHE STRING "Debug compiler flags"    FORCE)
-SET(CMAKE_Fortran_FLAGS_SANITIZE   "${CMAKE_Fortran_FLAGS_SANITIZE}" CACHE STRING "Sanitize compiler flags" FORCE)
+SET(CMAKE_Fortran_FLAGS                "${CMAKE_Fortran_FLAGS}"                CACHE STRING "Default compiler flags"        FORCE)
+SET(CMAKE_Fortran_FLAGS_RELEASE        "${CMAKE_Fortran_FLAGS_RELEASE}"        CACHE STRING "Release compiler flags"        FORCE)
+SET(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS_RELWITHDEBINFO}" CACHE STRING "RelWithDebInfo compiler flags" FORCE)
+SET(CMAKE_Fortran_FLAGS_PROFILE        "${CMAKE_Fortran_FLAGS_PROFILE}"        CACHE STRING "Profile compiler flags"        FORCE)
+SET(CMAKE_Fortran_FLAGS_DEBUG          "${CMAKE_Fortran_FLAGS_DEBUG}"          CACHE STRING "Debug compiler flags"          FORCE)
+SET(CMAKE_Fortran_FLAGS_SANITIZE       "${CMAKE_Fortran_FLAGS_SANITIZE}"       CACHE STRING "Sanitize compiler flags"       FORCE)

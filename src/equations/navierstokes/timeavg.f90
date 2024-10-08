@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -475,8 +476,8 @@ DO iElem=1,nElems
 
 #if PARABOLIC
   IF(CalcFluc(17).OR.CalcFluc(18))THEN  !'Dissipation via vel gradients'
-#if FV_ENABLED == 1
-  STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV!'
+#if FV_ENABLED  == 1
+  STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV Switching!'
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       GradVel(:,1)=GradUx(LIFT_VELV,i,j,k,iElem)
@@ -508,10 +509,10 @@ END DO ! iElem
 
 ! Calc time average and write solution to file
 IF(Finalize)THEN
-  IF(nVarAvg .GT.0) UAvg =UAvg /dtAvg
-  IF(nVarFluc.GT.0) UFluc=UFluc/dtAvg
-  tFuture=t+WriteTimeAvg_dt
-  FV_Elems_loc=0
+  IF(nVarAvg .GT.0) UAvg  = UAvg /dtAvg
+  IF(nVarFluc.GT.0) UFluc = UFluc/dtAvg
+  tFuture      = t+WriteTimeAvg_dt
+  FV_Elems_loc = 0
   CALL WriteTimeAverage(MeshFile,t,dtAvg,FV_Elems_loc,(/PP_N+1,PP_N+1,PP_NZ+1/),&
                         nVarAvg ,VarNamesAvgOut ,UAvg ,&
                         nVarFluc,VarNamesFlucOut,UFluc,&

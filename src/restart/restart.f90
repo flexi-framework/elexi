@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -50,6 +51,9 @@ PUBLIC :: InitRestartFile
 PUBLIC :: InitRestart
 PUBLIC :: Restart
 PUBLIC :: FinalizeRestart
+#if FV_ENABLED
+PUBLIC :: SupersampleFVCell
+#endif /*FV_ENABLED*/
 !==================================================================================================================================
 
 CONTAINS
@@ -256,7 +260,8 @@ GETTIME(StartT)
 ! Check if we want to perform a restart
 IF (LEN_TRIM(RestartFile).GT.0) THEN
   ! Restart not possible, some variables might be missing
-  IF (RestartMode.LT. 1) CALL CollectiveStop(__STAMP__,'Provided file for restart has not all conservative/primitive variables available!')
+  IF (RestartMode.LT. 1 .AND. .NOT. postiMode) CALL CollectiveStop(__STAMP__, &
+    'Provided file for restart has not all conservative/primitive variables available!')
 
   SWRITE(UNIT_stdOut,'(A,A,A)')' | Restarting from file "',TRIM(RestartFile),'":'
   ! Check if restart file is a valid state
@@ -556,7 +561,7 @@ IF (DoRestart) THEN
     IF (RestartTurb) CALL CollectiveStop(__STAMP__,'Interpolation not supported for turbulent quantities. Non-linear operation!')
     ! We need to interpolate the solution to the new computational grid
     SWRITE(UNIT_stdOut,'(A,I0,3A,I0,3A)') ' | Interpolating solution from restart grid with N=',N_restart,' (',TRIM(NodeType_Restart), &
-                                          ') to computational grid with N='                   ,PP_N     ,' (',TRIM(NodeType),')'
+                                          ') to computational grid with N='                    ,PP_N     ,' (',TRIM(NodeType),')'
 
     CALL GetVandermonde(N_Restart, NodeType_Restart,PP_N,      NodeType,         &
                         Vdm_NRestart_N,     modal=.TRUE.)
@@ -691,6 +696,7 @@ DO k=0,ZDIM(NNew); DO j=0,NNew; DO i=0,NNew
 END DO; END DO; END DO! i,j,k=0,NNew
 END SUBROUTINE SupersampleFVCell
 #endif
+
 
 !==================================================================================================================================
 !> Finalizes variables necessary for restart subroutines

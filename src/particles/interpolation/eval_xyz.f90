@@ -387,6 +387,9 @@ ELSE
 END IF
 IJK(1:3) = MIN(NINT((xi(1:3)+1.)/2*(PP_N+1)),PP_N)
 
+! Clamp to reasonable values
+IJK = MAX(IJK,0)
+
 #if FV_RECONSTRUCT
 ! Transform to primitve variables
 IF (nVar_out.EQ.PP_nVarPrim) THEN
@@ -481,6 +484,7 @@ ELSE
 END IF
 
 END SUBROUTINE EvaluateFieldAtRefPos
+
 
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 SUBROUTINE EvaluateFieldAndGradAtPhysPos(x_in,NVar,N_in,U_In,NVar_out,U_Out,ElemID,PartID,gradUx,gradUy,gradUz,U_RHS,UGrad_Out)
@@ -684,7 +688,8 @@ ELSE
 END IF
 
 END SUBROUTINE EvaluateFieldAndGradAtRefPos
-#endif
+#endif /*USE_EXTEND_RHS || USE_FAXEN_CORR*/
+
 
 SUBROUTINE RefElemNewton(Xi,X_In,wBaryCL_N_In,XiCL_N_In,XCL_N_In,dXCL_N_In,N_In,ElemID,Mode,PartID)
 !=================================================================================================================================

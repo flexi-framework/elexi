@@ -208,7 +208,11 @@ int visuReader::RequestInformation(vtkInformation *,
 
          // Select Density, FV_Elems by default
          if (varname.compare("Density") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
+#if FV_ENABLED == 1
          if (varname.compare("ElemData:FV_Elems") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
+#elif FV_ENABLED == 2
+         if (varname.compare("ElemData:FV_alpha") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
+#endif
       }
    }
    for (int iVar=0; iVar<bcnames.len/255; iVar++) {

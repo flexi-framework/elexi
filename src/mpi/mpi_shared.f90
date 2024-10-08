@@ -120,7 +120,9 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: i,worldGroup,sharedGroup
+INTEGER                         :: sharedGroup = MPI_GROUP_NULL
+INTEGER                         :: worldGroup  = MPI_GROUP_NULL
+INTEGER                         :: i
 INTEGER                         :: color
 !==================================================================================================================================
 
@@ -192,6 +194,10 @@ CALL MPI_COMM_GROUP(MPI_COMM_SHARED,sharedGroup,IERROR)
 
 ! Finally translate global rank to local rank
 CALL MPI_GROUP_TRANSLATE_RANKS(worldGroup,nProcessors,MPIRankGlobal,sharedGroup,MPIRankShared,IERROR)
+
+! Free group handles
+CALL MPI_GROUP_FREE( worldGroup,IERROR)
+CALL MPI_GROUP_FREE(sharedGroup,IERROR)
 
 ! Send rank of compute node root to all procs on shared comm
 IF (myComputeNodeRank.EQ.0) ComputeNodeRootRank = myRank
@@ -1143,11 +1149,16 @@ SDEALLOCATE(MPIRankShared)
 SDEALLOCATE(MPIRankLeader)
 
 ! Free MPI_INFO objects
-IF(MPI_INFO_SHARED_LOOSE  .NE.MPI_INFO_NULL) CALL MPI_INFO_FREE(MPI_INFO_SHARED_LOOSE,IERROR)
+IF(MPI_INFO_SHARED_LOOSE   .NE.MPI_INFO_NULL ) CALL MPI_INFO_FREE( MPI_INFO_SHARED_LOOSE   ,IERROR)
 
 ! Free the shared communicator
-IF(MPI_COMM_SHARED        .NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_SHARED        ,IERROR)
-IF(MPI_COMM_LEADERS_SHARED.NE.MPI_COMM_NULL) CALL MPI_COMM_FREE(MPI_COMM_LEADERS_SHARED,IERROR)
+IF(MPI_COMM_SHARED         .NE.MPI_COMM_NULL ) CALL MPI_COMM_FREE( MPI_COMM_SHARED         ,IERROR)
+IF(MPI_COMM_LEADERS_SHARED .NE.MPI_COMM_NULL ) CALL MPI_COMM_FREE( MPI_COMM_LEADERS_SHARED ,IERROR)
+
+! Free the shared groups
+IF(MPI_GROUP_SHARED        .NE.MPI_GROUP_NULL) CALL MPI_GROUP_FREE(MPI_GROUP_SHARED        ,IERROR)
+IF(MPI_GROUP_LEADERS_SHARED.NE.MPI_GROUP_NULL) CALL MPI_GROUP_FREE(MPI_GROUP_LEADERS_SHARED,IERROR)
+
 MPISharedInitIsDone=.FALSE.
 
 END SUBROUTINE FinalizeMPIShared

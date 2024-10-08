@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -210,7 +211,9 @@ END SUBROUTINE InitTestcase
 
 !==================================================================================================================================
 !> Initial conditions for the channel testcase. Initializes a velocity profile in the streamwise direction and superimposes
-!> velocity disturbances to accelerate the development of turbulence.
+!> velocity disturbances to accelerate the development of turbulence. Initial velocity profile is based on:
+!>   H. Reichardt, "Vollständige Darstellung der turbulenten Geschwindigkeitsverteilung in glatten Leitungen", ZAMM 31 (1951)
+!>   p. 208–219, DOI: https://doi.org/10.1002/zamm.19510310704.
 !==================================================================================================================================
 SUBROUTINE ExactFuncTestcase(tIn,x,Resu,Resu_t,Resu_tt)
 ! MODULES
@@ -233,6 +236,7 @@ REAL                            :: x_int(3)
 !and hence: u_tau=tau=-dp/dx=1, and t=t+=u_tau*t/delta
 Prim(:) = RefStatePrim(:,IniRefState)
 
+<<<<<<< HEAD
 ! Initialize mean turbulent velocity profile in x
 IF (customChannel) THEN
   IF(x(2).LE.0) THEN
@@ -252,11 +256,21 @@ ENDIF
 ! Prim(VEL1) = uPlus
 Prim(VEL1) = bulkVelScale*(1./0.41*LOG(1+0.41*yPlus)+7.8*(1-EXP(-yPlus/11.)-yPlus/11.*EXP(-yPlus/3.)))
 ! Prim(PRES) = (bulkVel*sqrt(kappa*Prim(5)/Prim(1)))**2*Prim(1)/kappa ! Pressure such that Ma=1/sqrt(kappa*p/rho)
+=======
+! Initialize mean turbulent velocity profile in x based on Reichardt 1951.
+IF(x(2).LE.0) THEN
+  yPlus = (x(2)+1.)*Re_tau ! Lower half
+ELSE
+  yPlus = (1.-x(2))*Re_tau ! Upper half
+END IF
+Prim(VEL1) = 1./0.41*LOG(1+0.41*yPlus)+7.8*(1-EXP(-yPlus/11.)-yPlus/11.*EXP(-yPlus/3.)) ! Eq. (18)
+>>>>>>> flexi/master
 
 ! Superimpose sinusoidal disturbances to accelerate development of turbulence
 Amplitude = 0.1*Prim(VEL1)
 
 #if EQNSYSNR == 2
+<<<<<<< HEAD
 IF (customChannel) THEN
   x_int(1) = x(1)/delta
   x_int(2) = x(2)/delta
@@ -300,6 +314,26 @@ ELSE
   Prim(VEL3)=Prim(VEL3)+SIN(45.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
   Prim(VEL3)=Prim(VEL3)+SIN(50.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
 ENDIF
+=======
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(20.0*PP_PI*(x(2)/(2.0)))    *SIN(20.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(30.0*PP_PI*(x(2)/(2.0)))    *SIN(30.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(35.0*PP_PI*(x(2)/(2.0)))    *SIN(35.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(40.0*PP_PI*(x(2)/(2.0)))    *SIN(40.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(45.0*PP_PI*(x(2)/(2.0)))    *SIN(45.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL1) = Prim(VEL1) + Amplitude*SIN(50.0*PP_PI*(x(2)/(2.0)))    *SIN(50.0*PP_PI*(x(3)/(2*PP_PI)))
+
+Prim(VEL2) = Prim(VEL2) + Amplitude*SIN(30.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(30.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL2) = Prim(VEL2) + Amplitude*SIN(35.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(35.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL2) = Prim(VEL2) + Amplitude*SIN(40.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(40.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL2) = Prim(VEL2) + Amplitude*SIN(45.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(45.0*PP_PI*(x(3)/(2*PP_PI)))
+Prim(VEL2) = Prim(VEL2) + Amplitude*SIN(50.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(50.0*PP_PI*(x(3)/(2*PP_PI)))
+
+Prim(VEL3) = Prim(VEL3) + Amplitude*SIN(30.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(30.0*PP_PI*(x(2)/(2.0)))
+Prim(VEL3) = Prim(VEL3) + Amplitude*SIN(35.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(35.0*PP_PI*(x(2)/(2.0)))
+Prim(VEL3) = Prim(VEL3) + Amplitude*SIN(40.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(40.0*PP_PI*(x(2)/(2.0)))
+Prim(VEL3) = Prim(VEL3) + Amplitude*SIN(45.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(45.0*PP_PI*(x(2)/(2.0)))
+Prim(VEL3) = Prim(VEL3) + Amplitude*SIN(50.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(50.0*PP_PI*(x(2)/(2.0)))
+>>>>>>> flexi/master
 #endif
 
 Prim(TEMP) = 0. ! T does not matter for prim to cons

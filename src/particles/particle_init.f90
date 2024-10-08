@@ -650,38 +650,47 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT PARTICLES...'
 CALL InitElemVolumes()
 
 ! Read global number of particles as datatype real to allow number inputs in the format of, e.g., 5e6
-WRITE(UNIT=hilf,FMT='(I0)') HUGE(PDM%maxAllowedParticleNumber)
-maxParticleNumberGlobal  = GETREAL('Part-MaxParticleNumber')
-PDM%MaxPartNumIncrease   = GETREAL('Part-MaxPartNumIncrease','0.1')
-PDM%RearrangePartIDs     = GETLOGICAL('Part-RearrangePartIDs','.TRUE.')
-! Divide by number of processors, but use at least 2 (at least one next free position in the case of MPI)
-maxParticleNumberUniform = MAX(maxParticleNumberGlobal/nProcessors,2.)
-! Increase the max particle number according to the local volume to account for element size differences
-IF (maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).GT. HUGE(INT(1,KIND=4)) .OR. &
-    maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).LT.-HUGE(INT(1,KIND=4)))     &
-  CALL CollectiveStop(__STAMP__,'maxParticleNumber too big for current number of processors. Decrease maxParticleNumber or increase nProcs!')
-PDM%maxAllowedParticleNumber = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)))
+SELECT CASE(CountOption('Part-MaxParticleNumber'))
+  CASE(1)
+    WRITE(UNIT=hilf,FMT='(I0)') HUGE(PDM%maxAllowedParticleNumber)
+    maxParticleNumberGlobal  = GETREAL('Part-MaxParticleNumber')
+    PDM%MaxPartNumIncrease   = GETREAL('Part-MaxPartNumIncrease','0.1')
+    PDM%RearrangePartIDs     = GETLOGICAL('Part-RearrangePartIDs','.TRUE.')
+    ! Divide by number of processors, but use at least 2 (at least one next free position in the case of MPI)
+    maxParticleNumberUniform = MAX(maxParticleNumberGlobal/nProcessors,2.)
+    ! Increase the max particle number according to the local volume to account for element size differences
+    IF (maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).GT. HUGE(INT(1,KIND=4)) .OR. &
+        maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)).LT.-HUGE(INT(1,KIND=4)))     &
+      CALL CollectiveStop(__STAMP__,'maxParticleNumber too big for current number of processors. Decrease maxParticleNumber or increase nProcs!')
+    PDM%maxAllowedParticleNumber = INT(maxParticleNumberUniform * MAX(1.,LocalVolume/(MeshVolume/nProcessors)))
 
-minParticleNumberLocal = PDM%maxAllowedParticleNumber
-maxParticleNumberLocal = PDM%maxAllowedParticleNumber
-sumParticleNumberLocal = PDM%maxAllowedParticleNumber
+    minParticleNumberLocal = PDM%maxAllowedParticleNumber
+    maxParticleNumberLocal = PDM%maxAllowedParticleNumber
+    sumParticleNumberLocal = PDM%maxAllowedParticleNumber
 #if USE_MPI
-IF (MPIRoot) THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,minParticleNumberLocal,1,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,iERROR)
-  CALL MPI_REDUCE(MPI_IN_PLACE,maxParticleNumberLocal,1,MPI_INTEGER,MPI_MAX,0,MPI_COMM_FLEXI,iERROR)
-  CALL MPI_REDUCE(MPI_IN_PLACE,sumParticleNumberLocal,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iERROR)
-ELSE
-  CALL MPI_REDUCE(minParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,iERROR)
-  CALL MPI_REDUCE(maxParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_MAX,0,MPI_COMM_FLEXI,iERROR)
-  CALL MPI_REDUCE(sumParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iERROR)
-END IF
+    IF (MPIRoot) THEN
+      CALL MPI_REDUCE(MPI_IN_PLACE,minParticleNumberLocal,1,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,iERROR)
+      CALL MPI_REDUCE(MPI_IN_PLACE,maxParticleNumberLocal,1,MPI_INTEGER,MPI_MAX,0,MPI_COMM_FLEXI,iERROR)
+      CALL MPI_REDUCE(MPI_IN_PLACE,sumParticleNumberLocal,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iERROR)
+    ELSE
+      CALL MPI_REDUCE(minParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_MIN,0,MPI_COMM_FLEXI,iERROR)
+      CALL MPI_REDUCE(maxParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_MAX,0,MPI_COMM_FLEXI,iERROR)
+      CALL MPI_REDUCE(sumParticleNumberLocal,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iERROR)
+    END IF
 #endif /*USE_MPI*/
-CALL PrintOption('Particle NUMBER (Min/Max/Glob)','CALC',IntArrayOpt=(/minParticleNumberLocal &
-                                                                      ,maxParticleNumberLocal &
-                                                                      ,sumParticleNumberLocal/))
-PDM%maxParticleNumber    = 1
-nGlobalNbrOfParticles    = 0
-nGlobalNbrOfParticles(4) = HUGE(nGlobalNbrOfParticles(4))
+    CALL PrintOption('Particle NUMBER (Min/Max/Glob)','CALC',IntArrayOpt=(/minParticleNumberLocal &
+                                                                          ,maxParticleNumberLocal &
+                                                                          ,sumParticleNumberLocal/))
+    PDM%maxParticleNumber    = 1
+    nGlobalNbrOfParticles    = 0
+    nGlobalNbrOfParticles(4) = HUGE(nGlobalNbrOfParticles(4))
+  CASE(0)
+    PDM%maxParticleNumber    = 0
+    nGlobalNbrOfParticles    = 0
+    nGlobalNbrOfParticles(4) = HUGE(nGlobalNbrOfParticles(4))
+  CASE DEFAULT
+    CALL CollectiveStop(__STAMP__,'Part-maxParticleNumber must only be specified once!')
+END SELECT
 
 IF(TrackingMethod.NE.TRIATRACKING) THEN
   CALL InitParticleSurfaces()
@@ -822,6 +831,10 @@ IF (nSpecies.LE.0) THEN
   DoInterpolation = .FALSE.
   RETURN
 END IF
+
+! Check if maxParticleNumber is set
+IF (PDM%maxParticleNumber.LE.0) &
+  CALL CollectiveStop(__STAMP__,'nSpecies > 0 but maxParticleNumber <= 0!')
 
 ! Allocate species array
 ALLOCATE(Species(1:nSpecies))

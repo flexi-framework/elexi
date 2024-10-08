@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -20,6 +21,7 @@ MODULE MOD_Output
 ! MODULES
 USE MOD_ReadInTools
 USE ISO_C_BINDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 
 INTERFACE
@@ -36,13 +38,13 @@ END INTERFACE
 
 ! Output format for state visualization
 INTEGER,PARAMETER :: OUTPUTFORMAT_NONE         = 0
-INTEGER,PARAMETER :: OUTPUTFORMAT_TECPLOT      = 1
-INTEGER,PARAMETER :: OUTPUTFORMAT_TECPLOTASCII = 2
+! INTEGER,PARAMETER :: OUTPUTFORMAT_TECPLOT      = 1
+! INTEGER,PARAMETER :: OUTPUTFORMAT_TECPLOTASCII = 2
 INTEGER,PARAMETER :: OUTPUTFORMAT_PARAVIEW     = 3
 
 ! Output format for ASCII data files
 INTEGER,PARAMETER :: ASCIIOUTPUTFORMAT_CSV     = 0
-INTEGER,PARAMETER :: ASCIIOUTPUTFORMAT_TECPLOT = 1
+! INTEGER,PARAMETER :: ASCIIOUTPUTFORMAT_TECPLOT = 1
 
 INTERFACE DefineParametersOutput
   MODULE PROCEDURE DefineParametersOutput
@@ -76,11 +78,17 @@ INTERFACE FinalizeOutput
   MODULE PROCEDURE FinalizeOutput
 END INTERFACE
 
-PUBLIC:: InitOutput,PrintPercentage,PrintStatusLine,Visualize,InitOutputToFile,OutputToFile,FinalizeOutput
+PUBLIC:: DefineParametersOutput
+PUBLIC:: InitOutput
+PUBLIC:: PrintPercentage
+PUBLIC:: PrintStatusLine
+PUBLIC:: Visualize
+PUBLIC:: InitOutputToFile
+PUBLIC:: OutputToFile
+PUBLIC:: FinalizeOutput
 PUBLIC:: print_userblock
 !==================================================================================================================================
 
-PUBLIC::DefineParametersOutput
 CONTAINS
 
 !==================================================================================================================================
@@ -93,27 +101,26 @@ USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Output")
-CALL prms%CreateIntOption(          'NVisu',       "Polynomial degree at which solution is sampled for visualization.")
-CALL prms%CreateIntOption(          'NOut',        "Polynomial degree at which solution is written. -1: NOut=N, >0: NOut", '-1')
-CALL prms%CreateStringOption(       'ProjectName', "Name of the current simulation (mandatory).")
-CALL prms%CreateLogicalOption(      'Logging',     "Write log files containing debug output.", '.FALSE.')
-CALL prms%CreateLogicalOption(      'ErrorFiles',  "Write error files containing error output.", '.TRUE.')
-CALL prms%CreateIntFromStringOption('OutputFormat',"File format for visualization: None, Tecplot, TecplotASCII, ParaView. "//&
-                                                 " Note: Tecplot output is currently unavailable due to licensing issues.", 'None')
+CALL prms%CreateIntOption(          'NVisu'            ,"Polynomial degree at which solution is sampled for visualization.")
+CALL prms%CreateIntOption(          'NOut'             ,"Polynomial degree at which solution is written. -1: NOut=N, >0: NOut",'-1')
+CALL prms%CreateStringOption(       'ProjectName'      ,"Name of the current simulation (mandatory).")
+CALL prms%CreateLogicalOption(      'Logging'          ,"Write log files containing debug output."                     , '.FALSE.')
+CALL prms%CreateLogicalOption(      'ErrorFiles'       ,"Write error files containing error output."                   ,  '.TRUE.')
+CALL prms%CreateIntFromStringOption('OutputFormat'     ,"File format for visualization: None, ParaView. "              , 'None'   )
 CALL addStrListEntry('OutputFormat','none',        OUTPUTFORMAT_NONE)
-CALL addStrListEntry('OutputFormat','tecplot',     OUTPUTFORMAT_TECPLOT)
-CALL addStrListEntry('OutputFormat','tecplotascii',OUTPUTFORMAT_TECPLOTASCII)
+! CALL addStrListEntry('OutputFormat','tecplot',     OUTPUTFORMAT_TECPLOT)
+! CALL addStrListEntry('OutputFormat','tecplotascii',OUTPUTFORMAT_TECPLOTASCII)
 CALL addStrListEntry('OutputFormat','paraview',    OUTPUTFORMAT_PARAVIEW)
-CALL prms%CreateIntFromStringOption('ASCIIOutputFormat',"File format for ASCII files, e.g. body forces: CSV, Tecplot."&
-                                                       , 'CSV')
+CALL prms%CreateIntFromStringOption('ASCIIOutputFormat',"File format for ASCII files, e.g. body forces: CSV"           , 'CSV'    )
 CALL addStrListEntry('ASCIIOutputFormat','csv',    ASCIIOUTPUTFORMAT_CSV)
-CALL addStrListEntry('ASCIIOutputFormat','tecplot',ASCIIOUTPUTFORMAT_TECPLOT)
-CALL prms%CreateLogicalOption(      'doPrintStatusLine','Print: percentage of time, ...', '.FALSE.')
-CALL prms%CreateLogicalOption(      'WriteStateFiles','Write HDF5 state files. Disable this only for debugging issues. \n'// &
-                                                      'NO SOLUTION WILL BE WRITTEN!', '.TRUE.')
-CALL prms%CreateLogicalOption(      'WriteTimeAvgFiles','Write HDF5 time average files. Disable this only for debugging. \n'// &
-                                                      'NO TIME AVERAGE FILES WILL BE WRITTEN!', '.TRUE.')
+! CALL addStrListEntry('ASCIIOutputFormat','tecplot',ASCIIOUTPUTFORMAT_TECPLOT)
+CALL prms%CreateLogicalOption(      'doPrintStatusLine','Print: percentage of time, ...'                               , '.FALSE.')
+CALL prms%CreateLogicalOption(      'WriteStateFiles'  ,'Write HDF5 state files. Disable this only for debugging issues. \n'   // &
+                                                        'NO SOLUTION WILL BE WRITTEN!'                                 , '.TRUE.' )
+CALL prms%CreateLogicalOption(      'WriteTimeAvgFiles','Write HDF5 time average files. Disable this only for debugging. \n'   // &
+                                                        'NO TIME AVERAGE FILES WILL BE WRITTEN!'                       , '.TRUE.' )
 END SUBROUTINE DefineParametersOutput
+
 
 !==================================================================================================================================
 !> Initialize all output variables.
@@ -206,6 +213,7 @@ END IF  ! Logging
 OutputInitIsDone =.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitOutput
 
 
@@ -251,6 +259,7 @@ END SUBROUTINE PrintPercentage
 SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,iter,maxIter,doETA)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
+USE MOD_Globals_Vars  ,ONLY: epsMach
 USE MOD_PreProc
 USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
 USE MOD_Restart_Vars  ,ONLY: DoRestart,RestartTime
@@ -676,30 +685,30 @@ END DO ! iVar=1,PP_nVar
 
 ! Visualize data
 SELECT CASE(OutputFormat)
-  CASE(OUTPUTFORMAT_TECPLOT)
-    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
-  CASE(OUTPUTFORMAT_TECPLOTASCII)
-    CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
+  ! CASE(OUTPUTFORMAT_TECPLOT)
+  !     CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
+  ! CASE(OUTPUTFORMAT_TECPLOTASCII)
+  !     CALL CollectiveStop(__STAMP__,'Tecplot output removed due to license issues (possible GPL incompatibility).')
   CASE(OUTPUTFORMAT_PARAVIEW)
 #if FV_ENABLED
-    FileString_DG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
 #else
-    FileString_DG = TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
 #endif
-    Coords_NVisu_p  => Coords_NVisu
-    U_NVisu_p       => U_NVisu
+    Coords_NVisu_p => Coords_NVisu
+    U_NVisu_p => U_NVisu
     CALL WriteDataToVTK(PP_nVar_loc,NVisu,nElems-nFV_Elems,StrVarNames_loc,Coords_NVisu_p,U_NVisu_p,TRIM(FileString_DG),dim=PP_dim,DGFV=0)
 #if FV_ENABLED
-  FileString_FV   = TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
-  FV_Coords_NVisu_p => FV_Coords_NVisu
-  FV_U_NVisu_p      => FV_U_NVisu
-  CALL WriteDataToVTK(PP_nVar_loc,NVisu_FV,nFV_Elems,StrVarNames_loc,FV_Coords_NVisu_p,FV_U_NVisu_p,TRIM(FileString_FV),dim=PP_dim,DGFV=1)
+    FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
+    FV_Coords_NVisu_p => FV_Coords_NVisu
+    FV_U_NVisu_p => FV_U_NVisu
+    CALL WriteDataToVTK(PP_nVar_loc,NVisu_FV,nFV_Elems,StrVarNames_loc,FV_Coords_NVisu_p,FV_U_NVisu_p,TRIM(FileString_FV),dim=PP_dim,DGFV=1)
 
-  IF (MPIRoot) THEN
-    ! write multiblock file
-    FileString_multiblock = TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
-    CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
-  ENDIF
+    IF (MPIRoot) THEN
+      ! write multiblock file
+      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
+      CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
+    ENDIF
 #endif
 END SELECT
 
@@ -786,8 +795,8 @@ END IF
 IF (file_exists) THEN
   ! If we have a restart we need to find the position from where to move on.
   ! Read the values from the previous analyse interval, get the CPUtime
-  WRITE(UNIT_stdOut,'(A)')              ' | Opening file '//TRIM(FileName_loc)
-  WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Searching file for time stamp...'
+  LBWRITE(UNIT_stdOut,'(A)')              ' | Opening file '//TRIM(FileName_loc)
+  LBWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' Searching file for time stamp...'
 
   REWIND(ioUnit)
   ! Loop over header and try to read the first data line. Header size depends on output format.
@@ -855,9 +864,9 @@ IF (file_exists) THEN
     ! Delete from here to end of file
     BACKSPACE(ioUnit)
     ENDFILE(ioUnit)
-    WRITE(UNIT_stdOut,'(A,ES15.5)',ADVANCE='YES')' Searching file for time stamp successfull. Resuming file at time ',Dummytime
+    LBWRITE(UNIT_stdOut,'(A,ES15.5)',ADVANCE='YES')' Searching file for time stamp successfull. Resuming file at time ',Dummytime
   ELSE
-    WRITE(UNIT_stdOut,'(A)'       ,ADVANCE='YES')' Searching file time for stamp failed. Appending data to end of file.'
+    LBWRITE(UNIT_stdOut,'(A)'       ,ADVANCE='YES')' Searching file time for stamp failed. Appending data to end of file.'
   END IF
 END IF
 CLOSE(ioUnit)
@@ -887,6 +896,7 @@ IF (.NOT.file_exists) THEN ! No restart create new file
   END IF
   CLOSE(ioUnit) ! outputfile
 END IF
+
 END SUBROUTINE InitOutputToFile
 
 

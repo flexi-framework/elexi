@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -46,8 +47,9 @@ USE MOD_Globals_Vars,      ONLY:InitializationWallTime,StartTime,MajorVersion,Mi
 USE MOD_Commandline_Arguments
 USE MOD_PreProc
 USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze
+USE MOD_BaseFlow,          ONLY:DefineParametersBaseFlow,InitBaseFlow
 USE MOD_DG,                ONLY:InitDG
-USE MOD_Eos,               ONLY:DefineParametersEos
+USE MOD_EOS,               ONLY:DefineParametersEos
 USE MOD_Equation,          ONLY:DefineParametersEquation,InitEquation
 USE MOD_Exactfunc,         ONLY:DefineParametersExactFunc
 USE MOD_Filter,            ONLY:DefineParametersFilter,InitFilter
@@ -176,6 +178,7 @@ CALL DefineParametersFV()
 #if PARABOLIC
 CALL DefineParametersLifting ()
 #endif /*PARABOLIC*/
+CALL DefineParametersBaseFlow()
 CALL DefineParametersSponge()
 CALL DefineParametersTimedisc()
 CALL DefineParametersImplicit()
@@ -271,6 +274,7 @@ CALL InitMPIvars()
 #endif
 CALL CheckMesh()
 CALL InitEquation()
+CALL InitBaseFlow()
 CALL InitDG()
 #if FV_ENABLED
 CALL InitIndicator()
@@ -323,6 +327,7 @@ SUBROUTINE FinalizeFlexi()
 USE MOD_Globals
 USE MOD_Globals_Vars,      ONLY:StartTime
 USE MOD_Analyze,           ONLY:FinalizeAnalyze
+USE MOD_BaseFlow,          ONLY:FinalizeBaseFlow
 USE MOD_Commandline_Arguments,ONLY:FinalizeCommandlineArguments
 USE MOD_DG,                ONLY:FinalizeDG
 USE MOD_Equation,          ONLY:FinalizeEquation
@@ -386,6 +391,7 @@ CALL FinalizeRestart()
 CALL FinalizeMesh()
 CALL FinalizeMortar()
 CALL FinalizeSponge()
+CALL FinalizeBaseFlow()
 CALL FinalizeOverintegration()
 CALL FinalizeFilter()
 #if FV_ENABLED

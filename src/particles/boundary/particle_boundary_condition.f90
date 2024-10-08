@@ -775,7 +775,9 @@ INTEGER                           :: PVID
 ! REAL                              :: PartStateOld(1:3),Displacement(1:3)
 !===================================================================================================================================
 
-PVID = BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)
+PVID = GEO%PeriodicMapping(ABS(BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)))
+! Fix the sign for negative BC_ALPHA
+PVID = SIGN(PVID,BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA))
 
 #if CODE_ANALYZE
 IF(PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank)THEN

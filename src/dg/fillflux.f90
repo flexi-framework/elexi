@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -51,6 +52,7 @@ SUBROUTINE FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_EOS,             ONLY: PrimToCons
 USE MOD_Mesh_Vars,       ONLY: NormVec, TangVec1, TangVec2, SurfElem, Face_xGP
 USE MOD_Mesh_Vars,       ONLY: firstInnerSide,lastInnerSide,firstMPISide_MINE,lastMPISide_MINE
 USE MOD_Mesh_Vars,       ONLY: nSides,firstBCSide
@@ -68,9 +70,11 @@ USE MOD_EddyVisc_Vars,   ONLY: muSGS_master,muSGS_slave
 #endif
 #if FV_ENABLED
 USE MOD_FV
-USE MOD_FV_Vars,         ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems_Sum,FV_sVdm
-#endif
-USE MOD_EOS,             ONLY: PrimToCons
+USE MOD_FV_Vars,         ONLY: FV_Elems_master,FV_Elems_slave
+#endif /*FV_ENABLED*/
+#if FV_ENABLED == 1
+USE MOD_FV_Vars,         ONLY: FV_Elems_Sum,FV_sVdm
+#endif /*FV_ENABLED == 1*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

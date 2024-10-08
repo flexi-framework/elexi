@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -40,8 +41,8 @@ CONTAINS
 !> Is used for postprocessing
 !==================================================================================================================================
 SUBROUTINE visu_WriteHDF5(nVarVisu,NVisu,nElems_loc,FileString,MeshFileName,VarNames_loc  &
-                         ,Coords_DG,Coords_DG2D,Coords_DG1D,dim                           &
-                         ,UVisu_DG ,UVisu_DG2D ,UVisu_DG1D )
+                         ,Coords_DG,Coords_DG2D            ,dim                           & ! ,Coords_DG1D
+                         ,UVisu_DG ,UVisu_DG2D             )                                ! ,UVisu_DG1D
 ! MODULES
 USE MOD_Globals               !,ONLY: ABORT,TIMESTAMP,MPIROOT,MPI_COMM_FLEXI,UNIT_stdOut
 USE MOD_PreProc
@@ -64,10 +65,10 @@ CHARACTER(LEN=*),INTENT(IN)    :: VarNames_loc(nVarVisu)
 INTEGER,INTENT(IN)             :: dim
 REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG  (1:3,0:nVisu,0:nVisu,0:MERGE(nVisu,0,dim.GT.2),1:nElems)
 REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG2D(1:3,0:nVisu,0:ZDIM(NVisu),1:nElems_loc)
-REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG1D(1:3)
+! REAL,INTENT(IN),TARGET,OPTIONAL:: Coords_DG1D(1:3)
 REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG   (0:nVisu,0:nVisu,0:MERGE(nVisu,0,dim.GT.2),1:nElems,1:nVarVisu)
 REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG2D (0:NVisu,0:ZDIM(NVisu),1:nElems_loc,1:nVarVisu)
-REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG1D (1:nVarVisu)
+! REAL,INTENT(IN),TARGET,OPTIONAL:: UVisu_DG1D (1:nVarVisu)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName!,FileType
@@ -77,7 +78,7 @@ INTEGER,ALLOCATABLE            :: nVal(:),nValGlobal(:),offset(:)
 #if USE_MPI
 INTEGER                        :: nGlobalElems_loc,offsetElem_loc
 INTEGER                        :: recvbuf,sendbuf
-#endif
+#endif /*USE_MPI*/
 !==================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D DATA TO HDF5 FILE..."
@@ -158,7 +159,11 @@ SELECT CASE(dim)
     sendbuf    = recvbuf + nElems
     CALL MPI_BCAST(sendbuf,1,MPI_INTEGER,nProcessors-1,MPI_COMM_FLEXI,iError)
     nGlobalElems = sendbuf
-#endif
+#else
+    ASSOCIATE( nElems       => nElems_loc       &
+             , nGlobalElems => nElems_loc       &
+             , offsetElem   => 0             )
+#endif /*USE_MPI*/
 
     ! USurfVisu_DG is sorted in the old style, re-sort for HDF5
     nVal       = (/nVarVisu,NVisu+1,NVisu+1,nElems      /)
@@ -174,9 +179,7 @@ SELECT CASE(dim)
       END DO
     END DO
 
-#if USE_MPI
     END ASSOCIATE
-#endif
 
   ! CASE (1)
   !   nVal       = (/nVarVisu/)
@@ -190,7 +193,7 @@ END SELECT
 ! Reopen file and write DG solution
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-#endif
+#endif /*USE_MPI*/
 
 SELECT CASE(dim)
   CASE(3)
@@ -220,8 +223,13 @@ SELECT CASE(dim)
     DEALLOCATE(UOut)
 
   CASE(2)
+#if USE_MPI
     ASSOCIATE(nValGlobal => (/3       ,NVisu+1,NVisu+1,nGlobalElems_loc/), &
               nVal       => (/3       ,NVisu+1,NVisu+1,nElems_loc      /))
+#else
+    ASSOCIATE(nValGlobal => (/3       ,NVisu+1,NVisu+1,nElems_loc      /), &
+              nVal       => (/3       ,NVisu+1,NVisu+1,nElems_loc      /))
+#endif /*USE_MPI*/
 
     CALL GatheredWriteArray( TRIM(FileName)            &
                            , create      = .FALSE.     &

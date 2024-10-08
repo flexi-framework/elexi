@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -1229,22 +1230,28 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: FileName       !< name of file BC data is read from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,POINTER                  :: U_N(:,:,:,:,:)=>NULL()
+REAL,POINTER                  :: U_N(    :,:,:,:,:) => NULL()
 REAL,ALLOCATABLE,TARGET       :: U_local(:,:,:,:,:)
-REAL,ALLOCATABLE              :: Vdm_NHDF5_N(:,:)
-REAL                          :: Uface(PP_nVar,0:PP_N,0:PP_NZ)
+! HDF5 file
 INTEGER                       :: nVar_HDF5,N_HDF5,nElems_HDF5,N_HDF5Z
-INTEGER                       :: p,q,SideID,ElemID,locSide
 CHARACTER(LEN=255)            :: NodeType_HDF5
+! Interpolation
 LOGICAL                       :: InterpolateSolution
+REAL,ALLOCATABLE              :: Vdm_NHDF5_N(:,:)
+! BC data
+REAL                          :: Uface(PP_nVar,0:PP_N,0:PP_NZ)
+INTEGER                       :: p,q,SideID,ElemID,locSide
+! Timer
+REAL                          :: StartT,EndT
 !==================================================================================================================================
-SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',TRIM(FileName)
+
+LBWRITE(UNIT_stdOut,'(A,A)') ' Read BC state from file "',TRIM(FileName)
+StartT = FLEXITIME()
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 
 IF(nElems_HDF5.NE.nGlobalElems)THEN
-  CALL Abort(__STAMP__,&
-             'Baseflow file does not match solution. Elements',nElems_HDF5)
+  CALL Abort(__STAMP__, 'BaseFlow file does not match solution. Elements', nElems_HDF5)
 END IF
 
 #if (PP_dim==2)
@@ -1257,17 +1264,17 @@ CALL ReadArray('DG_Solution',5,(/PP_nVar,N_HDF5+1,N_HDF5+1,N_HDF5Z+1,nElems/),Of
 CALL CloseDataFile()
 
 ! Read in state
-InterpolateSolution=((N_HDF5.NE.PP_N) .OR. (TRIM(NodeType_HDF5).NE.TRIM(NodeType)))
+InterpolateSolution = (N_HDF5.NE.PP_N .OR. TRIM(NodeType_HDF5).NE.TRIM(NodeType))
 IF(.NOT. InterpolateSolution)THEN
   ! No interpolation needed, read solution directly from file
-  U_N=>U_local
+  U_N => U_local
 ELSE
   ! We need to interpolate the solution to the new computational grid
   ALLOCATE(U_N(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
   ALLOCATE(Vdm_NHDF5_N(0:PP_N,0:N_HDF5))
   CALL GetVandermonde(N_HDF5,NodeType_HDF5,PP_N,NodeType,Vdm_NHDF5_N,modal=.TRUE.)
 
-  SWRITE(UNIT_stdOut,*)'Interpolate base flow from restart grid with N=',N_HDF5,' to computational grid with N=',PP_N
+  LBWRITE(UNIT_stdOut,'(A,I0,A,I0)') ' | Interpolate base flow from restart grid with N=',N_HDF5,' to computational grid with N=',PP_N
   DO ElemID=1,nElems
     CALL ChangeBasisVolume(PP_nVar,N_HDF5,PP_N,Vdm_NHDF5_N,U_local(:,:,:,:,ElemID),U_N(:,:,:,:,ElemID))
   END DO ! ElemID
@@ -1285,7 +1292,7 @@ DO SideID=1,nBCSides
   CALL EvalElemFace(PP_nVar,PP_N,U_N(:,:,:,:,ElemID),Uface,locSide)
 #endif
   DO q=0,PP_NZ; DO p=0,PP_N
-    BCData(:,p,q,SideID)=Uface(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
+    BCData(:,p,q,SideID) = Uface(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
     CALL ConsToPrim(BCDataPrim(:,p,q,SideID),BCData(:,p,q,SideID))
   END DO; END DO
 END DO
@@ -1293,7 +1300,9 @@ END DO
 IF(InterpolateSolution) DEALLOCATE(U_N)
 DEALLOCATE(U_local)
 
-SWRITE(UNIT_stdOut,'(A)')'  done initializing BC state!'
+EndT = FLEXITIME()
+CALL DisplayMessageAndTime(EndT-StartT, 'Read BC state from file "'//TRIM(FileName)//' DONE', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
+
 END SUBROUTINE ReadBCFlow
 
 

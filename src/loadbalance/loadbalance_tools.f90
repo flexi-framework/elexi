@@ -33,7 +33,6 @@ PUBLIC::DomainDecomposition
 
 CONTAINS
 
-
 #if USE_LOADBALANCE && USE_MPI
 SUBROUTINE DomainDecomposition()
 !===================================================================================================================================
@@ -186,8 +185,8 @@ IF (ElemTimeExists) CALL ReadElemTime(single=.FALSE.)
 ! Set new ElemTime depending on new load distribution
 SDEALLOCATE(ElemTime)
 SDEALLOCATE(ProcTime)
-ALLOCATE(ElemTime(1:nElems),&
-         ProcTime(1:nElems))
+ALLOCATE(ElemTime(1:nElems))
+ALLOCATE(ProcTime(1:nElems))
 ElemTime = 0.
 ProcTime = 0.
 CALL AddToElemData(ElementOut,'ElemTime',ElemTime)

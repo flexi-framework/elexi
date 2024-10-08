@@ -206,6 +206,14 @@ REAL                :: Source(PP_nVar)
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) FEMNodeSource_Shared(:,:) = 0.
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
+
+!> Start an RMA exposure epoch
+! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
+! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
+! No local operations prior to this epoch, so give an assertion
+CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+                  ,    FEMNodeSource_Shared_Win                                          &
+                  ,    iError)
 #else
 FEMNodeSource_Shared(:,:) = 0.
 #endif /*USE_MPI*/
@@ -266,6 +274,12 @@ DO iPart = 1,PDM%ParticleVecLength
 #endif /*USE_MPI*/
   END DO
 
+  ! Locally completes at the origin all outstanding RMA operations initiated by the calling
+  ! process to the target process specified by rank on the specified window. For example,
+  ! after this routine completes, the user may reuse any buffers provided to put, get, or
+  ! accumulate operations.
+  CALL MPI_WIN_FLUSH_LOCAL(0,FEMNodeSource_Shared_Win,iError)
+
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
 ! #endif /*USE_LOADBALANCE*/
@@ -273,7 +287,17 @@ END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
 ! Finalize all RMA operation
-CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
+! CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
+
+!> Complete the epoch - this will block until MPI is complete
+CALL MPI_WIN_FENCE(    0                                                                 &
+                  ,    FEMNodeSource_Shared_Win                                          &
+                  ,    iError)
+! All done with the window - tell MPI there are no more epochs
+CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+                  ,    FEMNodeSource_Shared_Win                                          &
+                  ,    iError)
+
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 ! Communicate results between CN roots
 IF (myComputeNodeRank.EQ.0) THEN
@@ -483,6 +507,21 @@ REAL                :: PartDistDepo(1:8)
 REAL                :: alpha(3)
 REAL                :: Source(PP_nVar)
 !==================================================================================================================================
+! Nullify
+#if USE_MPI
+IF (myComputeNodeRank.EQ.0) FEMNodeSource_Shared(:,:) = 0.
+CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
+
+!> Start an RMA exposure epoch
+! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
+! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
+! No local operations prior to this epoch, so give an assertion
+CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+                  ,    FEMNodeSource_Shared_Win                                          &
+                  ,    iError)
+#else
+FEMNodeSource_Shared(:,:) = 0.
+#endif /*USE_MPI*/
 
 ! Loop all particles and deposit their force contribution
 DO iPart = 1,PDM%ParticleVecLength
@@ -536,6 +575,12 @@ DO iPart = 1,PDM%ParticleVecLength
 #endif /*USE_MPI*/
   END DO
 
+  ! Locally completes at the origin all outstanding RMA operations initiated by the calling
+  ! process to the target process specified by rank on the specified window. For example,
+  ! after this routine completes, the user may reuse any buffers provided to put, get, or
+  ! accumulate operations.
+  CALL MPI_WIN_FLUSH_LOCAL(0,FEMNodeSource_Shared_Win,iError)
+
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
 ! #endif /*USE_LOADBALANCE*/
@@ -543,7 +588,17 @@ END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
 ! Finalize all RMA operation
-CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
+! CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
+
+!> Complete the epoch - this will block until MPI is complete
+CALL MPI_WIN_FENCE(    0                                                                 &
+                  ,    FEMNodeSource_Shared_Win                                          &
+                  ,    iError)
+! All done with the window - tell MPI there are no more epochs
+CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+                  ,    FEMNodeSource_Shared_Win                                          &
+                  ,    iError)
+
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 ! Communicate results between CN roots
 IF (myComputeNodeRank.EQ.0) THEN
@@ -588,6 +643,21 @@ REAL                :: PartDistDepo(1:8)
 REAL                :: alpha(3)
 REAL                :: Source(PP_nVar)
 !==================================================================================================================================
+! Nullify
+#if USE_MPI
+IF (myComputeNodeRank.EQ.0) FEMNodeSource_Shared(:,:) = 0.
+CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
+
+!> Start an RMA exposure epoch
+! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
+! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
+! No local operations prior to this epoch, so give an assertion
+CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+                  ,    FEMNodeSource_Shared_Win                                          &
+                  ,    iError)
+#else
+FEMNodeSource_Shared(:,:) = 0.
+#endif /*USE_MPI*/
 
 sigma = PP_N+1
 
@@ -644,6 +714,12 @@ DO iPart = 1,PDM%ParticleVecLength
 #endif /*USE_MPI*/
   END DO
 
+  ! Locally completes at the origin all outstanding RMA operations initiated by the calling
+  ! process to the target process specified by rank on the specified window. For example,
+  ! after this routine completes, the user may reuse any buffers provided to put, get, or
+  ! accumulate operations.
+  CALL MPI_WIN_FLUSH_LOCAL(0,FEMNodeSource_Shared_Win,iError)
+
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
 ! #endif /*USE_LOADBALANCE*/
@@ -651,7 +727,17 @@ END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
 ! Finalize all RMA operation
-CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
+! CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
+
+!> Complete the epoch - this will block until MPI is complete
+CALL MPI_WIN_FENCE(    0                                                                 &
+                  ,    FEMNodeSource_Shared_Win                                          &
+                  ,    iError)
+! All done with the window - tell MPI there are no more epochs
+CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+                  ,    FEMNodeSource_Shared_Win                                          &
+                  ,    iError)
+
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 ! Communicate results between CN roots
 IF (myComputeNodeRank.EQ.0) THEN

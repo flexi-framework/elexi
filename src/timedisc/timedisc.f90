@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -41,6 +42,8 @@ USE MOD_Analyze             ,ONLY: Analyze
 USE MOD_Analyze_Vars        ,ONLY: analyze_dt,tWriteData,WriteData_dt
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
+USE MOD_BaseFlow            ,ONLY: UpdateBaseFlow
+USE MOD_BaseFlow_Vars       ,ONLY: doBaseFlow
 USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
@@ -131,6 +134,8 @@ END SELECT
 ! FV Blending requires the indicator before the DG operator
 CALL CalcIndicator(U,t)
 #endif
+! initial update of baseflow
+IF (doBaseFlow) CALL UpdateBaseFlow(0.)
 
 ! Do first RK stage of first timestep to fill gradients
 #if USE_PARTICLES
@@ -175,11 +180,12 @@ IF (.NOT.DoRestart                                                              
 END IF
 CALL Visualize(t,U)
 
+! compute initial timestep
+CALL InitTimeStep()
+
 ! Run initial analyze
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' Errors of initial solution:'
-! compute initial timestep
-CALL InitTimeStep()
 ! print initial analyze
 CALL Analyze(t,iter)
 
@@ -212,6 +218,7 @@ CALL CPU_TIME(time_start)
 
 ! Run computation
 DO
+  IF (doBaseFlow)       CALL UpdateBaseFlow(dt)
   ! Update time step
   CALL UpdateTimeStep()
 

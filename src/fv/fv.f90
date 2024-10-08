@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -77,6 +78,7 @@ USE MOD_FV_Limiter  ,ONLY: DefineParametersFV_Limiter
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('FV')
+CALL prms%CreateLogicalOption('doIndicatorBaseFlow'  ,"Switch on to evaluate the indicator on the baseflow", '.FALSE.')
 ! FV Switching
 CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element"                                 &
                                                      ,'.TRUE.')
@@ -102,6 +104,7 @@ CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV ele
 CALL prms%CreateRealOption(   'FV_alpha_min'          ,"Lower bound for alpha (all elements below threshold are treated as pure DG)"&
                                                       ,'0.01')
 CALL prms%CreateRealOption(   'FV_alpha_max'          ,"Maximum value for alpha",'0.5' )
+CALL prms%CreateRealOption(   'FV_alpha_fix'          ,"Specify a fixed Blending factor for IndicatorType blend.", '0.0')
 CALL prms%CreateRealOption(   'FV_alpha_ExtScale'     ,"Scaling factor for elpha if extended into neighboring elements",'0.5' )
 CALL prms%CreateIntOption(    'FV_nExtendAlpha'       ,"Number of times alpha should be passed to neighbor elements per timestep",&
                                                        '1' )
@@ -112,6 +115,7 @@ CALL DefineParametersFV_Limiter()
 #endif
 CALL DefineParametersFV_Basis()
 END SUBROUTINE DefineParametersFV
+
 
 !==================================================================================================================================
 !> Read in parameters needed for FV sub-cells (indicator min/max and type of limiter) and allocate several arrays.
@@ -125,6 +129,7 @@ USE MOD_Analyze_Vars        ,ONLY: wGPVol
 USE MOD_Interpolation_Vars  ,ONLY: wGP
 USE MOD_FV_Vars
 USE MOD_FV_Basis
+USE MOD_Indicator           ,ONLY: doIndicatorBaseFlow
 #if FV_ENABLED == 1
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Filter_Vars         ,ONLY: NFilter
@@ -166,6 +171,9 @@ END IF
 LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
 
+! The indicator value is used to decide where FV sub-cells are needed
+doIndicatorBaseFlow = GETLOGICAL('doIndicatorBaseFlow')
+
 ! Read flag, which allows to perform the switching from FV to DG in the reference element
 switchConservative = GETLOGICAL("FV_SwitchConservative")
 
@@ -205,6 +213,7 @@ IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample")
 ! Initialize parameters for FV Blending
 FV_alpha_min = GETREAL('FV_alpha_min')
 FV_alpha_max = GETREAL('FV_alpha_max')
+FV_alpha_fix = GETREAL('FV_alpha_fix')
 FV_doExtendAlpha = GETLOGICAL('FV_doExtendAlpha')
 IF (FV_doExtendAlpha) THEN
   FV_nExtendAlpha = GETINT('FV_nExtendAlpha')
@@ -224,8 +233,6 @@ END IF
 #endif /*USE_LOADBALANCE*/
 ALLOCATE(FV_alpha_master(nSides))
 ALLOCATE(FV_alpha_slave( nSides))
-FV_alpha = 0.
-CALL AddToElemData(ElementOut,'FV_alpha',FV_alpha)
 
 #if PP_NodeType == 1
 ALLOCATE(FV_U_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
@@ -419,6 +426,7 @@ LBWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitFV
 
+
 !==================================================================================================================================
 !> Interpolate face solution from DG representation to FV subcells.
 !> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
@@ -487,6 +495,7 @@ DO SideID=firstSideID,lastSideID
 END DO
 
 END SUBROUTINE FV_DGtoFV
+
 
 !==================================================================================================================================
 !> Prim to cons for FV

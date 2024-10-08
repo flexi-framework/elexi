@@ -2218,7 +2218,7 @@ IMPLICIT NONE
 INTEGER,PARAMETER              :: iNode=1
 REAL,PARAMETER                 :: CartesianTol=1.E-12
 CHARACTER(1)                   :: tmpStr
-INTEGER                        :: iVec
+INTEGER                        :: i,iVec
 INTEGER                        :: firstElem,lastElem,NbSideID,BCALPHA,flip
 INTEGER                        :: SideID,ElemID,NbElemID,localSideID,localSideNbID,nStart
 INTEGER                        :: CornerNodeIDswitch(8),NodeMap(4,6)
@@ -2251,11 +2251,22 @@ NodeMap(:,5)=(/CNS(1),CNS(5),CNS(8),CNS(4)/)
 NodeMap(:,6)=(/CNS(5),CNS(6),CNS(7),CNS(8)/)
 
 ! Find number of periodic vectors
-GEO%nPeriodicVectors = MERGE(MAXVAL(BoundaryType(:,BC_ALPHA),mask=BoundaryType(:,BC_TYPE).EQ.1),0,MeshHasPeriodic)
+GEO%nPeriodicVectors = MERGE(COUNT(BoundaryType(:,BC_TYPE).EQ.1 .AND. BoundaryType(:,BC_ALPHA).GE.1),0,MeshHasPeriodic)
 IF (GEO%nPeriodicVectors.EQ.0) RETURN
 
 firstElem = offsetElem+1
 lastElem  = offsetElem+nElems
+
+! Build a mapping from BC_ALPHA to BC_PERIODIC
+ALLOCATE(GEO%PeriodicMapping(MAXVAL(BoundaryType(:,BC_ALPHA),mask=BoundaryType(:,BC_TYPE).EQ.1)))
+GEO%PeriodicMapping = -1
+i = 0
+DO iVec=1,SIZE(BoundaryType,DIM=1)
+  IF (BoundaryType(iVec,BC_TYPE).EQ.1 .AND. BoundaryType(iVec,BC_ALPHA).GE.1) THEN
+    i = i + 1
+    GEO%PeriodicMapping(BoundaryType(iVec,BC_ALPHA)) = i
+  END IF
+END DO
 
 ALLOCATE(PeriodicFound(1:GEO%nPeriodicVectors))
 PeriodicFound(:) = .FALSE.
@@ -2277,6 +2288,8 @@ SideLoop: DO SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Share
     BCALPHA = BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)
 
     IF (BCALPHA.GT.0) THEN
+      ! Map to periodic vector
+      BCALPHA = GEO%PeriodicMapping(BCALPHA)
       ! Periodic vector already found
       IF (PeriodicFound(BCALPHA)) CYCLE
 
@@ -2563,6 +2576,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ChangeBasis              ,ONLY: ChangeBasis2D
 USE MOD_Mappings                 ,ONLY: CGNS_SideToVol2
+USE MOD_Memory                   ,ONLY: ProcessMemUsage
 USE MOD_Mesh_Vars                ,ONLY: NGeo
 USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
 USE MOD_Mesh_Vars                ,ONLY: nNonUniqueGlobalSides
@@ -2574,8 +2588,10 @@ USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints1D
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints2D,BezierControlPoints2D_temp,BezierControlPoints2D_temp2
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D,sVdm_Bezier
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3DElevated,BezierElevation
+USE MOD_ReadInTools              ,ONLY: PrintOption
 #if USE_MPI
 USE MOD_Mesh_Vars                ,ONLY: nGlobalElems
+USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodes
 USE MOD_Particle_Mesh_Vars       ,ONLY: BezierControlPoints3D_Shared,BezierControlPoints3D_Shared_Win
 USE MOD_Particle_Mesh_Vars       ,ONLY: BezierControlPoints3DElevated_Shared,BezierControlPoints3DElevated_Shared_Win
 USE MOD_MPI_Shared
@@ -2602,7 +2618,14 @@ INTEGER                        :: firstElem,lastElem,firstSide,lastSide
 INTEGER                        :: p,q,pq(2)
 REAL                           :: tmp(3,0:NGeo,0:NGeo)
 REAL                           :: tmp2(3,0:NGeo,0:NGeo)
+! Memory
+INTEGER(KIND=8),PARAMETER      :: kByte = 1024
+INTEGER(KIND=8),PARAMETER      :: gByte = 1073741824
+REAL                           :: memory(3)
+! Timers
+REAL                           :: StartT,EndT,WallTime
 #if !USE_MPI
+INTEGER,PARAMETER              :: nComputeNodes = 1
 INTEGER                        :: ALLOCSTAT
 #endif /*USE_MPI*/
 !===================================================================================================================================
@@ -2613,6 +2636,7 @@ IF (PerformLoadBalance) RETURN
 #endif
 
 LBWRITE(UNIT_stdOut,'(A)') ' CALCULATING BezierControlPoints...'
+GETTIME(StartT)
 
 ! BezierControlPoints1D and BezierControlPoints2D are only need on NGeo but see lots of memory churn in particle_intersection.f90
 ALLOCATE(XiBuf(0:NGeo,0:NGeo))
@@ -2626,6 +2650,15 @@ ALLOCATE(BezierControlPoints2D_temp2(2,0:NGeo,0:NGeo))
 
 ! Build BezierControlPoints3D (compute-node local+halo)
 #if USE_MPI
+! Find memory usage and requirements
+CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
+
+ASSOCIATE(MemTotal => REAL(memory(3) * REAL(kByte) * nComputeNodes      /REAL(gByte)),&
+          MemUsed  => REAL(3.*(NGeo+1)*(NGeo+1)*nNonUniqueGlobalSides*8./REAL(gByte)))
+CALL PrintOption('Memory total (estimated) [GB]','INFO',RealOpt=MemTotal)
+CALL PrintOption('Memory used   (standard) [GB]','INFO',RealOpt=MemUsed)
+END ASSOCIATE
+
 ! This is a trick. Allocate as 1D array and then set a pointer with the proper array bounds
 CALL Allocate_Shared((/3*(NGeo+1)*(NGeo+1)*nNonUniqueGlobalSides/),BezierControlPoints3D_Shared_Win,BezierControlPoints3D_Shared)
 CALL MPI_WIN_LOCK_ALL(0,BezierControlPoints3D_Shared_Win,IERROR)
@@ -2639,6 +2672,10 @@ IF (BezierElevation.GT.0) THEN
             nNonUniqueGlobalSides => INT(nNonUniqueGlobalSides,KIND=8))
   IF (3*(NGeoElevated+1)*(NGeoElevated+1)*nNonUniqueGlobalSides.GT.INT(HUGE(INT(1,KIND=4)),KIND=8)) &
     CALL Abort(__STAMP__,'BezierControlPoints3DElevated exceeding INT4. Reduce BezierElevation!')
+  END ASSOCIATE
+
+  ASSOCIATE(MemUsed  => REAL(3.*(NGeoElevated+1)*(NGeoElevated+1)*nNonUniqueGlobalSides*8./REAL(gByte)))
+  CALL PrintOption('Memory used   (elevated) [GB]','INFO',RealOpt=MemUsed)
   END ASSOCIATE
 
   CALL Allocate_Shared((/3*(NGeoElevated+1)*(NGeoElevated+1)*nNonUniqueGlobalSides/),BezierControlPoints3DElevated_Shared_Win,BezierControlPoints3DElevated_Shared)
@@ -2730,6 +2767,10 @@ IF (BezierElevation.GT.0) THEN
 CALL BARRIER_AND_SYNC(BezierControlPoints3DElevated_Shared_Win,MPI_COMM_SHARED)
 #endif /*USE_MPI*/
 END IF
+
+EndT     = FLEXITIME()
+WallTime = EndT-StartT
+CALL DisplayMessageAndTime(WallTime,'CALCULATING BezierControlPoints DONE',DisplayDespiteLB=.FALSE.,DisplayLine=.FALSE.)
 
 END SUBROUTINE CalcBezierControlPoints
 

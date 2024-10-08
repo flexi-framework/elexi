@@ -414,7 +414,7 @@ SpongeDistance                                Length of sponge ramp. The sponge 
                                               maximum strength at the end of the ramp and after
                                               that point.
 
-xStart                                        Coordinates of start position of sponge ramp
+SpongexStart                                  Coordinates of start position of sponge ramp
                                               (SpongeShape=ramp) or center
                                               (SpongeShape=cylindrical).
 
@@ -442,7 +442,7 @@ SpongeRefState                                Index of refstate in ini-file
 SpongeExactFunc                               Index of exactfunction
                                               (SpongeBaseFlow=exactfunction)
 
-SpongeBaseFlowFile                            FLEXI solution (e.g. TimeAvg) file from which
+SpongeRefFile                                 FLEXI solution (e.g. TimeAvg) file from which
                                               baseflow is read.
 
 tempFilterWidth                               Temporal filter width used to advance Pruett

@@ -75,7 +75,8 @@ INTEGER                        :: iPart,iPart1,iPart2
 INTEGER                        :: CNElemID,CNNeighElemID
 INTEGER                        :: NeighElemID,iCNNeighElem
 ! Trajectories and position
-REAL                           :: P1(3),P2(3),pColl(3)
+REAL                           :: P1(3),P2(3)
+REAL                           :: pColl1(3),pColl2(3)
 REAL                           :: V1(3),V2(3)
 ! Collisions
 REAL                           :: a,b,c,delta,dtColl
@@ -174,6 +175,7 @@ IF (myComputeNodeRank.EQ.0) THEN
              ,nPart           => PartInt_Shared(4,iElem)  -PartInt_Shared(3,iElem))
 
     IF (nPart.EQ.0) CYCLE
+
     CALL MPI_GET(          PartBC_Shared(firstPart)                                        &
                          , nPart                                                           &
                          , MPI_DOUBLE_PRECISION                                            &
@@ -284,8 +286,6 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElem
         ! the collision is only valid if it occurred before a BC intersection
         ! > here, the particle radius needs to be considered since the collision is on the particle surface but the BC intersection
         ! > is determined based on the particle center of mass
-        !IF (dtColl.GT.PartBC_Shared(iPart1) - 0.5*PartData_Shared(PART_DIAM,iPart1)/NORM2(V1)) CYCLE
-        !IF (dtColl.GT.PartBC_Shared(iPart2) - 0.5*PartData_Shared(PART_DIAM,iPart2)/NORM2(V2)) CYCLE
         IF (dtColl.GT.PartBC_Shared(iPart1)) CYCLE
         IF (dtColl.GT.PartBC_Shared(iPart2)) CYCLE
 
@@ -296,11 +296,10 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElem
         ! FIXME: NOT TRUE, we can collide on with acute angles
         ASSOCIATE(N1 => V1 &
                  ,N2 => V2)
-        pColl = PartData_Shared(PART_POSV,iPart1) - (dtLoc-dtColl) * V1
-        ! IF (DOT_PRODUCT(P2 - P1,N1).LE.0) CYCLE
-        ! IF (DOT_PRODUCT(P1 - P2,N2).LE.0) CYCLE
-        IF (DOT_PRODUCT(pColl - P1,N1).LE.0) CYCLE
-        IF (DOT_PRODUCT(pColl - P2,N2).LE.0) CYCLE
+        pColl1 = PartData_Shared(PART_POSV,iPart1) - (dtLoc-dtColl) * V1
+        pColl2 = PartData_Shared(PART_POSV,iPart2) - (dtLoc-dtColl) * V2
+        IF (DOT_PRODUCT(pColl1 - P1,N1).LE.0) CYCLE
+        IF (DOT_PRODUCT(pColl2 - P2,N2).LE.0) CYCLE
         END ASSOCIATE
 
         ! collision found
@@ -326,8 +325,6 @@ DEALLOCATE( PEM%pStart   &
 ! Done with particle collisions. Deallocate mappings
 SDEALLOCATE(PEM2PartID)
 
-! stop 2
-
 END SUBROUTINE ComputeParticleCollisions
 
 
@@ -342,11 +339,9 @@ USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem
 USE MOD_Utils                   ,ONLY: ALMOSTZERO
 USE MOD_Particle_Collision_Vars
 USE MOD_Particle_Globals        ,ONLY: UNITVECTOR
-! USE MOD_Particle_Output_Vars    ,ONLY: offsetnPart,locnPart
 USE MOD_Particle_Localization   ,ONLY: SinglePointToElement
 USE MOD_Particle_Mesh_Tools     ,ONLY: GetCNElemID
 USE MOD_Particle_Vars           ,ONLY: PartState,Species,LastPartPos,PDM,PEM
-USE MOD_Particle_Vars           ,ONLY: nComputeNodeParts
 !----------------------------------------------------------------------------------------------------------------------------------
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -433,8 +428,6 @@ END IF
 ! Apply jump relation to momentum equation, i.e., update velocity of particles
 PartState(PART_VELV,LocPartID1) = V1 + J / m1
 
-!IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
-!IF (iPart2.LE.nComputeNodeParts) THEN
 IF (iPart2.GE.PartInt_Shared(1,firstCNElem)+1 .AND. &
     iPart2.LE.PartInt_Shared(2, lastCNElem))  THEN
   LocPartID2 = PEM2PartID(iPart2)
@@ -445,7 +438,6 @@ END IF
 #if USE_PARTROT
 Jxn_loc = CROSSPRODUCT(n_loc, J)
 PartState(PART_AMOMV,LocPartID1) = PartData_Shared(PART_AMOMV,iPart1) + Jxn_loc * 0.5 / (0.1 * m1 * PartData_Shared(PART_DIAM,iPart1))
-! IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
 IF (iPart2.LE.nComputeNodeParts) THEN
   PartState(PART_AMOMV,LocPartID2) = PartData_Shared(PART_AMOMV,iPart2) + Jxn_loc * 0.5 / (0.1 * m2 * PartData_Shared(PART_DIAM,iPart2))
 END IF
@@ -453,21 +445,16 @@ END IF
 
 ! for LSERK algorithm
 PDM%IsNewPart(LocPartID1) = .TRUE.
-! IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) &
-!IF (iPart2.LE.nComputeNodeParts) &
 IF (iPart2.GE.PartInt_Shared(1,firstCNElem)+1 .AND. &
     iPart2.LE.PartInt_Shared(2, lastCNElem))        &
   PDM%IsNewPart(LocPartID2) = .TRUE.
 
 ! Update the particle's position at time tStage+dtloc
 PartState(  PART_POSV,LocPartID1) = P1_old + mdtColl * PartState(PART_VELV,LocPartID1)
-!LastPartPos(PART_POSV,LocPartID1) = P1_old
 ! Update the particle host element
 PEM%lastElement(LocPartID1)       = SinglePointToElement(P1_old,doHalo=.TRUE.)
 IF (PEM%lastElement(LocPartID1).EQ.-1) CALL Abort(__STAMP__,'LastElemID == -1!')
 LastPartPos(PART_POSV,LocPartID1) = P1_old
-! IF (iPart2.GT.offsetnPart .AND. iPart2.LE.offsetnPart + locnPart) THEN
-!IF (iPart2.LE.nComputeNodeParts) THEN
 IF (iPart2.GE.PartInt_Shared(1,firstCNElem)+1 .AND. &
     iPart2.LE.PartInt_Shared(2, lastCNElem))  THEN
   PartState(  PART_POSV,LocPartID2) = P2_old + mdtColl * PartState(PART_VELV,LocPartID2)

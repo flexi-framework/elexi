@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -480,7 +481,8 @@ DO iElem = FirstElemInd,LastElemInd
       ! BC sides don't need a connection, except for internal (BC_TYPE=0), periodic (BC_TYPE=1) and "dummy" inner BCs (BC_TYPE=100).
       ! For all other BC sides: reset the flip and mortars settings, do not build a connection.
       IF(aSide%BCindex.NE.0)THEN ! BC
-        IF((BoundaryType(aSide%BCindex,BC_TYPE).NE.1  ) .AND.&
+        IF((BoundaryType(aSide%BCindex,BC_TYPE).NE.0  ).AND.&
+           (BoundaryType(aSide%BCindex,BC_TYPE).NE.1)  .AND.&
            (BoundaryType(aSide%BCindex,BC_TYPE).NE.100))THEN
           aSide%flip  =0
           IF(iMortar.EQ.0) aSide%mortarType  = 0
@@ -530,7 +532,6 @@ DO iElem = FirstElemInd,LastElemInd
     END DO !iMortar
   END DO !iLocSide
 END DO !iElem
-
 
 !----------------------------------------------------------------------------------------------------------------------------
 !                              NODES
@@ -1031,24 +1032,36 @@ END FUNCTION ELEMIPROC
 !> Read arrays nElems_IJK (global number of elements in i,j,k direction) and Elem_IJK (mapping from global element to i,j,k index)
 !> for meshes thar are i,j,k sorted.
 !===================================================================================================================================
-SUBROUTINE ReadIJKSorting()
+SUBROUTINE ReadIJKSorting(doGlobal)
 ! MODULES
-USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,MeshFile
+USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,nGlobalElems,MeshFile
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
+LOGICAL,INTENT(IN),OPTIONAL      :: doGlobal
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL        :: dsExists
+LOGICAL                          :: dsExists
+LOGICAL                          :: doGlobal_loc
 !===================================================================================================================================
+IF (PRESENT(doGlobal)) THEN
+  doGlobal_loc = doGlobal
+ELSE
+  doGlobal_loc = .FALSE.
+END IF
 
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
 IF(dsExists)THEN
-  CALL ReadArray('nElems_IJK',1,(/3       /),0         ,1,IntArray=nElems_IJK)
-  ALLOCATE(Elem_IJK(3,nElems))
-  CALL ReadArray('Elem_IJK'  ,2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
+  IF (doGlobal_loc) THEN
+    ALLOCATE(Elem_IJK(3,nGlobalElems))
+    CALL ReadArray('Elem_IJK',2,(/3,nGlobalElems/),0,2,IntArray=Elem_IJK)
+  ELSE
+    ALLOCATE(Elem_IJK(3,nElems))
+    CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+  END IF
 END IF
 CALL CloseDataFile()
 END SUBROUTINE ReadIJKSorting

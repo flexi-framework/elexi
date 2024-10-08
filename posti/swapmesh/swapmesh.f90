@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -488,16 +489,19 @@ SDEALLOCATE(VarNames_ElemData)
 SDEALLOCATE(UMean)
 !SDEALLOCATE(UFluc)
 DEALLOCATE(U_local)
+
 END SUBROUTINE ReadOldStateFile
+
 
 !===================================================================================================================================
 !> Write the new state file by calling the WriteState routine from FLEXI. All necessary variables must have been set correctly!
 !===================================================================================================================================
 SUBROUTINE WriteNewStateFile()
-! MODULES                                                                                                   
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_IO_HDF5            
+USE MOD_IO_HDF5
+USE MOD_HDF5_Output,        ONLY: WriteAttribute
 USE MOD_HDF5_Output_State,  ONLY: WriteState
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Swapmesh_Vars,      ONLY: Time_State,MeshFileNew,NodeTypeOut,NodeTypeState
@@ -523,6 +527,7 @@ IF (NodeTypeOut.NE.NodeTypeState) THEN
 END IF
 
 END SUBROUTINE WriteNewStateFile
+
 
 !===================================================================================================================================
 !> Finalize swapmesh variables

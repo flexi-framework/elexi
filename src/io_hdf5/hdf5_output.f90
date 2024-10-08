@@ -1,7 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -12,6 +13,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Module providing IO routines for parallel output in HDF5 format: solution, time averaged files, baseflow, record points,...
@@ -28,8 +30,8 @@ INTERFACE WriteTimeAverage
   MODULE PROCEDURE WriteTimeAverage
 END INTERFACE
 
-INTERFACE WriteBaseflow
-  MODULE PROCEDURE WriteBaseflow
+INTERFACE WriteBaseFlow
+  MODULE PROCEDURE WriteBaseFlow
 END INTERFACE
 
 INTERFACE FlushFiles
@@ -79,7 +81,7 @@ END INTERFACE
 PUBLIC :: GatheredWriteArray
 PUBLIC :: WriteAdditionalElemData
 PUBLIC :: WriteAdditionalFieldData
-PUBLIC :: WriteBaseflow
+PUBLIC :: WriteBaseFlow
 PUBLIC :: WriteTimeAverage
 PUBLIC :: GenerateFileSkeleton
 PUBLIC :: MarkWriteSuccessful
@@ -413,18 +415,19 @@ END SUBROUTINE WriteAdditionalFieldData
 !==================================================================================================================================
 !> Subroutine to write the baseflow to HDF5 format
 !==================================================================================================================================
-SUBROUTINE WriteBaseflow(MeshFileName,OutputTime,FutureTime)
+SUBROUTINE WriteBaseFlow(ProjectName,MeshFileName,OutputTime,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_BaseFlow_Vars,ONLY: BaseFlow,TimeFilterWidthBaseFlow
 USE MOD_Equation_Vars,ONLY: StrVarNames
 USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,nElems
-USE MOD_Output_Vars  ,ONLY: ProjectName,WriteStateFiles
-USE MOD_Sponge_Vars  ,ONLY: SpBaseFlow
+USE MOD_Output_Vars  ,ONLY: WriteStateFiles
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)    :: ProjectName        !< Name of project
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
 REAL,INTENT(IN)                :: OutputTime         !< Time of output
 REAL,INTENT(IN)                :: FutureTime         !< hint, when next file will be written
@@ -433,7 +436,9 @@ REAL,INTENT(IN)                :: FutureTime         !< hint, when next file wil
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
+REAL,ALLOCATABLE               :: timeFilter(:)
 INTEGER                        :: NZ_loc
+TYPE(tElementOut),POINTER      :: ElementOutBaseFlow
 #if PP_dim == 2
 INTEGER                        :: iElem,i,j,iVar
 #endif
@@ -451,22 +456,22 @@ FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',OutputTime))//'.h5'
 IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,StrVarNames,MeshFileName,OutputTime,FutureTime)
 
 #if PP_dim == 3
-  UOut => SpBaseFlow
-  NZ_loc=PP_N
+  UOut  => BaseFlow
+  NZ_loc = PP_N
 #else
 IF (.NOT.output2D) THEN
   ALLOCATE(UOut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
   DO iElem=1,nElems
     DO j=0,PP_N; DO i=0,PP_N
       DO iVar=1,PP_nVar
-        UOut(iVar,i,j,:,iElem)=SpBaseFlow(iVar,i,j,0,iElem)
+        UOut(iVar,i,j,:,iElem) = BaseFlow(iVar,i,j,0,iElem)
       END DO ! iVar=1,PP_nVar
     END DO; END DO
   END DO
-  NZ_loc=PP_N
+  NZ_loc = PP_N
 ELSE
-  UOut => SpBaseFlow
-  NZ_loc=0
+  UOut  => BaseFlow
+  NZ_loc = 0
 END IF
 #endif
 
@@ -484,13 +489,23 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
 #if PP_dim == 2
 IF(.NOT.output2D) DEALLOCATE(UOut)
 #endif
+
+! Write element local temporal filter width
+NULLIFY(ElementOutBaseFlow)
+ALLOCATE(timeFilter(nElems))
+timeFilter = 1./TimeFilterWidthBaseFlow
+CALL AddToElemData(ElementOutBaseFlow,'TimeFilterWidth',RealArray=timeFilter)
+CALL WriteAdditionalElemData(FileName,ElementOutBaseFlow)
+DEALLOCATE(ElementOutBaseFlow)
+SDEALLOCATE(timeFilter)
+
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessful(FileName)
   GETTIME(EndT)
   CALL DisplayMessageAndTime(EndT-StartT,'DONE!',DisplayDespiteLB=.TRUE.,DisplayLine=.FALSE.)
 END IF
 
-END SUBROUTINE WriteBaseflow
+END SUBROUTINE WriteBaseFlow
 
 
 !==================================================================================================================================

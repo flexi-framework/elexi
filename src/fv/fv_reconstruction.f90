@@ -1,7 +1,8 @@
 !!=================================================================================================================================
-! Copyright (c) 2010-2024  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+! Copyright (c) 2022-2024 Prof. Andrea Beck
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -826,7 +827,7 @@ USE MOD_FV_Vars   ,ONLY: FV_Metrics_NormVec_slave,FV_Metrics_TangVec1_slave
 USE MOD_FV_Vars   ,ONLY: FV_Metrics_NormVec_master,FV_Metrics_TangVec1_master
 USE MOD_FV_Vars   ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave
 #if VOLINT_VISC
-USE MOD_Mesh_Vars          ,ONLY: ElemToSide,S2V
+USE MOD_Mesh_Vars ,ONLY: ElemToSide,S2V
 #endif /* VOLINT_VISC */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

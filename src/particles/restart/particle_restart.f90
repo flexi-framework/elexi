@@ -392,14 +392,11 @@ IF(PartIntExists)THEN
       NbrOfFoundParts = 0
       CurrentPartNum  = PDM%ParticleVecLength+1
 
-      DO iPart = 1, TotalNbrOfMissingParticlesSum
-        ! Sanity check
-        IF(CurrentPartNum.GT.PDM%maxParticleNumber)THEn
-          IPWRITE(UNIT_stdOut,'(I0,A,I0)') " CurrentPartNum        = ",  CurrentPartNum
-          IPWRITE(UNIT_stdOut,'(I0,A,I0)') " PDM%maxParticleNumber = ",  PDM%maxParticleNumber
-          CALL Abort(__STAMP__,'Missing particle ID > PDM%maxParticleNumber. Increase Part-MaxParticleNumber!')
-        END IF ! CurrentPartNum.GT.PDM%maxParticleNumber
+      ! Increase the array size by TotalNbrOfMissingParticlesSum if needed
+      IF(PDM%ParticleVecLength+TotalNbrOfMissingParticlesSum.GT.PDM%maxParticleNumber) &
+        CALL IncreaseMaxParticleNumber(TotalNbrOfMissingParticlesSum)
 
+      DO iPart = 1, TotalNbrOfMissingParticlesSum
         ! Do not search particles twice: Skip my own particles, because these have already been searched for before they are
         ! sent to all other procs
         ASSOCIATE( myFirst => OffsetTotalNbrOfMissingParticles(myRank) + 1 ,&

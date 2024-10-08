@@ -123,10 +123,6 @@ REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsVisu_DG(:,:,:,:,:)!< coordinates 
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsVisu_FV(:,:,:,:,:)!< coordinates of UVisu_FV
 INTEGER,ALLOCATABLE,TARGET            :: nodeids_DG(:)           !< nodeIDs for CoordsVisu_DG
 INTEGER,ALLOCATABLE,TARGET            :: nodeids_FV(:)           !< nodeIDs for CoordsVisu_FV
-INTEGER,ALLOCATABLE,TARGET            :: globalnodeids_DG(:)     !< nodeIDs for CoordsVisu_DG
-INTEGER,ALLOCATABLE,TARGET            :: globalcellids_DG(:)     !< nodeIDs for CoordsVisu_DG
-INTEGER,ALLOCATABLE,TARGET            :: globalnodeids_FV(:)     !< nodeIDs for CoordsVisu_FV
-INTEGER,ALLOCATABLE,TARGET            :: globalcellids_FV(:)     !< nodeIDs for CoordsVisu_FV
 
 
 ! ==============================================================================================================================
@@ -162,10 +158,6 @@ REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsSurfVisu_DG(:,:,:,:,:) !< coordin
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsSurfVisu_FV(:,:,:,:,:) !< coordinates of FV surface solution
 INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_DG(:)            !< nodeIDs for DG surface coordinates
 INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_FV(:)            !< nodeIDs for FV surface coordinates
-INTEGER,ALLOCATABLE,TARGET            :: globalnodeidsSurf_DG(:)      !< nodeIDs for DG surface coordinates
-INTEGER,ALLOCATABLE,TARGET            :: globalcellidsSurf_DG(:)      !< nodeIDs for DG surface coordinates
-INTEGER,ALLOCATABLE,TARGET            :: globalnodeidsSurf_FV(:)      !< nodeIDs for FV surface coordinates
-INTEGER,ALLOCATABLE,TARGET            :: globalcellidsSurf_FV(:)      !< nodeIDs for FV surface coordinates
 
 ! ==============================================================================================================================
 ! Partitioning

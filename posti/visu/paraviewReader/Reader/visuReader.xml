@@ -118,24 +118,6 @@
            Mesh file, that overwrites the one stored in the parameter file from the USERBLOCK of the state file.
            </Documentation>
          </StringVectorProperty>
-#if USE_MPI
-#if !FV_ENABLED
-         <IntVectorProperty command="SetUseD3"
-            default_values="0"
-            animateable="0"
-            name="UseD3"
-            number_of_elements="1"
-            label="Create halo region to improve interpolation"
-            panel_visibility="advanced">
-            <BooleanDomain name="bool"/>
-            <Documentation>
-               This property calculates unique visu node ids and enables the D3 filter to improve interpolation over MPI boundaries.
-
-               WARNING: This makes data continuous even at DG element boundaries!
-            </Documentation>
-         </IntVectorProperty>
-#endif
-#endif
          <IntVectorProperty command="SetUseCurveds"
             default_values="1"
             animateable="0"

@@ -161,17 +161,14 @@ END SUBROUTINE visu_requestInformation
 !> ParaView needs the data in this format.
 !===================================================================================================================================
 SUBROUTINE visu_CWrapper(mpi_comm_IN,  &
-#if USE_MPI
-    UseD3,                                                          &
-#endif
     UseHighOrder,UseCurveds_IN,                                                                                     &
     strlen_prm      ,prmfile_IN      ,strlen_posti     ,postifile_IN       ,strlen_state ,statefile_IN,             &
-    coordsDG_out    ,valuesDG_out    ,nodeidsDG_out    ,globalnodeidsDG_out,              globalcellidsDG_out,      &
-    coordsFV_out    ,valuesFV_out    ,nodeidsFV_out    ,globalnodeidsFV_out,              globalcellidsFV_out,      &
+    coordsDG_out    ,valuesDG_out    ,nodeidsDG_out    ,&
+    coordsFV_out    ,valuesFV_out    ,nodeidsFV_out    ,&
     varnames_out,                                                                                                   &
-    coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out,globalnodeidsSurfDG_out,          globalcellidsSurfDG_out,  &
-    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,globalnodeidsSurfFV_out,          globalcellidsSurfFV_out,  &
-    varnamesSurf_out                                                                                                &
+    coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out,&
+    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,&
+    varnamesSurf_out                                    &
 #if USE_PARTICLES
    ,coordsPart_out  ,valuesPart_out  ,nodeidsPart_out  ,varnamesPart_out  ,componentsPart_out,                      &
     coordsImpact_out,valuesImpact_out,nodeidsImpact_out,varnamesImpact_out,componentsImpact_out                     &
@@ -184,9 +181,6 @@ USE MOD_Output_Vars ,ONLY: doPrintStatusLine
 USE MOD_Visu_Vars
 USE MOD_Visu        ,ONLY: visu
 USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array,CARRAY
-#if !FV_ENABLED
-USE MOD_Posti_VisuMesh, ONLY: WriteGlobalNodeIDsToVTK_array
-#endif /*!FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_VTK         ,ONLY: WritePartDataToVTK_array
 #endif /*USE_PARTICLES*/
@@ -194,9 +188,6 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,INTENT(IN)            :: mpi_comm_IN
-#if USE_MPI
-INTEGER,INTENT(IN)            :: UseD3
-#endif
 INTEGER,INTENT(IN)            :: UseHighOrder
 INTEGER,INTENT(IN)            :: UseCurveds_IN
 INTEGER,INTENT(IN)            :: strlen_prm
@@ -208,24 +199,16 @@ TYPE(C_PTR),TARGET,INTENT(IN) :: statefile_IN
 TYPE (CARRAY), INTENT(INOUT)  :: coordsDG_out
 TYPE (CARRAY), INTENT(INOUT)  :: valuesDG_out
 TYPE (CARRAY), INTENT(INOUT)  :: nodeidsDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: globalnodeidsDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: globalcellidsDG_out
 TYPE (CARRAY), INTENT(INOUT)  :: coordsFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: valuesFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: nodeidsFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: globalnodeidsFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: globalcellidsFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: varnames_out
 TYPE (CARRAY), INTENT(INOUT)  :: coordsSurfDG_out
 TYPE (CARRAY), INTENT(INOUT)  :: valuesSurfDG_out
 TYPE (CARRAY), INTENT(INOUT)  :: nodeidsSurfDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: globalnodeidsSurfDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: globalcellidsSurfDG_out
 TYPE (CARRAY), INTENT(INOUT)  :: coordsSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: valuesSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: nodeidsSurfFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: globalnodeidsSurfFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: globalcellidsSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: varnamesSurf_out
 #if USE_PARTICLES
 TYPE (CARRAY), INTENT(INOUT)  :: coordsPart_out
@@ -260,13 +243,6 @@ CALL visu(mpi_comm_IN, prmfile, postifile, statefile, UseCurveds)
 IF (MeshFileMode) THEN
   ! Write only the DG coordinates to the VTK file
   CALL WriteCoordsToVTK_array(NVisu,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0,HighOrder=UseHighOrder)
-#if USE_MPI && !FV_ENABLED
-  ! GlobalNodeIDs are only required once. Do it here only if just the mesh is required
-  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG        &
-                                                    ,globalnodeidsDG_out,globalnodeids_DG &
-                                                    ,globalcellidsDG_out,globalcellids_DG &
-                                                    ,dim=PP_dim,DGFV=0,surf=0)
-#endif
   ! We may visualize the scaled Jacobian for debug purposes
   IF (nVarVisu.GT.0) THEN
     CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,PP_dim)
@@ -282,20 +258,14 @@ IF (MeshFileMode) THEN
   coordsFV_out%len      = 0
   valuesFV_out%len      = 0
   nodeidsFV_out%len     = 0
-  globalnodeidsFV_out%len     = 0
-  globalcellidsFV_out%len     = 0
   coordsSurfDG_out%dim  = 2
   coordsSurfDG_out%len  = 0
   valuesSurfDG_out%len  = 0
   nodeidsSurfDG_out%len = 0
-  globalnodeidsSurfDG_out%len = 0
-  globalcellidsSurfDG_out%len = 0
   coordsSurfFV_out%dim  = 2
   coordsSurfFV_out%len  = 0
   valuesSurfFV_out%len  = 0
   nodeidsSurfFV_out%len = 0
-  globalnodeidsSurfFV_out%len = 0
-  globalcellidsSurfFV_out%len = 0
   varnamesSurf_out%len  = 0
 #if USE_PARTICLES
   coordsPart_out%len    = 0
@@ -315,9 +285,6 @@ IF (MeshFileMode) THEN
   RETURN
 END IF
 
-globalcellidsFV_out%len     = 0
-globalcellidsSurfFV_out%len = 0
-
 ! write UVisu to VTK 2D / 3D arrays (must be done always!)
 ! write coords, UVisu to VTK  2D / 3D arrays (must be done always!)
 IF (Avg2D) THEN
@@ -325,23 +292,11 @@ IF (Avg2D) THEN
   CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElemsAvg2D_FV,valuesFV_out,UVisu_FV,2)
   CALL WriteCoordsToVTK_array(NVisu,nElemsAvg2D_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=2,DGFV=0,HighOrder=UseHighOrder)
   CALL WriteCoordsToVTK_array(NVisu_FV,nElemsAvg2D_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=2,DGFV=1,HighOrder=UseHighOrder)
-#if USE_MPI && !FV_ENABLED
-  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG         &
-                                                    ,globalnodeidsDG_out,globalnodeids_DG  &
-                                                    ,globalcellidsDG_out,globalcellids_DG  &
-                                                    ,dim=2,DGFV=0,surf=0)
-#endif
 ELSE
   CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,PP_dim)
   CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,PP_dim)
   CALL WriteCoordsToVTK_array(NVisu,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0,HighOrder=UseHighOrder)
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=PP_dim,DGFV=1,HighOrder=UseHighOrder)
-#if USE_MPI && !FV_ENABLED
-  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nElems_DG,CoordsVisu_DG         &
-                                                    ,globalnodeidsDG_out,globalnodeids_DG  &
-                                                    ,globalcellidsDG_out,globalcellids_DG  &
-                                                    ,dim=PP_dim,DGFV=0,surf=0)
-#endif
 END IF
 
 #if USE_PARTICLES
@@ -380,12 +335,6 @@ CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSur
     CoordsSurfVisu_DG,nodeidsSurf_DG,dim=PP_dim-1,DGFV=0,HighOrder=UseHighOrder)
 CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
     CoordsSurfVisu_FV,nodeidsSurf_FV,dim=PP_dim-1,DGFV=1,HighOrder=UseHighOrder)
-#if USE_MPI && !FV_ENABLED
-  IF (UseD3.GT.0) CALL WriteGlobalNodeIDsToVTK_array(NVisu,nBCSidesVisu_DG,CoordsSurfVisu_DG      &
-                                                    ,globalnodeidsSurfDG_out,globalnodeidsSurf_DG &
-                                                    ,globalcellidsSurfDG_out,globalcellidsSurf_DG &
-                                                    ,dim=PP_dim-1,DGFV=0,surf=1)
-#endif
 
 CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,VarnamesAll,nVarSurfVisuAll)
 
@@ -406,13 +355,9 @@ IMPLICIT NONE
 ! volume
 SDEALLOCATE(nodeids_DG)
 SDEALLOCATE(nodeids_FV)
-SDEALLOCATE(globalnodeids_DG)
-SDEALLOCATE(globalnodeids_FV)
 ! surface
 SDEALLOCATE(nodeidsSurf_DG)
 SDEALLOCATE(nodeidsSurf_FV)
-SDEALLOCATE(globalnodeidsSurf_DG)
-SDEALLOCATE(globalnodeidsSurf_FV)
 ! particles
 #if USE_PARTICLES
 IF (PD%PartCPointers_allocated) THEN

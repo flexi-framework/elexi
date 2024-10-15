@@ -46,7 +46,6 @@ USE MOD_BaseFlow                   ,ONLY: InitBaseFlow,FinalizeBaseFlow
 USE MOD_DG                         ,ONLY: InitDG,FinalizeDG
 USE MOD_Equation                   ,ONLY: InitEquation,FinalizeEquation
 USE MOD_Filter                     ,ONLY: InitFilter,FinalizeFilter
-USE MOD_Lifting                    ,ONLY: InitLifting,FinalizeLifting
 USE MOD_LoadBalance_BaseFlow       ,ONLY: BaseFlowRestart
 USE MOD_LoadBalance_Restart        ,ONLY: FieldRestart
 USE MOD_LoadBalance_Vars           ,ONLY: ElemTime,ElemTimeField
@@ -71,7 +70,7 @@ USE MOD_TimeDisc_Vars              ,ONLY: dtElem
 USE MOD_TimeDisc_Vars              ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars              ,ONLY: TimeDiscType,TimeDiscMethod
 #if PARABOLIC
-USE MOD_Lifting                    ,ONLY: InitLifting
+USE MOD_Lifting                    ,ONLY: InitLifting,FinalizeLifting
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 USE MOD_FV                         ,ONLY: InitFV,FinalizeFV

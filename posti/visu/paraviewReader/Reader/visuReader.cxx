@@ -473,9 +473,6 @@ int visuReader::RequestData(
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str());
    __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm,
-#if USE_MPI
-         &this->UseD3,
-#endif /*USE_MPI*/
          &this->HighOrder,&this->UseCurveds,
          &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,

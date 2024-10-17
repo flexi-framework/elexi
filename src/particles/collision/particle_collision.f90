@@ -717,8 +717,10 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
   ! >        remote memory windows using one-sided RMA appraoch. Get the desired data using MPI_IGET and build a mapping
   CALL Allocate_Shared((/PP_nVarPart+1,INT(nComputeNodeTotalParts*1.2)/),PartData_Shared_Win,PartData_Shared)
   CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
+  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartColl_Shared_Win,PartColl_Shared)
   CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
   CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win  ,iError)
+  CALL MPI_WIN_LOCK_ALL(0,PartColl_Shared_Win,iError)
 
   ! Create an MPI Window object for one-sided communication
   IF (myComputeNodeRank.EQ.0) THEN
@@ -739,6 +741,14 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
                        , MPI_COMM_LEADERS_SHARED                                                    &
                        , PartBC_Window                                                              &
                        , iError)
+    ! Create an MPI Window object for one-sided communication
+    CALL MPI_WIN_CREATE( PartColl_Shared                                                            &
+                       , INT(SIZE_INT*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND)                  & ! Only local particles are to be sent
+                       , SIZE_INT                                                                   &
+                       , MPI_INFO_NULL                                                              &
+                       , MPI_COMM_LEADERS_SHARED                                                    &
+                       , PartColl_Window                                                            &
+                       , iError)
   END IF ! CN root
 ! Re-allocate the SHM window if it became too small
 ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
@@ -748,6 +758,8 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
   CALL MPI_WIN_FREE(      PartData_Shared_Win,iError)
   CALL MPI_WIN_UNLOCK_ALL(PartBC_Shared_Win  ,iError)
   CALL MPI_WIN_FREE(      PartBC_Shared_Win  ,iError)
+  CALL MPI_WIN_UNLOCK_ALL(PartColl_Shared_Win,iError)
+  CALL MPI_WIN_FREE(      PartColl_Shared_Win,iError)
   CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 
   ! Then, free the pointers or arrays
@@ -756,8 +768,10 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
   ! Increase array size if needed, 20% margin
   CALL Allocate_Shared((/PP_nVarPart+1,INT(nComputeNodeTotalParts*1.2)/),PartData_Shared_Win,PartData_Shared)
   CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
+  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartColl_Shared_Win,PartColl_Shared)
   CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
   CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win  ,iError)
+  CALL MPI_WIN_LOCK_ALL(0,PartColl_Shared_Win,iError)
 
   ! Create an MPI Window object for one-sided communication
   ! > Needs to be reallocated every single time as the number of particles changes
@@ -766,6 +780,8 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
     CALL MPI_WIN_FREE(     PartData_Window                                                          &
                       ,    iError)
     CALL MPI_WIN_FREE(     PartBC_Window                                                            &
+                      ,    iError)
+    CALL MPI_WIN_FREE(     PartColl_Window                                                          &
                       ,    iError)
 
     ! Specify a window of existing memory that is exposed to RMA accesses
@@ -785,6 +801,14 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
                        , PartBC_Window                                                              &
+                       , iError)
+    ! Create an MPI Window object for one-sided communication
+    CALL MPI_WIN_CREATE( PartColl_Shared                                                            &
+                       , INT(SIZE_INT*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND)                  & ! Only local particles are to be sent
+                       , SIZE_INT                                                                   &
+                       , MPI_INFO_NULL                                                              &
+                       , MPI_COMM_LEADERS_SHARED                                                    &
+                       , PartColl_Window                                                            &
                        , iError)
   END IF ! CN root
 END IF
@@ -1029,6 +1053,8 @@ IF (myComputeNodeRank.EQ.0) THEN
                       ,    iError)
     CALL MPI_WIN_FREE(     PartBC_Window                                           &
                       ,    iError)
+    CALL MPI_WIN_FREE(     PartColl_Window                                         &
+                      ,    iError)
 END IF ! CN root
 
 ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
@@ -1048,6 +1074,8 @@ CALL MPI_WIN_UNLOCK_ALL(PartData_Shared_Win            ,iError)
 CALL MPI_WIN_FREE(      PartData_Shared_Win            ,iError)
 CALL MPI_WIN_UNLOCK_ALL(PartBC_Shared_Win              ,iError)
 CALL MPI_WIN_FREE(      PartBC_Shared_Win              ,iError)
+CALL MPI_WIN_UNLOCK_ALL(PartColl_Shared_Win            ,iError)
+CALL MPI_WIN_FREE(      PartColl_Shared_Win            ,iError)
 
 CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
 #endif /*USE_MPI*/
@@ -1061,6 +1089,7 @@ MDEALLOCATE(CNElem2CNNeighElem)
 MDEALLOCATE(PartInt_Shared)
 MDEALLOCATE(PartData_Shared)
 MDEALLOCATE(PartBC_Shared)
+MDEALLOCATE(PartColl_Shared)
 
 SDEALLOCATE(NeighElemsProc)
 SDEALLOCATE(offsetNeighElemPart)

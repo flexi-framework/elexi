@@ -56,6 +56,7 @@ INTEGER,ALLOCPOINT,DIMENSION(:)          :: CNNeighElem2CNElem          !> Rever
 ! Shared particle arrays
 REAL   ,ALLOCPOINT,DIMENSION(:,:)        :: PartData_Shared             !>
 REAL   ,ALLOCPOINT,DIMENSION(:)          :: PartBC_Shared               !>
+INTEGER,ALLOCPOINT,DIMENSION(:)          :: PartColl_Shared             !>
 INTEGER,ALLOCPOINT,DIMENSION(:,:)        :: PartInt_Shared              !> CN-local (!) PartInt array, 1:2 offset/last part on CN
                                                                         !>                             3:4 offset/last part global
 
@@ -76,9 +77,11 @@ INTEGER                                  :: CNNeighElem2CNElem_Win      !> MPI S
 ! Shared particle arrays
 INTEGER                                  :: PartData_Shared_Win
 INTEGER                                  :: PartBC_Shared_Win
+INTEGER                                  :: PartColl_Shared_Win
 INTEGER                                  :: PartInt_Shared_Win
 INTEGER                                  :: PartData_Window             !> MPI RMA window handle
 INTEGER                                  :: PartBC_Window               !> MPI RMA window handle
+INTEGER                                  :: PartColl_Window             !> MPI RMA window handle
 INTEGER                                  :: PartInt_Window              !> MPI RMA window handle
 #endif /*USE_MPI*/
 

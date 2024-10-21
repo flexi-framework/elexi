@@ -69,6 +69,10 @@ LOGICAL                       :: doRandomPartDiam                            ! F
 LOGICAL                       :: doRandomSphericity                          ! Flag to enable random sphericity
 #endif
 
+#if PARTICLES_COUPLING >= 2
+REAL    , ALLOCATABLE         :: PartNodeSource(:,:,:)                       ! Source term for DG solution (1:PP_nVar,1:8,1:NParts)
+#endif /*PARTICLES_COUPLING >= 2*/
+
 #if USE_BASSETFORCE
 REAL    , ALLOCATABLE         :: durdt(:,:)                                  ! Old dur/dt for Basset force
 REAL    , ALLOCATABLE         :: FbCoeff(:)                                  ! Coeff. for Basset force

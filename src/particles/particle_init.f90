@@ -75,7 +75,7 @@ USE MOD_Particle_Vars
 USE MOD_Particle_Deposition_Method, ONLY:DefineParametersDepositionMethod
 #endif /*PARTICLES_COUPLING >= 2*/
 #if PARTICLES_COUPLING == 4
-USE MOD_Particle_Collision,         ONLY:DefineParametersCollission
+USE MOD_Particle_Collision,         ONLY:DefineParametersCollision
 #endif /*PARTICLES_COUPLING == 4*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -527,7 +527,7 @@ CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-WallVelo'   , 'Velocity (g
 CALL DefineParametersDepositionMethod()
 #endif /*PARTICLES_COUPLING >= 2*/
 #if PARTICLES_COUPLING == 4
-CALL DefineParametersCollission()
+CALL DefineParametersCollision()
 #endif /*PARTICLES_COUPLING == 4*/
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()

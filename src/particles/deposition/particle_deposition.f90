@@ -176,9 +176,12 @@ SELECT CASE(DepositionType)
       CALL BARRIER_AND_SYNC(VertexVol_Shared_Win  ,MPI_COMM_SHARED)
       CALL MPI_WIN_UNLOCK_ALL(VertexVol_Shared_Win,iError)
 
-      CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                        ,    VertexVol_Shared_Win                                              &
-                        ,    iError)
+      !> > ACTIVE SYNCHRONIZATION
+      ! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+      !                   ,    VertexVol_Shared_Win                                              &
+      !                   ,    iError)
+      !> > PASSIVE SYNCHRONIZATION
+      CALL MPI_WIN_LOCK_ALL(0,VertexVol_Shared_Win,iError)
 
       CALL GetNodesAndWeights(1,NodeType,FEM_xGP,FEM_wGP)
       DO k=0,1; DO j=0,1; DO i=0,1
@@ -218,13 +221,16 @@ SELECT CASE(DepositionType)
       END DO ! iElem = 1,nElems
 
       ! > Complete the epoch - this will block until MPI is complete
-      CALL MPI_WIN_FENCE(    0                                                                 &
-                        ,    VertexVol_Shared_Win                                              &
-                        ,    iError)
-      ! All done with the window - tell MPI there are no more epochs
-      CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
-                        ,    VertexVol_Shared_Win                                              &
-                        ,    iError)
+      !> > ACTIVE SYNCHRONIZATION
+      ! CALL MPI_WIN_FENCE(    0                                                                 &
+      !                   ,    VertexVol_Shared_Win                                              &
+      !                   ,    iError)
+      ! ! All done with the window - tell MPI there are no more epochs
+      ! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+      !                   ,    VertexVol_Shared_Win                                              &
+      !                   ,    iError)
+      !> > PASSIVE SYNCHRONIZATION
+      CALL MPI_WIN_UNLOCK_ALL(VertexVol_Shared_Win,iError)
 
       ! Finish all RMA operation, flush the buffers and synchronize between compute nodes
       ! CALL MPI_WIN_FLUSH(0,VertexVol_Shared_Win,iError)

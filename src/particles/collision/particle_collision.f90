@@ -25,8 +25,8 @@ PRIVATE
 #if PARTICLES_COUPLING == 4
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersCollission
-  MODULE PROCEDURE DefineParametersCollission
+INTERFACE DefineParametersCollision
+  MODULE PROCEDURE DefineParametersCollision
 END INTERFACE
 
 INTERFACE InitializeCollision
@@ -41,7 +41,7 @@ INTERFACE FinalizeCollision
   MODULE PROCEDURE FinalizeCollision
 END INTERFACE
 
-PUBLIC :: DefineParametersCollission
+PUBLIC :: DefineParametersCollision
 PUBLIC :: InitializeCollision
 PUBLIC :: UpdateParticleShared
 PUBLIC :: FinalizeCollision
@@ -49,7 +49,7 @@ PUBLIC :: FinalizeCollision
 
 CONTAINS
 
-SUBROUTINE DefineParametersCollission
+SUBROUTINE DefineParametersCollision
 !===================================================================================================================================
 !> Initialize particle collision module
 !===================================================================================================================================
@@ -74,7 +74,7 @@ CALL prms%CreateLogicalOption('Part-Collisions-Friction'  , 'Enable or disable f
 CALL prms%CreateRealOption(   'Part-Collisions-FricCoeff' , 'Friction coefficient.'                                           &
                                                           , '0.3' )
 
-END SUBROUTINE DefineParametersCollission
+END SUBROUTINE DefineParametersCollision
 
 
 SUBROUTINE InitializeCollision()
@@ -137,7 +137,7 @@ IF (myComputeNodeRank.EQ.0) THEN
                      , SIZE_INT                                                &
                      , MPI_INFO_NULL                                           &
                      , MPI_COMM_LEADERS_SHARED                                 &
-                     , PartInt_Window                                          &
+                     , PartInt_Win                                             &
                      , iError)
   !> Start an RMA exposure epoch
   ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
@@ -654,9 +654,12 @@ CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 ! > https://cvw.cac.cornell.edu/mpionesided/synchronization-calls/fence-synchronization
 IF (myComputeNodeRank.EQ.0) THEN
   ! No local operations prior to this epoch, so give an assertion
-  CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                      &
-                    ,    PartInt_Window                                          &
-                    ,    iError)
+  !> > ACTIVE SYNCHRONIZATION
+  ! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                      &
+  !                   ,    PartInt_Window                                          &
+  !                   ,    iError)
+  !> > PASSIVE SYNCHRONIZATION
+  CALL MPI_WIN_LOCK_ALL(0, PartInt_Win, iError)
 
   ! Loop over all remote elements and fill the PartInt_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
@@ -674,7 +677,7 @@ IF (myComputeNodeRank.EQ.0) THEN
                          , INT(4*dispElemCN+2,MPI_ADDRESS_KIND)                    &
                          , 2                                                       &
                          , MPI_INTEGER                                             &
-                         , PartInt_Window                                          &
+                         , PartInt_Win                                             &
                          , iError)
     ! Add the PartInt to the CN-local (!) PartInt_Shared array
     ! PartInt_Shared(1,iElem) = PartInt_Shared(2,iElem-1)
@@ -682,13 +685,16 @@ IF (myComputeNodeRank.EQ.0) THEN
   END DO ! iElem
 
   ! Complete the epoch - this will block until MPI_Get is complete
-  CALL MPI_WIN_FENCE(    0                                                       &
-                    ,    PartInt_Window                                          &
-                    ,    iError)
-  ! All done with the window - tell MPI there are no more epochs
-  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
-                    ,    PartInt_Window                                          &
-                    ,    iError)
+  !> > ACTIVE SYNCHRONIZATION
+  ! CALL MPI_WIN_FENCE(    0                                                       &
+  !                   ,    PartInt_Win                                             &
+  !                   ,    iError)
+  ! ! All done with the window - tell MPI there are no more epochs
+  ! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                      &
+  !                   ,    PartInt_Win                                             &
+  !                   ,    iError)
+  !> > PASSIVE SYNCHRONIZATION
+  CALL MPI_WIN_UNLOCK_ALL(PartInt_Win, iError)
   ! ! Free up our window
   ! CALL MPI_WIN_FREE(     MPI_WINDOW                                              &
   !                   ,    iError)
@@ -731,7 +737,7 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
                        , SIZE_REAL                                                                  &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
-                       , PartData_Window                                                            &
+                       , PartData_Win                                                               &
                        , iError)
     ! Create an MPI Window object for one-sided communication
     CALL MPI_WIN_CREATE( PartBC_Shared                                                              &
@@ -739,7 +745,7 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
                        , SIZE_REAL                                                                  &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
-                       , PartBC_Window                                                              &
+                       , PartBC_Win                                                                 &
                        , iError)
     ! Create an MPI Window object for one-sided communication
     CALL MPI_WIN_CREATE( PartColl_Shared                                                            &
@@ -747,7 +753,7 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
                        , SIZE_INT                                                                   &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
-                       , PartColl_Window                                                            &
+                       , PartColl_Win                                                               &
                        , iError)
   END IF ! CN root
 ! Re-allocate the SHM window if it became too small
@@ -777,11 +783,11 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
   ! > Needs to be reallocated every single time as the number of particles changes
   IF (myComputeNodeRank.EQ.0) THEN
     !> Free up our window
-    CALL MPI_WIN_FREE(     PartData_Window                                                          &
+    CALL MPI_WIN_FREE(     PartData_Win                                                             &
                       ,    iError)
-    CALL MPI_WIN_FREE(     PartBC_Window                                                            &
+    CALL MPI_WIN_FREE(     PartBC_Win                                                               &
                       ,    iError)
-    CALL MPI_WIN_FREE(     PartColl_Window                                                          &
+    CALL MPI_WIN_FREE(     PartColl_Win                                                             &
                       ,    iError)
 
     ! Specify a window of existing memory that is exposed to RMA accesses
@@ -792,7 +798,7 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
                        , SIZE_REAL                                                                  &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
-                       , PartData_Window                                                            &
+                       , PartData_Win                                                               &
                        , iError)
     ! Create an MPI Window object for one-sided communication
     CALL MPI_WIN_CREATE( PartBC_Shared                                                              &
@@ -800,7 +806,7 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
                        , SIZE_REAL                                                                  &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
-                       , PartBC_Window                                                              &
+                       , PartBC_Win                                                                 &
                        , iError)
     ! Create an MPI Window object for one-sided communication
     CALL MPI_WIN_CREATE( PartColl_Shared                                                            &
@@ -808,7 +814,7 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
                        , SIZE_INT                                                                   &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
-                       , PartColl_Window                                                            &
+                       , PartColl_Win                                                               &
                        , iError)
   END IF ! CN root
 END IF
@@ -874,9 +880,12 @@ IF (myComputeNodeRank.EQ.0) THEN
   ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
   ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
   ! No local operations prior to this epoch, so give an assertion
-  CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                    ,    PartData_Window                                                   &
-                    ,    iError)
+  !> > ACTIVE SYNCHRONIZATION
+  ! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+  !                   ,    PartData_Win                                                      &
+  !                   ,    iError)
+  !> > PASSIVE SYNCHRONIZATION
+  CALL MPI_WIN_LOCK_ALL(0, PartData_Win, iError)
 
   ! Loop over all remote elements and fill the PartData_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
@@ -902,19 +911,22 @@ IF (myComputeNodeRank.EQ.0) THEN
                          , INT((PP_nVarPart+1)*offsetFirstPart,MPI_ADDRESS_KIND)            &
                          , 1                                                                &
                          , MPI_DOUBLE_PRECISION                                             &
-                         , PartData_Window                                                  &
+                         , PartData_Win                                                     &
                          , iError)
     END ASSOCIATE
   END DO ! iElem
 
   !> Complete the epoch - this will block until MPI_Get is complete
-  CALL MPI_WIN_FENCE(    0                                                                  &
-                    ,    PartData_Window                                                    &
-                    ,    iError)
-  ! All done with the window - tell MPI there are no more epochs
-  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                 &
-                    ,    PartData_Window                                                    &
-                    ,    iError)
+  !> > ACTIVE SYNCHRONIZATION
+  ! CALL MPI_WIN_FENCE(    0                                                                  &
+  !                   ,    PartData_Window                                                    &
+  !                   ,    iError)
+  ! ! All done with the window - tell MPI there are no more epochs
+  ! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                 &
+  !                   ,    PartData_Window                                                    &
+  !                   ,    iError)
+  !> > PASSIVE SYNCHRONIZATION
+  CALL MPI_WIN_UNLOCK_ALL(PartData_Win, iError)
   ! Free up our window
   ! CALL MPI_WIN_FREE(     MPI_WINDOW                                             &
   !                   ,    iError)
@@ -1047,13 +1059,13 @@ SDEALLOCATE(offsetPartMPI)
 #if USE_MPI
 ! Free MPI RMA windows
 IF (myComputeNodeRank.EQ.0) THEN
-    CALL MPI_WIN_FREE(     PartInt_Window                                          &
+    CALL MPI_WIN_FREE(     PartInt_Win                                          &
                       ,    iError)
-    CALL MPI_WIN_FREE(     PartData_Window                                         &
+    CALL MPI_WIN_FREE(     PartData_Win                                         &
                       ,    iError)
-    CALL MPI_WIN_FREE(     PartBC_Window                                           &
+    CALL MPI_WIN_FREE(     PartBC_Win                                           &
                       ,    iError)
-    CALL MPI_WIN_FREE(     PartColl_Window                                         &
+    CALL MPI_WIN_FREE(     PartColl_Win                                         &
                       ,    iError)
 END IF ! CN root
 

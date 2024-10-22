@@ -79,10 +79,10 @@ INTEGER                                  :: PartData_Shared_Win
 INTEGER                                  :: PartBC_Shared_Win
 INTEGER                                  :: PartColl_Shared_Win
 INTEGER                                  :: PartInt_Shared_Win
-INTEGER                                  :: PartData_Window             !> MPI RMA window handle
-INTEGER                                  :: PartBC_Window               !> MPI RMA window handle
-INTEGER                                  :: PartColl_Window             !> MPI RMA window handle
-INTEGER                                  :: PartInt_Window              !> MPI RMA window handle
+INTEGER                                  :: PartData_Win                !> MPI RMA window handle
+INTEGER                                  :: PartBC_Win                  !> MPI RMA window handle
+INTEGER                                  :: PartColl_Win                !> MPI RMA window handle
+INTEGER                                  :: PartInt_Win                 !> MPI RMA window handle
 #endif /*USE_MPI*/
 
 #endif /*PARTICLES_COUPLING == 4*/

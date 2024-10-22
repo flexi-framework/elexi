@@ -213,9 +213,12 @@ CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
 ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
 ! No local operations prior to this epoch, so give an assertion
-CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 #else
 FEMNodeSource_Shared(:,:) = 0.
 #endif /*USE_MPI*/
@@ -295,13 +298,16 @@ END DO ! iPart = 1,PDM%ParticleVecLength
 ! CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
 
 !> Complete the epoch - this will block until MPI is complete
-CALL MPI_WIN_FENCE(    0                                                                 &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
-! All done with the window - tell MPI there are no more epochs
-CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    0                                                                 &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+! ! All done with the window - tell MPI there are no more epochs
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 
 CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
@@ -524,9 +530,12 @@ CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
 ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
 ! No local operations prior to this epoch, so give an assertion
-CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 #else
 FEMNodeSource_Shared(:,:) = 0.
 #endif /*USE_MPI*/
@@ -606,13 +615,16 @@ END DO ! iPart = 1,PDM%ParticleVecLength
 ! CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
 
 !> Complete the epoch - this will block until MPI is complete
-CALL MPI_WIN_FENCE(    0                                                                 &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
-! All done with the window - tell MPI there are no more epochs
-CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    0                                                                 &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+! ! All done with the window - tell MPI there are no more epochs
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 
 CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
@@ -670,9 +682,12 @@ CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
 ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
 ! No local operations prior to this epoch, so give an assertion
-CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 #else
 FEMNodeSource_Shared(:,:) = 0.
 #endif /*USE_MPI*/
@@ -755,14 +770,18 @@ END DO ! iPart = 1,PDM%ParticleVecLength
 ! CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
 
 !> Complete the epoch - this will block until MPI is complete
-CALL MPI_WIN_FENCE(    0                                                                 &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
-! All done with the window - tell MPI there are no more epochs
-CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    0                                                                 &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+! ! All done with the window - tell MPI there are no more epochs
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 
+!> Return to shared memory paradigm
 CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 ! Communicate results between CN roots

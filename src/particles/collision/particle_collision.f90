@@ -755,6 +755,14 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
                        , MPI_COMM_LEADERS_SHARED                                                    &
                        , PartColl_Win                                                               &
                        , iError)
+    ! Create an MPI Window object for one-sided communication
+    CALL MPI_WIN_CREATE( PartColl_Shared                                                            &
+                       , INT(SIZE_INT*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND)                  & ! Only local particles are to be sent
+                       , SIZE_INT                                                                   &
+                       , MPI_INFO_NULL                                                              &
+                       , MPI_COMM_LEADERS_SHARED                                                    &
+                       , PartColl_Win                                                               &
+                       , iError)
   END IF ! CN root
 ! Re-allocate the SHM window if it became too small
 ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
@@ -789,6 +797,8 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
                       ,    iError)
     CALL MPI_WIN_FREE(     PartColl_Win                                                             &
                       ,    iError)
+    CALL MPI_WIN_FREE(     PartColl_Win                                                             &
+                      ,    iError)
 
     ! Specify a window of existing memory that is exposed to RMA accesses
     !> Create an MPI Window object for one-sided communication
@@ -807,6 +817,14 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
                        , PartBC_Win                                                                 &
+                       , iError)
+    ! Create an MPI Window object for one-sided communication
+    CALL MPI_WIN_CREATE( PartColl_Shared                                                            &
+                       , INT(SIZE_INT*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND)                  & ! Only local particles are to be sent
+                       , SIZE_INT                                                                   &
+                       , MPI_INFO_NULL                                                              &
+                       , MPI_COMM_LEADERS_SHARED                                                    &
+                       , PartColl_Win                                                               &
                        , iError)
     ! Create an MPI Window object for one-sided communication
     CALL MPI_WIN_CREATE( PartColl_Shared                                                            &
@@ -1064,6 +1082,8 @@ IF (myComputeNodeRank.EQ.0) THEN
     CALL MPI_WIN_FREE(     PartData_Win                                         &
                       ,    iError)
     CALL MPI_WIN_FREE(     PartBC_Win                                           &
+                      ,    iError)
+    CALL MPI_WIN_FREE(     PartColl_Win                                         &
                       ,    iError)
     CALL MPI_WIN_FREE(     PartColl_Win                                         &
                       ,    iError)

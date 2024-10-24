@@ -47,6 +47,7 @@ SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile, UseCurveds)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_EOS_Posti_Vars      ,ONLY: DepNames,nVarDepEOS
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,OpenDataFile,CloseDataFile
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
 USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
@@ -83,6 +84,8 @@ LOGICAL,INTENT(IN),OPTIONAL      :: UseCurveds
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
+INTEGER                          :: iVar
+CHARACTER(LEN=2047)              :: str
 #if USE_PARTICLES
 CHARACTER(LEN=255)               :: DataArray
 #endif /*USE_PARTICLES*/
@@ -173,6 +176,7 @@ postiMode = .TRUE. ! Flag used in FLEXI routines to do things only for POSTI usa
 CALL InitMPI(mpi_comm_IN)
 CALL InitMPIInfo()
 
+
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies
 CALL prms%SetSection("posti")
@@ -185,7 +189,12 @@ CALL addStrListEntry('OutputFormat','none'            , OUTPUTFORMAT_NONE)
 ! CALL addStrListEntry('OutputFormat','tecplotascii'    , OUTPUTFORMAT_TECPLOTASCII)
 CALL addStrListEntry('OutputFormat','paraview'        , OUTPUTFORMAT_PARAVIEW)
 CALL addStrListEntry('OutputFormat','hdf5'            , OUTPUTFORMAT_HDF5)
-CALL prms%CreateStringOption(       "VarName"         , "Names of variables, which should be visualized."              , multiple=.TRUE.)
+! Build list of all available variables for visualization
+str = "Variables that should be visualized. Available are:" // NEW_LINE('A')
+DO iVar=1, nVarDepEOS
+  str = TRIM(str)//" - "//TRIM(DepNames(iVar))//NEW_LINE('A')
+END DO
+CALL prms%CreateStringOption(       "VarName"         , str , multiple=.TRUE.)
 CALL prms%CreateLogicalOption(      "noVisuVars"      , "If no VarNames are given, this flags supresses visu of standard variables"     &
                                                       , '.FALSE.')
 CALL prms%CreateIntOption(          "NVisu"           , "Polynomial degree at which solution is sampled for visualization.")

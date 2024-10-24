@@ -71,6 +71,7 @@ REAL,INTENT(IN)                :: dtLoc
 ! LOCAL VARIABLES
 REAL                           :: PartBCdt
 INTEGER                        :: iElem,ElemID
+INTEGER                        :: firstCNElem,lastCNElem
 INTEGER                        :: iPart,iPart1,iPart2
 INTEGER                        :: CNElemID,CNNeighElemID
 INTEGER                        :: NeighElemID,iCNNeighElem
@@ -232,6 +233,9 @@ END DO
 ALLOCATE(PartColl(nProcParts))
 PartColl = .FALSE.
 
+firstCNElem = GetCNElemID(offsetElem+1)
+ lastCNElem = GetCNElemID(offsetElem+nElems)
+
 ! > Allocate local collision arrays
 ! ALLOCATE(PartColl(PartInt_Shared(1,offsetElem+1)+1:PartInt_Shared(2,offsetEle+nElems)))
 
@@ -318,6 +322,9 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElem
         PartColl(iPart2 - offsetNeighElemPart(NeighElemID)) = .TRUE.
 
         PartColl_Shared(iPart1) = iPart2
+        IF (iPart2.GE.PartInt_Shared(1,firstCNElem)+1 .AND. &
+            iPart2.LE.PartInt_Shared(2, lastCNElem)) &
+          PartColl_Shared(iPart2) = iPart1
 
         EXIT PartLoop
       END DO ! iPart2
@@ -334,7 +341,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   ! No local operations prior to this epoch, so give an assertion
   !> > ACTIVE SYNCHRONIZATION
   ! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-  !                   ,    PartColl_Window                                                   &
+  !                   ,    PartColl_Win                                                      &
   !                   ,    iError)
   !> > PASSIVE SYNCHRONIZATION
   CALL MPI_WIN_LOCK_ALL(0,PartColl_Win,iError)
@@ -393,79 +400,71 @@ DO iElem = offsetElem+1,offsetElem+nElems
     ! Ignore already collided particles
     IF (PartColl_Shared(iPart1).EQ.0) CYCLE
 
-    ! loop over neighbor elements (includes own element)
-PartLoop2: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElemID)+Neigh_nElems(CNElemID)
-      CNNeighElemID = CNElem2CNNeighElem(iCNNeighElem)
-      NeighElemID   = GetGlobalElemID(CNNeighElemID)
+    ! get particle index of collision partner
+    iPart2 = PartColl_Shared(iPart1)
+    ! Ignore myself
+    ! IF (iPart1.EQ.iPart2) CYCLE
+    ! Ignore already collided particles
+    IF (iPart2.EQ.0) CYCLE
+    IF (PartColl_Shared(iPart2).EQ.0) CYCLE
+    IF (PartColl_Shared(iPart2).NE.iPart1) CYCLE
 
-      ! loop over all particles in the element
-      DO iPart2 = PartInt_Shared(1,CNNeighElemID)+1,PartInt_Shared(2,CNNeighElemID)
-        ! Ignore myself
-        IF (iPart1.EQ.iPart2) CYCLE
-        ! Ignore already collided particles
-        IF (PartColl_Shared(iPart2).EQ.0) CYCLE
-        IF (PartColl_Shared(iPart2).NE.iPart1) CYCLE
+    ! Reconstruct the particle velocity
+    V1 = (PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_OLDV,iPart1)) / dtLoc
+    V2 = (PartData_Shared(PART_POSV,iPart2) - PartData_Shared(PART_OLDV,iPart2)) / dtLoc
 
-        ! Reconstruct the particle velocity
-        V1 = (PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_OLDV,iPart1)) / dtLoc
-        V2 = (PartData_Shared(PART_POSV,iPart2) - PartData_Shared(PART_OLDV,iPart2)) / dtLoc
+    ! FIXME: What about periodic?
 
-        ! FIXME: What about periodic?
+    ! Check if particles will collide
+    ! Solve: |x-y|**2 = (r1+r2)**2, x = xp1^n-xp2^n, y = dt_coll*up1^{n+1} - dt_coll*up2^{n+1}; dt_coll \in [0;1]
+    ! Triangle inequality: |x+y|**2 <= (|x| + |y|)**2
+    ! compute coefficients a,b,c of the previous quadratic equation (a*t^2+b*t+c=0)
+    ASSOCIATE(Term => V2 - V1)
+    a = DOT_PRODUCT(Term,Term)
+    END ASSOCIATE
 
-        ! Check if particles will collide
-        ! Solve: |x-y|**2 = (r1+r2)**2, x = xp1^n-xp2^n, y = dt_coll*up1^{n+1} - dt_coll*up2^{n+1}; dt_coll \in [0;1]
-        ! Triangle inequality: |x+y|**2 <= (|x| + |y|)**2
-        ! compute coefficients a,b,c of the previous quadratic equation (a*t^2+b*t+c=0)
-        ASSOCIATE(Term => V2 - V1)
-        a = DOT_PRODUCT(Term,Term)
-        END ASSOCIATE
+    ! || particle trajectories: if a.EQ.0 then b.EQ.0 and so the previous equation has no solution: go to the next pair
+    IF (a.EQ.0.) CYCLE
 
-        ! || particle trajectories: if a.EQ.0 then b.EQ.0 and so the previous equation has no solution: go to the next pair
-        IF (a.EQ.0.) CYCLE
+    ! Cauchy-Schwarz inequality: <x,y> + <y,x> <= 2 |<x,y>| <= 2|x||y|
+    P1 = PartData_Shared(PART_OLDV,iPart1)
+    P2 = PartData_Shared(PART_OLDV,iPart2)
+    b = 2. * DOT_PRODUCT(ABS(V1 - V2), ABS(P1-P2))
+    ! b = 2. * DOT_PRODUCT(P1-P2,PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_POSV,iPart2)-(P1 - P2))
+    ASSOCIATE(Term => P1 - P2)
+    c = DOT_PRODUCT(Term,Term) - 0.25*(PartData_Shared(PART_DIAM,iPart2) + PartData_Shared(PART_DIAM,iPart1))**2.
+    END ASSOCIATE
 
-        ! Cauchy-Schwarz inequality: <x,y> + <y,x> <= 2 |<x,y>| <= 2|x||y|
-        P1 = PartData_Shared(PART_OLDV,iPart1)
-        P2 = PartData_Shared(PART_OLDV,iPart2)
-        b = 2. * DOT_PRODUCT(ABS(V1 - V2), ABS(P1-P2))
-        ! b = 2. * DOT_PRODUCT(P1-P2,PartData_Shared(PART_POSV,iPart1) - PartData_Shared(PART_POSV,iPart2)-(P1 - P2))
-        ASSOCIATE(Term => P1 - P2)
-        c = DOT_PRODUCT(Term,Term) - 0.25*(PartData_Shared(PART_DIAM,iPart2) + PartData_Shared(PART_DIAM,iPart1))**2.
-        END ASSOCIATE
+    ! if delta < 0, no collision is possible for this pair
+    delta = b * b - 4. * a * c
+    IF (delta.LT.0.) CYCLE
 
-        ! if delta < 0, no collision is possible for this pair
-        delta = b * b - 4. * a * c
-        IF (delta.LT.0.) CYCLE
+    ! a collision is possible, determine when relatively to (tStage+dtloc)
+    dtColl = MAX(MIN((-b + SQRT(delta)) / (2. * a),1.),MIN((-b - SQRT(delta)) / (2. * a),1.)) * dtLoc
+    ! the collision is only valid if it occurred between tStage and tStage+dtLoc
+    IF (dtColl.LT.0. .OR. dtColl.GT.dtLoc) CYCLE
 
-        ! a collision is possible, determine when relatively to (tStage+dtloc)
-        dtColl = MAX(MIN((-b + SQRT(delta)) / (2. * a),1.),MIN((-b - SQRT(delta)) / (2. * a),1.)) * dtLoc
-        ! the collision is only valid if it occurred between tStage and tStage+dtLoc
-        IF (dtColl.LT.0. .OR. dtColl.GT.dtLoc) CYCLE
+    ! the collision is only valid if it occurred before a BC intersection
+    ! > here, the particle radius needs to be considered since the collision is on the particle surface but the BC intersection
+    ! > is determined based on the particle center of mass
+    IF (dtColl.GT.PartBC_Shared(iPart1)) CYCLE
+    IF (dtColl.GT.PartBC_Shared(iPart2)) CYCLE
 
-        ! the collision is only valid if it occurred before a BC intersection
-        ! > here, the particle radius needs to be considered since the collision is on the particle surface but the BC intersection
-        ! > is determined based on the particle center of mass
-        IF (dtColl.GT.PartBC_Shared(iPart1)) CYCLE
-        IF (dtColl.GT.PartBC_Shared(iPart2)) CYCLE
+    !IF (VECNORM(P1 + dtColl * V1 - (P2 + dtColl * V2)) &
+      !.GT. 0.5*(PartData_Shared(PART_DIAM,iPart2) + PartData_Shared(PART_DIAM,iPart1))) CYCLE
 
-        !IF (VECNORM(P1 + dtColl * V1 - (P2 + dtColl * V2)) &
-          !.GT. 0.5*(PartData_Shared(PART_DIAM,iPart2) + PartData_Shared(PART_DIAM,iPart1))) CYCLE
+    ! collision is only valid the particles approach each other
+    ! FIXME: NOT TRUE, we can collide on with acute angles
+    ASSOCIATE(N1 => V1 &
+             ,N2 => V2)
+    pColl1 = PartData_Shared(PART_POSV,iPart1) - (dtLoc-dtColl) * V1
+    pColl2 = PartData_Shared(PART_POSV,iPart2) - (dtLoc-dtColl) * V2
+    IF (DOT_PRODUCT(pColl1 - P1,N1).LE.0) CYCLE
+    IF (DOT_PRODUCT(pColl2 - P2,N2).LE.0) CYCLE
+    END ASSOCIATE
 
-        ! collision is only valid the particles approach each other
-        ! FIXME: NOT TRUE, we can collide on with acute angles
-        ASSOCIATE(N1 => V1 &
-                 ,N2 => V2)
-        pColl1 = PartData_Shared(PART_POSV,iPart1) - (dtLoc-dtColl) * V1
-        pColl2 = PartData_Shared(PART_POSV,iPart2) - (dtLoc-dtColl) * V2
-        IF (DOT_PRODUCT(pColl1 - P1,N1).LE.0) CYCLE
-        IF (DOT_PRODUCT(pColl2 - P2,N2).LE.0) CYCLE
-        END ASSOCIATE
-
-        ! apply the power
-        CALL ComputeHardSphereCollision(iPart1,iPart2,dtLoc-dtColl,dtLoc)
-
-        EXIT PartLoop2
-      END DO ! iPart2
-    END DO PartLoop2 ! iCNNeighElem
+    ! apply the power
+    CALL ComputeHardSphereCollision(iPart1,iPart2,dtLoc-dtColl,dtLoc)
   END DO ! iPart1
 END DO ! iElem
 

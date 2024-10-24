@@ -28,7 +28,6 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides
 USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
-USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
 #ifdef SPLIT_DG
 USE MOD_SplitFlux    ,ONLY: SplitDGVolume_pointer ! computes volume fluxes in split formulation
 USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
@@ -42,6 +41,10 @@ USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv
 #endif /* FV_ENABLED */
+#if !defined(SPLIT_DG) || FV_ENABLED
+USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
+#endif /*!SPLIT_DG || FV_ENABLED*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -60,12 +63,17 @@ REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)   !< (INOU
 ! LOCAL VARIABLES
 INTEGER            :: ElemID,nbElemID,locSideID,nblocSideID,SideID,p,q,flip
 INTEGER            :: firstSideID,lastSideID
-REAL               :: FluxTmp(1:TP_nVar,0:Nloc,0:ZDIM(Nloc))
 #ifdef SPLIT_DG
-REAL               :: FluxB(TP_nVar,0:Nloc),FluxB_sum(TP_nVar),Leg(0:Nloc),LegHat(0:Nloc)
+REAL               :: FluxB(TP_nVar,0:Nloc)
+REAL               :: FluxB_sum(TP_nVar)
+REAL               :: Leg(0:Nloc)
+REAL               :: LegHat(0:Nloc)
 INTEGER            :: l,ijk(3),idx
 REAL, POINTER      :: Metrics(:,:,:,:)
-#endif
+#endif /*SPLIT_DG*/
+#if !defined(SPLIT_DG) || FV_ENABLED
+REAL               :: FluxTmp(1:TP_nVar,0:Nloc,0:ZDIM(Nloc))
+#endif /*!SPLIT_DG || FV_ENABLED*/
 !==================================================================================================================================
 
 IF(doMPISides)THEN
@@ -111,9 +119,9 @@ DO SideID=firstSideID,lastSideID
 #if PP_dim == 3
         CASE(ZETA_MINUS) ; Metrics => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
         CASE(ZETA_PLUS)  ; Metrics => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
-#endif
+#endif /* PP_dim == 3 */
       END SELECT
-#endif
+#endif /* SPLIT_DG */
       DO q=0,ZDIM(Nloc); DO p=0,Nloc
 #ifdef SPLIT_DG
         ! Calculate the split flux between each interior Gauss point and the respective boundary point: f^hat_Lk
@@ -137,7 +145,7 @@ DO SideID=firstSideID,lastSideID
         END DO
 #else
         FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID)
-#endif
+#endif /* SPLIT_DG */
       END DO; END DO ! p,q
 
 #ifndef SPLIT_DG
@@ -145,7 +153,7 @@ DO SideID=firstSideID,lastSideID
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif
+#endif /* WITHnVars */
           Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,Ut(:,:,:,:,ElemID))
 #endif /*SPLIT_DG*/
 
@@ -159,7 +167,7 @@ DO SideID=firstSideID,lastSideID
       CALL SurfInt_FV(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif
+#endif /* WITHnVars */
       Nloc,FluxTmp,FV_w_inv,locSideID,Ut(:,:,:,:,ElemID))
     END IF
 #endif /* FV_ENABLED */
@@ -183,9 +191,9 @@ DO SideID=firstSideID,lastSideID
 #if PP_dim == 3
         CASE(ZETA_MINUS) ; Metrics => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
         CASE(ZETA_PLUS)  ; Metrics => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
-#endif
+#endif /* PP_dim == 3 */
       END SELECT
-#endif
+#endif /* SPLIT_DG */
   ! FV_alpha_max(SideID) = MAX(FV_alpha_master(SideID),FV_alpha_slave(SideID))
       DO q=0,ZDIM(Nloc); DO p=0,Nloc
 #ifdef SPLIT_DG
@@ -209,13 +217,13 @@ DO SideID=firstSideID,lastSideID
         END DO
 #else
         FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux_slave(:,p,q,SideID)
-#endif
+#endif /* SPLIT_DG */
       END DO; END DO ! p,q
 #ifndef SPLIT_DG
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif
+#endif /* WITHnVars */
           Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,Ut(:,:,:,:,nbElemID))
 #endif /*SPLIT_DG*/
 
@@ -229,7 +237,7 @@ DO SideID=firstSideID,lastSideID
       CALL SurfInt_FV(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif
+#endif /* WITHnVars */
           Nloc,FluxTmp,FV_w_inv,nblocSideID,Ut(:,:,:,:,nbElemID))
     END IF
 #endif /* FV_ENABLED */
@@ -247,7 +255,7 @@ END SUBROUTINE SurfInt
 SUBROUTINE SurfIntBlend(&
 #ifdef WITHnVars
         TP_nVar, &
-#endif
+#endif /* WITHnVars */
         Nloc,Flux_master,Flux_slave,FV_Flux_master,FV_Flux_slave,Ut,doMPISides,L_HatMinus,L_HatPlus)
 ! MODULES
 USE MOD_Globals
@@ -276,7 +284,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 #ifdef WITHnVars
 INTEGER,INTENT(IN) :: TP_nVar                                              !< number of variables
-#endif
+#endif /* WITHnVars */
 INTEGER,INTENT(IN) :: Nloc                                                 !< (IN) Polynomial degree
 LOGICAL,INTENT(IN) :: doMPISides                                           !<= .TRUE. only MPISides_YOUR+MPIMortar are filled
                                                                            !<=.FALSE. BCSides+(Mortar-)InnerSides+MPISides_MINE
@@ -296,10 +304,10 @@ REAL               :: FluxTmp(1:TP_nVar,0:Nloc,0:ZDIM(Nloc))
 REAL               :: FluxB(TP_nVar,0:PP_N),FluxB_sum(TP_nVar),Leg(0:Nloc),LegHat(0:Nloc)
 INTEGER            :: l,ijk(3),idx
 REAL, POINTER      :: Metrics(:,:,:,:)
-#endif
+#endif /* SPLIT_DG */
 #if FV_ENABLED == 2
 REAL               :: FVAL
-#endif
+#endif /* FV_ENABLED == 2 */
 !==================================================================================================================================
 
 IF(doMPISides)THEN
@@ -318,7 +326,7 @@ DO SideID=firstSideID,lastSideID
   nbElemID    = SideToElem(S2E_NB_ELEM_ID,SideID)
 #if FV_ENABLED == 2
   FVAL = MAX(FV_alpha_master(SideID),FV_alpha_slave(SideID))
-#endif
+#endif /* FV_ENABLED == 2 */
 
   ! master sides
   IF(ElemID.GT.0)THEN
@@ -346,9 +354,9 @@ DO SideID=firstSideID,lastSideID
 #if PP_dim == 3
       CASE(ZETA_MINUS) ; Metrics => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
       CASE(ZETA_PLUS)  ; Metrics => Metrics_hTilde(:,:,:,:,ElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
-#endif
+#endif /* PP_dim == 3 */
     END SELECT
-#endif
+#endif /* SPLIT_DG */
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
 #ifdef SPLIT_DG
       ! Calculate the split flux between each interior Gauss point and the respective boundary point: f^hat_Lk
@@ -372,7 +380,7 @@ DO SideID=firstSideID,lastSideID
       END DO
 #else
       FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID)*(1.-FVAL)
-#endif
+#endif /* SPLIT_DG */
     END DO; END DO ! p,q
 
 #ifndef SPLIT_DG
@@ -380,7 +388,7 @@ DO SideID=firstSideID,lastSideID
     CALL DoSurfInt(&
 #ifdef WITHnVars
         TP_nVar, &
-#endif
+#endif /* WITHnVars */
         Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,Ut(:,:,:,:,ElemID))
 #endif /*SPLIT_DG*/
 
@@ -392,8 +400,8 @@ DO SideID=firstSideID,lastSideID
     CALL SurfInt_FV(&
 #ifdef WITHnVars
         TP_nVar, &
-#endif
-    Nloc,FluxTmp,FV_w_inv,locSideID,Ut(:,:,:,:,ElemID))
+#endif /* WITHnVars */
+        Nloc,FluxTmp,FV_w_inv,locSideID,Ut(:,:,:,:,ElemID))
   END IF
 #endif /* FV_ENABLED == 2 */
 
@@ -413,9 +421,9 @@ DO SideID=firstSideID,lastSideID
 #if PP_dim == 3
       CASE(ZETA_MINUS) ; Metrics => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_minus; LegHat = L_HatMinus
       CASE(ZETA_PLUS)  ; Metrics => Metrics_hTilde(:,:,:,:,nbElemID,0); idx = 3; Leg = L_plus; LegHat = L_HatPlus
-#endif
+#endif /* PP_dim == 3 */
     END SELECT
-#endif
+#endif /* SPLIT_DG */
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
 #ifdef SPLIT_DG
       ! Calculate the split flux between each interior Gauss point and the respective boundary point: f^hat_Lk
@@ -438,14 +446,14 @@ DO SideID=firstSideID,lastSideID
       END DO
 #else
       FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux_slave(:,p,q,SideID)*(1.-FVAL)
-#endif
+#endif /* SPLIT_DG */
     END DO; END DO ! p,q
 
 #ifndef SPLIT_DG
     CALL DoSurfInt(&
 #ifdef WITHnVars
         TP_nVar, &
-#endif
+#endif /* WITHnVars */
         Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,Ut(:,:,:,:,nbElemID))
 #endif /*SPLIT_DG*/
 
@@ -457,7 +465,7 @@ DO SideID=firstSideID,lastSideID
     CALL SurfInt_FV(&
 #ifdef WITHnVars
         TP_nVar, &
-#endif
+#endif /* WITHnVars */
         Nloc,FluxTmp,FV_w_inv,nblocSideID,Ut(:,:,:,:,nbElemID))
   END IF
 #endif /* FV_ENABLED == 2 */
@@ -465,7 +473,7 @@ DO SideID=firstSideID,lastSideID
 END DO ! SideID=1,nSides
 
 END SUBROUTINE SurfIntBlend
-#endif
+#endif /* FV_ENABLED == 2 */
 
 
 #elif (PP_NodeType == 2)
@@ -475,7 +483,7 @@ END SUBROUTINE SurfIntBlend
 SUBROUTINE SurfInt(&
 #ifdef WITHnVars
         TP_nVar, &
-#endif
+#endif /* WITHnVars */
         Nloc,Flux_master,Flux_slave,Ut,doMPISides,L_HatMinus,L_HatPlus)
 ! MODULES
 USE MOD_Globals
@@ -483,13 +491,6 @@ USE MOD_PreProc
 USE MOD_Mesh_Vars    ,ONLY: SideToElem,nSides
 USE MOD_Mesh_Vars    ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars    ,ONLY: S2V2,nElems
-#ifdef SPLIT_DG
-USE MOD_DG_Vars      ,ONLY: U,UPrim,U_master,U_slave,UPrim_master,UPrim_slave
-USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems,Ja_face,Ja_slave
-#if PP_dim==3
-USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
-#endif
-#endif
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv
 #endif /* FV_ENABLED */
@@ -498,7 +499,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 #ifdef WITHnVars
 INTEGER,INTENT(IN) :: TP_nVar                                           !< number of variables
-#endif
+#endif /* WITHnVars */
 INTEGER,INTENT(IN) :: Nloc                                              !< (IN) Polynomial degree
 LOGICAL,INTENT(IN) :: doMPISides                                        !<= .TRUE. only MPISides_YOUR+MPIMortar are filled
                                                                         !<=.FALSE. BCSides+(Mortar-)InnerSides+MPISides_MINE
@@ -546,15 +547,15 @@ DO SideID=firstSideID,lastSideID
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif
+#endif /* WITHnVars */
           Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,Ut(:,:,:,:,ElemID))
-#else /*EXACT_MM*/
+#else /* EXACT_MM */
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
 #endif
           Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,Ut(:,:,:,:,ElemID))
-#endif /*EXACT_MM*/
+#endif /* EXACT_MM */
 
 #if FV_ENABLED
     ELSE
@@ -566,7 +567,7 @@ DO SideID=firstSideID,lastSideID
       CALL SurfInt_FV(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif
+#endif /* WITHnVars */
       Nloc,FluxTmp,FV_w_inv,locSideID,Ut(:,:,:,:,ElemID))
     END IF
 #endif /* FV_ENABLED */
@@ -589,15 +590,15 @@ DO SideID=firstSideID,lastSideID
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif
+#endif /* WITHnVars */
           Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,Ut(:,:,:,:,nbElemID))
 #else /*EXACT_MM*/
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif
+#endif /* WITHnVars */
           Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,Ut(:,:,:,:,nbElemID))
-#endif /*EXACT_MM*/
+#endif /* EXACT_MM */
 
 #if FV_ENABLED
     ELSE
@@ -609,7 +610,7 @@ DO SideID=firstSideID,lastSideID
       CALL SurfInt_FV(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif
+#endif /* WITHnVars */
           Nloc,FluxTmp,FV_w_inv,nblocSideID,Ut(:,:,:,:,nbElemID))
     END IF
 #endif /* FV_ENABLED */
@@ -627,7 +628,7 @@ END SUBROUTINE SurfInt
 PPURE SUBROUTINE SurfInt_FV(&
 #ifdef WITHnVars
         TP_nVar, &
-#endif
+#endif /* WITHnVars */
         Nloc,Flux,FV_w_inv,locSideID,Ut)
 !MODULES
 IMPLICIT NONE

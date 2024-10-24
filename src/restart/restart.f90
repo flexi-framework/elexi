@@ -658,10 +658,10 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: UOld(1:PP_nVar,0:NOld,0:NOld,0:ZDIM(NOld)) !< One FV element on NOld
-REAL,INTENT(OUT)   :: UNew(1:PP_nVar,0:NNew,0:NNew,0:ZDIM(NNew)) !< FV Element on NNew
 INTEGER,INTENT(IN) :: NOld                                       !< Old polynomial degree
 INTEGER,INTENT(IN) :: NNew                                       !< New polynomial degree
+REAL,INTENT(IN)    :: UOld(1:PP_nVar,0:NOld,0:NOld,0:ZDIM(NOld)) !< One FV element on NOld
+REAL,INTENT(OUT)   :: UNew(1:PP_nVar,0:NNew,0:NNew,0:ZDIM(NNew)) !< FV Element on NNew
 INTEGER,INTENT(IN) :: NSuper                                     !< Polynomial degree for supersampling
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

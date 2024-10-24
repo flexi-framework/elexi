@@ -293,18 +293,19 @@ USE MOD_PreProc
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: muSGS
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)                                                         :: PP_N_xi
+INTEGER,INTENT(IN)                                                         :: PP_N_eta
+INTEGER,INTENT(IN)                                                         :: PP_N_zeta
 REAL,DIMENSION(PRIM,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(IN)           :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
 REAL,DIMENSION(PP_nVarLifting,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(IN) :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(CONS,0:PP_N_xi,0:PP_N_eta,0:PP_N_zeta),INTENT(OUT)          :: f,g,h
 INTEGER,INTENT(IN)                                                         :: iElem                !< element index in global array
-INTEGER,INTENT(IN)                                                         :: PP_N_xi
-INTEGER,INTENT(IN)                                                         :: PP_N_eta
-INTEGER,INTENT(IN)                                                         :: PP_N_zeta
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k

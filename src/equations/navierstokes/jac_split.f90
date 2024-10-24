@@ -41,7 +41,7 @@ PUBLIC::Jac_Split
 CONTAINS
 
 !===================================================================================================================================
-!> Calculate jacobian of split flux 
+!> Calculate jacobian of split flux
 !===================================================================================================================================
 PPURE SUBROUTINE Jac_Split(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 ! MODULES
@@ -110,6 +110,9 @@ dfdu = 0.5*(MetricRef(1)+Metric(1))*fJac(:,:) + &
        0.5*(MetricRef(3)+Metric(3))*hJac(:,:) + &
 #endif
        0.5*(MetricRef(2)+Metric(2))*gJac(:,:)
+! Suppress compiler warning
+NO_OP(URef)
+NO_OP(UPrimRef)
 
 END SUBROUTINE Jac_Split_SD
 

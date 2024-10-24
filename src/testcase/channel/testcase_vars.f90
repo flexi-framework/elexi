@@ -30,17 +30,25 @@ CHARACTER(LEN=255) :: testcase = "channel"  !< name of testcase
 ! TESTCASE VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! precomputed variables
-REAL               :: bulkVel     = 0.     !< bulk velocity in domain
-REAL               :: dpdx        = -1.    !< imposed pressure gradient: = Re_tau^2*rho*nu^2/delta^3
-REAL               :: Re_tau               !< target friction Reynolds number: = 1/mu0
-REAL               :: rho                  !< fluid density
-REAL               :: utau                 !< fluid friction velocity
-REAL               :: bulkVelScale         !< scaling factor for bulk velocity
-REAL,ALLOCATABLE   :: writeBuf(:,:)        !< buffer to store log testcase data
-INTEGER            :: ioCounter   =0       !< current number of buffer items
-INTEGER            :: nWriteStats =-999    !< Write testcase statistics to file at every n-th AnalyzeTestcase step
-CHARACTER(LEN=255) :: Filename             !< filename to store testcase log data
-LOGICAL            :: customChannel        !< Flag to use input values rather than calculated ones
-REAL               :: delta                !< Channel half height
+INTEGER            :: ForcingType              !< Select forcing between CPG and CFR
+REAL               :: Re_tau                   !< target friction Reynolds number: = 1/mu0
+REAL               :: ChannelLength            !< Length of computational domain
+LOGICAL            :: firstTimestep=.TRUE.     !< marks whether timestep is first timestep
+REAL               :: tPrev       =0.          !< time of previous forcing computation
+REAL               :: dtPrev      =0.          !< dt since previous forcing computation
+REAL               :: massFlowRef =0.          !< reference mass flow for forcing
+REAL               :: massFlow    =0.          !< mass flow for forcing
+REAL               :: massFlowPrev=0.          !< massflow at previous forcing computation
+REAL               :: bulkVel     =0.          !< bulk velocity in domain
+REAL               :: bulkVelPrev =0.          !< bulk velocity in domain prev. forcing computation
+REAL               :: dpdx        =0.          !< imposed pressure gradient
+REAL               :: dpdxPrev    =0.          !< previous imposed pressure gradient
+REAL,ALLOCATABLE   :: writeBuf(:,:)            !< buffer to store log testcase data
+INTEGER            :: massFlowBC  =0           !< index of BC at which massflow is computed
+INTEGER            :: ioCounter   =0           !< current number of buffer items
+INTEGER            :: maxBuffer=0              !< max number of time log data
+INTEGER            :: Buffer=0                 !< expected size of time log buffer entries before IO
+CHARACTER(LEN=255) :: Filename                 !< filename to store testcase log data
+INTEGER            :: nWriteStats = -999   !< Write testcase statistics to file at every n-th AnalyzeTestcase step
 !==================================================================================================================================
 END MODULE MOD_TestCase_Vars

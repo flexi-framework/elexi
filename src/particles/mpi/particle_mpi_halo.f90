@@ -51,7 +51,7 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_CalcTimeStep            ,ONLY: CalcTimeStep
 USE MOD_Mesh_Vars               ,ONLY: nElems,offsetElem
-USE MOD_Mesh_Vars               ,ONLY: ElemInfo_Shared,SideInfo_Shared,NodeCoords_Shared
+USE MOD_Mesh_Vars               ,ONLY: ElemInfo_Shared,SideInfo_Shared!,NodeCoords_Shared
 USE MOD_MPI_Vars                ,ONLY: offsetElemMPI
 USE MOD_Particle_Globals        ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars      ,ONLY: GEO
@@ -61,7 +61,7 @@ USE MOD_MPI_Shared_Vars         ,ONLY: nComputeNodeTotalElems
 USE MOD_MPI_Shared_Vars         ,ONLY: nComputenodeProcessors,nProcessors_Global,myLeaderGroupRank
 USE MOD_Particle_MPI_Vars       ,ONLY: SafetyFactor,halo_eps,halo_eps_velo
 USE MOD_Particle_MPI_Vars       ,ONLY: nExchangeProcessors,ExchangeProcToGlobalProc,GlobalProcToExchangeProc,CheckExchangeProcs
-USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D
+! USE MOD_Particle_Surfaces_Vars  ,ONLY: BezierControlPoints3D
 USE MOD_Particle_Timedisc_Vars  ,ONLY: ManualTimeStep
 USE MOD_Particle_Tracking_Vars  ,ONLY: TrackingMethod
 USE MOD_ReadInTools             ,ONLY: PrintOption
@@ -75,10 +75,11 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 ! Partner identification
 LOGICAL                        :: ProcInRange
-INTEGER                        :: iPeriodicVector,jPeriodicVector,iPeriodicDir,jPeriodicDir,kPeriodicDir
-INTEGER,DIMENSION(2),PARAMETER :: DirPeriodicVector = (/-1,1/)
+INTEGER                        :: iPeriodicVector,jPeriodicVector
+INTEGER                        :: iDir,jDir,kDir
 REAL,DIMENSION(6)              :: xCoordsProc,xCoordsOrigin
-INTEGER                        :: iElem,ElemID,firstElem,lastElem,NbElemID
+REAL                           :: origin(3),radius
+INTEGER                        :: iElem,ElemID,firstElem,lastElem,NbElemID,HaloElem
 INTEGER                        :: iSide,SideID,firstSide,lastSide,iLocSide
 INTEGER                        :: iMortar,nMortarElems,NbSideID
 INTEGER                        :: iProc,HaloProc
@@ -345,12 +346,37 @@ ELSE
 END IF
 
 ! Identify all procs with elements in range
-xCoordsProc(1) = GEO%xmin
-xCoordsProc(2) = GEO%xmax
-xCoordsProc(3) = GEO%ymin
-xCoordsProc(4) = GEO%ymax
-xCoordsProc(5) = GEO%zmin
-xCoordsProc(6) = GEO%zmax
+! xCoordsProc(1) = GEO%xmin
+! xCoordsProc(2) = GEO%xmax
+! xCoordsProc(3) = GEO%ymin
+! xCoordsProc(4) = GEO%ymax
+! xCoordsProc(5) = GEO%zmin
+! xCoordsProc(6) = GEO%zmax
+xCoordsProc(1) = -HUGE(1.)
+xCoordsProc(2) =  HUGE(1.)
+xCoordsProc(3) = -HUGE(1.)
+xCoordsProc(4) =  HUGE(1.)
+xCoordsProc(5) = -HUGE(1.)
+xCoordsProc(6) =  HUGE(1.)
+
+DO iElem = 1, nElems
+  ElemID    = iElem + offsetElem
+  ! Flag elements depending on radius
+  origin(1:3) = (/ SUM(   BoundsOfElem_Shared(1:2,1,ElemID)), &
+                   SUM(   BoundsOfElem_Shared(1:2,2,ElemID)), &
+                   SUM(   BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
+  ! Calculate halo element outer radius
+  radius    = VECNORM ((/ BoundsOfElem_Shared(2  ,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID), &
+                          BoundsOfElem_Shared(2  ,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID), &
+                          BoundsOfElem_Shared(2  ,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
+
+  xCoordsProc(1) = MIN(xCoordsProc(1), origin(1) - radius)
+  xCoordsProc(2) = MAX(xCoordsProc(2), origin(1) + radius)
+  xCoordsProc(3) = MIN(xCoordsProc(3), origin(2) - radius)
+  xCoordsProc(4) = MAX(xCoordsProc(4), origin(2) + radius)
+  xCoordsProc(5) = MIN(xCoordsProc(5), origin(3) - radius)
+  xCoordsProc(6) = MAX(xCoordsProc(6), origin(3) + radius)
+END DO ! iElem = 1, nElems
 
 ! Use a named loop so the entire element can be cycled
 ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
@@ -362,6 +388,13 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
 
   ! Skip tracing mortar elements
   IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).EQ.4) CYCLE
+
+  BoundsOfElemCenter(1:3) = (/SUM(      BoundsOfElem_Shared(1:2,1,ElemID)), &
+                              SUM(      BoundsOfElem_Shared(1:2,2,ElemID)), &
+                              SUM(      BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
+  BoundsOfElemCenter(4)   = VECNORM ((/ BoundsOfElem_Shared(2  ,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID), &
+                                        BoundsOfElem_Shared(2  ,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID), &
+                                        BoundsOfElem_Shared(2  ,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
 
 !#if CODE_ANALYZE
 !    ! Sanity checks. Elems in halo region must have ELEM_HALOFLAG=2 and the proc must not be flagged yet
@@ -383,32 +416,82 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
       lastElem  = offsetElemMPI(HaloProc +1)
 
       SELECT CASE(TrackingMethod)
-        ! Build mesh min/max on BezierControlPoints for possibly curved elements
-        CASE(REFMAPPING,TRACING)
-          firstSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,firstElem)+1
-          lastSide  = ElemInfo_Shared(ELEM_LASTSIDEIND ,lastElem)
-
-          xCoordsOrigin(1) = MINVAL(BezierControlPoints3D(1,:,:,firstSide:lastSide))
-          xCoordsOrigin(2) = MAXVAL(BezierControlPoints3D(1,:,:,firstSide:lastSide))
-          xCoordsOrigin(3) = MINVAL(BezierControlPoints3D(2,:,:,firstSide:lastSide))
-          xCoordsOrigin(4) = MAXVAL(BezierControlPoints3D(2,:,:,firstSide:lastSide))
-          xCoordsOrigin(5) = MINVAL(BezierControlPoints3D(3,:,:,firstSide:lastSide))
-          xCoordsOrigin(6) = MAXVAL(BezierControlPoints3D(3,:,:,firstSide:lastSide))
-
         ! TriaTracking does not have curved elements, nodeCoords are sufficient
         CASE(TRIATRACKING)
-          xCoordsOrigin(1) = MINVAL(NodeCoords_Shared(1,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
-                                                       :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
-          xCoordsOrigin(2) = MAXVAL(NodeCoords_Shared(1,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
-                                                       :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
-          xCoordsOrigin(3) = MINVAL(NodeCoords_Shared(2,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
-                                                       :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
-          xCoordsOrigin(4) = MAXVAL(NodeCoords_Shared(2,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
-                                                       :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
-          xCoordsOrigin(5) = MINVAL(NodeCoords_Shared(3,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
-                                                       :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
-          xCoordsOrigin(6) = MAXVAL(NodeCoords_Shared(3,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
-                                                       :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
+          ! xCoordsOrigin(1) = MINVAL(NodeCoords_Shared(1,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
+          !                                              :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
+          ! xCoordsOrigin(2) = MAXVAL(NodeCoords_Shared(1,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
+          !                                              :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
+          ! xCoordsOrigin(3) = MINVAL(NodeCoords_Shared(2,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
+          !                                              :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
+          ! xCoordsOrigin(4) = MAXVAL(NodeCoords_Shared(2,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
+          !                                              :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
+          ! xCoordsOrigin(5) = MINVAL(NodeCoords_Shared(3,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
+          !                                              :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
+          ! xCoordsOrigin(6) = MAXVAL(NodeCoords_Shared(3,ElemInfo_Shared(ELEM_FIRSTNODEIND,firstElem) + 1 &
+          !                                              :ElemInfo_Shared(ELEM_LASTNODEIND ,lastElem)))
+
+          xCoordsOrigin(1) = -HUGE(1.)
+          xCoordsOrigin(2) =  HUGE(1.)
+          xCoordsOrigin(3) = -HUGE(1.)
+          xCoordsOrigin(4) =  HUGE(1.)
+          xCoordsOrigin(5) = -HUGE(1.)
+          xCoordsOrigin(6) =  HUGE(1.)
+
+          DO HaloElem = firstElem, lastElem
+            ! Flag elements depending on radius
+            origin(1:3) = (/ SUM(   BoundsOfElem_Shared(1:2,1,HaloElem)), &
+                             SUM(   BoundsOfElem_Shared(1:2,2,HaloElem)), &
+                             SUM(   BoundsOfElem_Shared(1:2,3,HaloElem)) /) / 2.
+            ! Calculate halo element outer radius
+            radius    = VECNORM ((/ BoundsOfElem_Shared(2  ,1,HaloElem)-BoundsOfElem_Shared(1,1,HaloElem), &
+                                    BoundsOfElem_Shared(2  ,2,HaloElem)-BoundsOfElem_Shared(1,2,HaloElem), &
+                                    BoundsOfElem_Shared(2  ,3,HaloElem)-BoundsOfElem_Shared(1,3,HaloElem) /) / 2.)
+
+            xCoordsOrigin(1) = MIN(xCoordsOrigin(1), origin(1) - radius)
+            xCoordsOrigin(2) = MAX(xCoordsOrigin(2), origin(1) + radius)
+            xCoordsOrigin(3) = MIN(xCoordsOrigin(3), origin(2) - radius)
+            xCoordsOrigin(4) = MAX(xCoordsOrigin(4), origin(2) + radius)
+            xCoordsOrigin(5) = MIN(xCoordsOrigin(5), origin(3) - radius)
+            xCoordsOrigin(6) = MAX(xCoordsOrigin(6), origin(3) + radius)
+        END DO ! HaloElem = firstElem, lastElem
+
+      ! Build mesh min/max on BezierControlPoints for possibly curved elements
+      CASE(REFMAPPING,TRACING)
+        firstSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,firstElem)+1
+        lastSide  = ElemInfo_Shared(ELEM_LASTSIDEIND ,lastElem)
+
+        ! xCoordsOrigin(1) = MINVAL(BezierControlPoints3D(1,:,:,firstSide:lastSide))
+        ! xCoordsOrigin(2) = MAXVAL(BezierControlPoints3D(1,:,:,firstSide:lastSide))
+        ! xCoordsOrigin(3) = MINVAL(BezierControlPoints3D(2,:,:,firstSide:lastSide))
+        ! xCoordsOrigin(4) = MAXVAL(BezierControlPoints3D(2,:,:,firstSide:lastSide))
+        ! xCoordsOrigin(5) = MINVAL(BezierControlPoints3D(3,:,:,firstSide:lastSide))
+        ! xCoordsOrigin(6) = MAXVAL(BezierControlPoints3D(3,:,:,firstSide:lastSide))
+
+        xCoordsOrigin(1) = -HUGE(1.)
+        xCoordsOrigin(2) =  HUGE(1.)
+        xCoordsOrigin(3) = -HUGE(1.)
+        xCoordsOrigin(4) =  HUGE(1.)
+        xCoordsOrigin(5) = -HUGE(1.)
+        xCoordsOrigin(6) =  HUGE(1.)
+
+        DO HaloElem = firstElem, lastElem
+          ! Flag elements depending on radius
+          origin(1:3) = (/ SUM(   BoundsOfElem_Shared(1:2,1,HaloElem)), &
+                           SUM(   BoundsOfElem_Shared(1:2,2,HaloElem)), &
+                           SUM(   BoundsOfElem_Shared(1:2,3,HaloElem)) /) / 2.
+          ! Calculate halo element outer radius
+          radius    = VECNORM ((/ BoundsOfElem_Shared(2  ,1,HaloElem)-BoundsOfElem_Shared(1,1,HaloElem), &
+                                  BoundsOfElem_Shared(2  ,2,HaloElem)-BoundsOfElem_Shared(1,2,HaloElem), &
+                                  BoundsOfElem_Shared(2  ,3,HaloElem)-BoundsOfElem_Shared(1,3,HaloElem) /) / 2.)
+
+          xCoordsOrigin(1) = MIN(xCoordsOrigin(1), origin(1) - radius)
+          xCoordsOrigin(2) = MAX(xCoordsOrigin(2), origin(1) + radius)
+          xCoordsOrigin(3) = MIN(xCoordsOrigin(3), origin(2) - radius)
+          xCoordsOrigin(4) = MAX(xCoordsOrigin(4), origin(2) + radius)
+          xCoordsOrigin(5) = MIN(xCoordsOrigin(5), origin(3) - radius)
+          xCoordsOrigin(6) = MAX(xCoordsOrigin(6), origin(3) + radius)
+        END DO ! HaloElem = firstElem, lastElem
       END SELECT
 
       ! Keep direction to account for accuracy issues
@@ -433,13 +516,6 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
       CYCLE
   END SELECT
 
-  BoundsOfElemCenter(1:3) = (/    SUM(BoundsOfElem_Shared(1:2,1,ElemID)), &
-                                  SUM(BoundsOfElem_Shared(1:2,2,ElemID)), &
-                                  SUM(BoundsOfElem_Shared(1:2,3,ElemID)) /) / 2.
-  BoundsOfElemCenter(4) = VECNORM ((/ BoundsOfElem_Shared(2  ,1,ElemID)-BoundsOfElem_Shared(1,1,ElemID), &
-                                      BoundsOfElem_Shared(2  ,2,ElemID)-BoundsOfElem_Shared(1,2,ElemID), &
-                                      BoundsOfElem_Shared(2  ,3,ElemID)-BoundsOfElem_Shared(1,3,ElemID) /) / 2.)
-
   DO iSide = 1, nExchangeSides
     ! compare distance of centers with sum of element outer radii+halo_eps
     IF (VECNORM(BoundsOfElemCenter(1:3)-MPISideBoundsOfElemCenter(1:3,iSide)) &
@@ -450,54 +526,54 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
       SELECT CASE(GEO%nPeriodicVectors)
         ! One periodic vector
         CASE(1)
-          DO iPeriodicDir = 1,2
+          DO iDir = -1,1,2
             IF (VECNORM( BoundsOfElemCenter(1:3)                                                       &
-                       + GEO%PeriodicVectors(1:3,1) * DirPeriodicVector(iPeriodicDir)                  &
+                       + GEO%PeriodicVectors(1:3,1) * REAL(iDir)                                       &
                        - MPISideBoundsOfElemCenter(1:3,iSide))                                         &
-                    .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                            &
-                       + MPISideBoundsOfElemCenter(4,iSide) ) THEN
-                ! flag the proc as exchange proc (in halo region)
-                GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
-                GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
-                nExchangeProcessors = nExchangeProcessors + 1
-                CYCLE ElemLoop
-              END IF
+                    .GT. MPI_halo_eps+BoundsOfElemCenter(4)                                            & !-BoundsOfElemCenter(5) &
+                       + MPISideBoundsOfElemCenter(4,iSide) ) CYCLE
+
+              ! flag the proc as exchange proc (in halo region)
+              GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
+              GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
+              nExchangeProcessors = nExchangeProcessors + 1
+              CYCLE ElemLoop
             END DO
 
         ! Two periodic vectors. Also check linear combination, see particle_bgm.f90
         CASE(2)
           DO iPeriodicVector = 1,2
-            DO iPeriodicDir = 1,2
+            DO iDir = -1,1,2
               ! check if element is within halo_eps of periodically displaced element
               IF (VECNORM( BoundsOfElemCenter(1:3)                                                    &
-                         + GEO%PeriodicVectors(1:3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir) &
+                         + GEO%PeriodicVectors(1:3,iPeriodicVector) * REAL(iDir)                      &
                          - MPISideBoundsOfElemCenter(1:3,iSide))                                      &
-                      .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                         &
-                         + MPISideBoundsOfElemCenter(4,iSide)) THEN
-                ! flag the proc as exchange proc (in halo region)
-                GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
-                GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
-                nExchangeProcessors = nExchangeProcessors + 1
-                CYCLE ElemLoop
-              END IF
+                      .GT. MPI_halo_eps+BoundsOfElemCenter(4)                                         & !-BoundsOfElemCenter(5) &
+                         + MPISideBoundsOfElemCenter(4,iSide)) CYCLE
+
+              ! flag the proc as exchange proc (in halo region)
+              GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
+              GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
+              nExchangeProcessors = nExchangeProcessors + 1
+              CYCLE ElemLoop
             END DO
           END DO
 
-          DO iPeriodicDir = 1,2
-            DO jPeriodicDir = 1,2
+          DO iDir = -1,1,2
+            DO jDir = -1,1,2
               ! check if element is within halo_eps of periodically displaced element
               IF (VECNORM( BoundsOfElemCenter(1:3)                                                    &
-                         + GEO%PeriodicVectors(1:3,1) * DirPeriodicVector(iPeriodicDir)               &
-                         + GEO%PeriodicVectors(1:3,2) * DirPeriodicVector(jPeriodicDir)               &
+                         + GEO%PeriodicVectors(1:3,1) * REAL(iDir)                                    &
+                         + GEO%PeriodicVectors(1:3,2) * REAL(jDir)                                    &
                          - MPISideBoundsOfElemCenter(1:3,iSide))                                      &
-                      .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                         &
-                         + MPISideBoundsOfElemCenter(4,iSide)) THEN
-                ! flag the proc as exchange proc (in halo region)
-                GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
-                GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
-                nExchangeProcessors = nExchangeProcessors + 1
-                CYCLE ElemLoop
-              END IF
+                        .GT. MPI_halo_eps+BoundsOfElemCenter(4)                                       & !-BoundsOfElemCenter(5) &
+                           + MPISideBoundsOfElemCenter(4,iSide)) CYCLE
+
+              ! flag the proc as exchange proc (in halo region)
+              GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
+              GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
+              nExchangeProcessors = nExchangeProcessors + 1
+              CYCLE ElemLoop
             END DO
           END DO
 
@@ -506,60 +582,64 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
           ! check the three periodic vectors. Begin with checking the first periodic vector, followed by the combination of
           ! the first periodic vector with the others. Then check the other combinations, i.e. 1, 1+2, 1+3, 2, 2+3, 3, 1+2+3
           DO iPeriodicVector = 1,3
-            DO iPeriodicDir = 1,2
+            DO iDir = -1,1,2
               ! element might be already added back
               ! check if element is within halo_eps of periodically displaced element
               IF (VECNORM( BoundsOfElemCenter(1:3)                                                      &
-                         + GEO%PeriodicVectors(1:3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir)   &
+                         + GEO%PeriodicVectors(1:3,iPeriodicVector) * REAL(iDir)                        &
                          - MPISideBoundsOfElemCenter(1:3,iSide))                                        &
-                      .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                           &
-                         + MPISideBoundsOfElemCenter(4,iSide)) THEN
-                ! flag the proc as exchange proc (in halo region)
-                GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
-                GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
-                nExchangeProcessors = nExchangeProcessors + 1
-                CYCLE ElemLoop
-              END IF
+                      .GT. MPI_halo_eps+BoundsOfElemCenter(4)                                           & !-BoundsOfElemCenter(5) &
+                         + MPISideBoundsOfElemCenter(4,iSide)) CYCLE
 
+              ! flag the proc as exchange proc (in halo region)
+              GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
+              GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
+              nExchangeProcessors = nExchangeProcessors + 1
+              CYCLE ElemLoop
+            END DO
+          END DO
+
+          DO iPeriodicVector = 1,3
+            DO iDir = -1,1,2
               DO jPeriodicVector = 1,3
-                DO jPeriodicDir = 1,2
+                DO jDir = -1,1,2
                   IF (iPeriodicVector.GE.jPeriodicVector) CYCLE
 
                   ! check if element is within halo_eps of periodically displaced element
                   IF (VECNORM( BoundsOfElemCenter(1:3)                                                    &
-                             + GEO%PeriodicVectors(1:3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir) &
-                             + GEO%PeriodicVectors(1:3,jPeriodicVector) * DirPeriodicVector(jPeriodicDir) &
+                             + GEO%PeriodicVectors(1:3,iPeriodicVector) * REAL(iDir)                        &
+                             + GEO%PeriodicVectors(1:3,jPeriodicVector) * REAL(jDir)                        &
                              - MPISideBoundsOfElemCenter(1:3,iSide))                                      &
-                          .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                         &
-                             + MPISideBoundsOfElemCenter(4,iSide)) THEN
-                    ! flag the proc as exchange proc (in halo region)
-                    GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
-                    GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
-                    nExchangeProcessors = nExchangeProcessors + 1
-                    CYCLE ElemLoop
-                  END IF
+                          .GT. MPI_halo_eps+BoundsOfElemCenter(4)                                           & !-BoundsOfElemCenter(5) &
+                             + MPISideBoundsOfElemCenter(4,iSide)) CYCLE
+
+                  ! flag the proc as exchange proc (in halo region)
+                  GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
+                  GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
+                  nExchangeProcessors = nExchangeProcessors + 1
+                  CYCLE ElemLoop
                 END DO
               END DO
             END DO
           END DO
 
           ! check if element is within halo_eps of periodically displaced element
-          DO iPeriodicDir = 1,2
-            DO jPeriodicDir = 1,2
-              DO kPeriodicDir = 1,2
+          DO iDir = -1,1,2
+            DO jDir = -1,1,2
+              DO kDir = -1,1,2
                 IF (VECNORM( BoundsOfElemCenter(1:3)                                                        &
-                           + GEO%PeriodicVectors(1:3,1) * DirPeriodicVector(iPeriodicDir)                   &
-                           + GEO%PeriodicVectors(1:3,2) * DirPeriodicVector(jPeriodicDir)                   &
-                           + GEO%PeriodicVectors(1:3,3) * DirPeriodicVector(kPeriodicDir)                   &
+                           + GEO%PeriodicVectors(1:3,1) * REAL(iDir)                                        &
+                           + GEO%PeriodicVectors(1:3,2) * REAL(jDir)                                        &
+                           + GEO%PeriodicVectors(1:3,3) * REAL(kDir)                                        &
                            - MPISideBoundsOfElemCenter(1:3,iSide))                                          &
-                        .LE. MPI_halo_eps+BoundsOfElemCenter(4)                                             &
-                           + MPISideBoundsOfElemCenter(4,iSide) ) THEN
-                  ! flag the proc as exchange proc (in halo region)
-                  GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
-                  GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
-                  nExchangeProcessors = nExchangeProcessors + 1
-                  CYCLE ElemLoop
-                END IF
+                        .GT. MPI_halo_eps+BoundsOfElemCenter(4)                                             & !-BoundsOfElemCenter(5) &
+                           + MPISideBoundsOfElemCenter(4,iSide) ) CYCLE
+
+                ! flag the proc as exchange proc (in halo region)
+                GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 2
+                GlobalProcToExchangeProc(EXCHANGE_PROC_RANK,HaloProc) = nExchangeProcessors
+                nExchangeProcessors = nExchangeProcessors + 1
+                CYCLE ElemLoop
               END DO
             END DO
           END DO
@@ -683,6 +763,7 @@ IF(CheckExchangeProcs)THEN
 
     ! Ignore procs that are already flagged or not requesting communication
     IF (GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,iProc).GT.0) CYCLE
+    ! GlobalProcToRecvProc(iProc) is true if iProc has flagged myRank
     IF (.NOT.GlobalProcToRecvProc(iProc)) CYCLE
 
     ! Found a previously missing proc
@@ -784,8 +865,8 @@ REAL,INTENT(IN),OPTIONAL    :: PeriodicVectors(3,nPeriodicVectors)
 LOGICAL                     :: HaloBoxInProc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER,DIMENSION(2),PARAMETER :: DirPeriodicVector = [-1,1]
-INTEGER                        :: iPeriodicVector,jPeriodicVector,iPeriodicDir,jPeriodicDir,kPeriodicDir
+INTEGER                        :: iPeriodicVector,jPeriodicVector
+INTEGER                        :: iDir,jDir,kDir
 REAL,DIMENSION(1:6)            :: xCordsPeri
 !===================================================================================================================================
 
@@ -800,11 +881,11 @@ IF (   ((CartNodes(1).LE.CartProc(2)+halo_eps).AND.(CartNodes(2).GE.CartProc(1)-
 SELECT CASE(nPeriodicVectors)
   ! One periodic vector
   CASE(1)
-    DO iPeriodicDir = 1,2
+    DO iDir = -1,1,2
       ! check if element is within halo_eps of periodically displaced element
-      xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,1) * DirPeriodicVector(iPeriodicDir)
-      xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,1) * DirPeriodicVector(iPeriodicDir)
-      xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,1) * DirPeriodicVector(iPeriodicDir)
+      xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,1) * REAL(iDir)
+      xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,1) * REAL(iDir)
+      xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,1) * REAL(iDir)
 
       ! Check whether the bounding boxes intersect
       IF (   ((xCordsPeri(1).LE.CartProc(2)+halo_eps).AND.(xCordsPeri(2).GE.CartProc(1)-halo_eps))  &
@@ -818,11 +899,11 @@ SELECT CASE(nPeriodicVectors)
   ! Two periodic vectors. Also check linear combination, see particle_bgm.f90
   CASE(2)
     DO iPeriodicVector = 1,2
-      DO iPeriodicDir = 1,2
+      DO iDir = -1,1,2
         ! check if element is within halo_eps of periodically displaced element
-        xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,iPeriodicVector) * DirPeriodicVector(iPeriodicDir)
-        xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,iPeriodicVector) * DirPeriodicVector(iPeriodicDir)
-        xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir)
+        xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,iPeriodicVector) * REAL(iDir)
+        xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,iPeriodicVector) * REAL(iDir)
+        xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,iPeriodicVector) * REAL(iDir)
 
         ! Check whether the bounding boxes intersect
         IF (   ((xCordsPeri(1).LE.CartProc(2)+halo_eps).AND.(xCordsPeri(2).GE.CartProc(1)-halo_eps))  &
@@ -834,15 +915,15 @@ SELECT CASE(nPeriodicVectors)
       END DO
     END DO
 
-    DO iPeriodicDir = 1,2
-      DO jPeriodicDir = 1,2
+    DO iDir = -1,1,2
+      DO jDir = -1,1,2
         ! check if element is within halo_eps of periodically displaced element
-        xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,1) * DirPeriodicVector(iPeriodicDir) &
-                                         + PeriodicVectors(1,2) * DirPeriodicVector(jPeriodicDir)
-        xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,1) * DirPeriodicVector(iPeriodicDir) &
-                                         + PeriodicVectors(2,2) * DirPeriodicVector(jPeriodicDir)
-        xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,1) * DirPeriodicVector(iPeriodicDir) &
-                                         + PeriodicVectors(3,2) * DirPeriodicVector(jPeriodicDir)
+        xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,1) * REAL(iDir) &
+                                         + PeriodicVectors(1,2) * REAL(jDir)
+        xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,1) * REAL(iDir) &
+                                         + PeriodicVectors(2,2) * REAL(jDir)
+        xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,1) * REAL(iDir) &
+                                         + PeriodicVectors(3,2) * REAL(jDir)
 
         ! Check whether the bounding boxes intersect
         IF (   ((xCordsPeri(1).LE.CartProc(2)+halo_eps).AND.(xCordsPeri(2).GE.CartProc(1)-halo_eps))  &
@@ -859,11 +940,11 @@ SELECT CASE(nPeriodicVectors)
     ! check the three periodic vectors. Begin with checking the first periodic vector, followed by the combination of
     ! the first periodic vector with the others. Then check the other combinations, i.e. 1, 1+2, 1+3, 2, 2+3, 3, 1+2+3
     DO iPeriodicVector = 1,3
-      DO iPeriodicDir = 1,2
+      DO iDir = -1,1,2
         ! check if element is within halo_eps of periodically displaced element
-        xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,iPeriodicVector) * DirPeriodicVector(iPeriodicDir)
-        xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,iPeriodicVector) * DirPeriodicVector(iPeriodicDir)
-        xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir)
+        xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,iPeriodicVector) * REAL(iDir)
+        xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,iPeriodicVector) * REAL(iDir)
+        xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,iPeriodicVector) * REAL(iDir)
 
         ! Check whether the bounding boxes intersect
         IF (   ((xCordsPeri(1).LE.CartProc(2)+halo_eps).AND.(xCordsPeri(2).GE.CartProc(1)-halo_eps))  &
@@ -874,15 +955,15 @@ SELECT CASE(nPeriodicVectors)
         END IF
 
         DO jPeriodicVector = 1,3
-          DO jPeriodicDir = 1,2
+          DO jDir = -1,1,2
             IF (iPeriodicVector.GE.jPeriodicVector) CYCLE
             ! check if element is within halo_eps of periodically displaced element
-            xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,iPeriodicVector) * DirPeriodicVector(iPeriodicDir) &
-                                             + PeriodicVectors(1,jPeriodicVector) * DirPeriodicVector(jPeriodicDir)
-            xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,iPeriodicVector) * DirPeriodicVector(iPeriodicDir) &
-                                             + PeriodicVectors(2,jPeriodicVector) * DirPeriodicVector(jPeriodicDir)
-            xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,iPeriodicVector) * DirPeriodicVector(iPeriodicDir) &
-                                             + PeriodicVectors(3,jPeriodicVector) * DirPeriodicVector(jPeriodicDir)
+            xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,iPeriodicVector) * REAL(iDir) &
+                                             + PeriodicVectors(1,jPeriodicVector) * REAL(jDir)
+            xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,iPeriodicVector) * REAL(iDir) &
+                                             + PeriodicVectors(2,jPeriodicVector) * REAL(jDir)
+            xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,iPeriodicVector) * REAL(iDir) &
+                                             + PeriodicVectors(3,jPeriodicVector) * REAL(jDir)
 
             ! Check whether the bounding boxes intersect
             IF (   ((xCordsPeri(1).LE.CartProc(2)+halo_eps).AND.(xCordsPeri(2).GE.CartProc(1)-halo_eps))  &
@@ -897,19 +978,19 @@ SELECT CASE(nPeriodicVectors)
     END DO
 
     ! check if element is within halo_eps of periodically displaced element
-    DO iPeriodicDir = 1,2
-      DO jPeriodicDir = 1,2
-        DO kPeriodicDir = 1,2
+    DO iDir = -1,1,2
+      DO jDir = -1,1,2
+        DO kDir = -1,1,2
           ! check if element is within halo_eps of periodically displaced element
-          xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,1) * DirPeriodicVector(iPeriodicDir) &
-                                           + PeriodicVectors(1,2) * DirPeriodicVector(jPeriodicDir) &
-                                           + PeriodicVectors(1,3) * DirPeriodicVector(kPeriodicDir)
-          xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,1) * DirPeriodicVector(iPeriodicDir) &
-                                           + PeriodicVectors(2,2) * DirPeriodicVector(jPeriodicDir) &
-                                           + PeriodicVectors(2,3) * DirPeriodicVector(kPeriodicDir)
-          xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,1) * DirPeriodicVector(iPeriodicDir) &
-                                           + PeriodicVectors(3,2) * DirPeriodicVector(jPeriodicDir) &
-                                           + PeriodicVectors(3,3) * DirPeriodicVector(kPeriodicDir)
+          xCordsPeri(1:2) = CartNodes(1:2) + PeriodicVectors(1,1) * REAL(iDir) &
+                                           + PeriodicVectors(1,2) * REAL(jDir) &
+                                           + PeriodicVectors(1,3) * REAL(kDir)
+          xCordsPeri(3:4) = CartNodes(3:4) + PeriodicVectors(2,1) * REAL(iDir) &
+                                           + PeriodicVectors(2,2) * REAL(jDir) &
+                                           + PeriodicVectors(2,3) * REAL(kDir)
+          xCordsPeri(5:6) = CartNodes(5:6) + PeriodicVectors(3,1) * REAL(iDir) &
+                                           + PeriodicVectors(3,2) * REAL(jDir) &
+                                           + PeriodicVectors(3,3) * REAL(kDir)
 
           ! Check whether the bounding boxes intersect
           IF (   ((xCordsPeri(1).LE.CartProc(2)+halo_eps).AND.(xCordsPeri(2).GE.CartProc(1)-halo_eps))  &

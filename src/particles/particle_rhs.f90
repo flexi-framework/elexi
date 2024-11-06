@@ -1280,7 +1280,7 @@ USE MOD_Particle_Deposition_Vars  ,ONLY: PartSource
 USE MOD_Particle_Deposition_Vars  ,ONLY: FEMNodeSource_Shared
 #if USE_MPI
 USE MOD_MPI_Shared                ,ONLY: BARRIER_AND_SYNC
-USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED
+USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED, myComputeNodeRank
 USE MOD_Particle_Deposition_Vars  ,ONLY: FEMNodeSource_Shared_Win
 USE MOD_Particle_Deposition_Vars  ,ONLY: MPI_DEPO_REQUEST
 #endif /*USE_MPI*/
@@ -1313,7 +1313,9 @@ SELECT CASE(DepositionType)
 
 #if USE_MPI
     ! Wait for communication to finish
-    CALL MPI_WAIT(MPI_DEPO_REQUEST,MPI_STATUS_IGNORE,iError)
+    IF (myComputeNodeRank.EQ.0) THEN
+      CALL MPI_WAIT(MPI_DEPO_REQUEST,MPI_STATUS_IGNORE,iError)
+    END IF ! myComputeNodeRank.EQ.0
 
     ! Update SHM array on CN
     CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)

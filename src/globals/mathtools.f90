@@ -375,9 +375,9 @@ USE MOD_PreProc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+INTEGER,INTENT(IN) :: nDOFProc
 REAL,INTENT(IN)    :: A(nDOFProc)
 REAL,INTENT(IN)    :: B(nDOFProc)
-INTEGER,INTENT(IN) :: nDOFProc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)  :: Resu

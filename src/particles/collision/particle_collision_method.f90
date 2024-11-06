@@ -161,9 +161,12 @@ IF (myComputeNodeRank.EQ.0) THEN
   ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
   ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
   ! No local operations prior to this epoch, so give an assertion
-  CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                    ,    PartBC_Window                                                     &
-                    ,    iError)
+  !> > ACTIVE SYNCHRONIZATION
+  ! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+  !                   ,    PartBC_Window                                                     &
+  !                   ,    iError)
+  !> > PASSIVE SYNCHRONIZATION
+  CALL MPI_WIN_LOCK_ALL(0,PartBC_Win,iError)
 
   ! Loop over all remote elements and fill the PartData_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
@@ -188,19 +191,23 @@ IF (myComputeNodeRank.EQ.0) THEN
                          , INT(offsetFirstPart,MPI_ADDRESS_KIND)                           &
                          , 1                                                               &
                          , MPI_DOUBLE_PRECISION                                            &
-                         , PartBC_Window                                                   &
+                         , PartBC_Win                                                      &
                          , iError)
     END ASSOCIATE
   END DO ! iElem
 
   !> Complete the epoch - this will block until MPI_Get is complete
-  CALL MPI_WIN_FENCE(    0                                                                 &
-                    ,    PartBC_Window                                                     &
-                    ,    iError)
-  ! All done with the window - tell MPI there are no more epochs
-  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
-                    ,    PartBC_Window                                                     &
-                    ,    iError)
+  !> > ACTIVE SYNCHRONIZATION
+  ! CALL MPI_WIN_FENCE(    0                                                                 &
+  !                   ,    PartBC_Win                                                     &
+  !                   ,    iError)
+  ! ! All done with the window - tell MPI there are no more epochs
+  ! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+  !                   ,    PartBC_Win                                                     &
+  !                   ,    iError)
+  !> > PASSIVE SYNCHRONIZATION
+  CALL MPI_WIN_UNLOCK_ALL(PartBC_Win,iError)
+  !
   ! Free up our window
   ! CALL MPI_WIN_FREE(     MPI_WINDOW                                                        &
   !                   ,    iError)
@@ -332,9 +339,12 @@ IF (myComputeNodeRank.EQ.0) THEN
   ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
   ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
   ! No local operations prior to this epoch, so give an assertion
-  CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                    ,    PartColl_Window                                                   &
-                    ,    iError)
+  !> > ACTIVE SYNCHRONIZATION
+  ! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+  !                   ,    PartColl_Win                                                      &
+  !                   ,    iError)
+  !> > PASSIVE SYNCHRONIZATION
+  CALL MPI_WIN_LOCK_ALL(0,PartColl_Win,iError)
 
   ! Loop over all remote elements and fill the PartData_Shared array
   DO iElem = nComputeNodeElems+1,nComputeNodeTotalElems
@@ -359,19 +369,22 @@ IF (myComputeNodeRank.EQ.0) THEN
                          , INT(offsetFirstPart,MPI_ADDRESS_KIND)                           &
                          , 1                                                               &
                          , MPI_INTEGER                                                     &
-                         , PartColl_Window                                                 &
+                         , PartColl_Win                                                    &
                          , iError)
     END ASSOCIATE
   END DO ! iElem
 
   !> Complete the epoch - this will block until MPI_Get is complete
-  CALL MPI_WIN_FENCE(    0                                                                 &
-                    ,    PartColl_Window                                                   &
-                    ,    iError)
-  ! All done with the window - tell MPI there are no more epochs
-  CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
-                    ,    PartColl_Window                                                   &
-                    ,    iError)
+  !> > ACTIVE SYNCHRONIZATION
+  ! CALL MPI_WIN_FENCE(    0                                                                 &
+  !                   ,    PartColl_Win                                                      &
+  !                   ,    iError)
+  ! ! All done with the window - tell MPI there are no more epochs
+  ! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+  !                   ,    PartColl_Win                                                      &
+  !                   ,    iError)
+  !> > PASSIVE SYNCHRONIZATION
+  CALL MPI_WIN_UNLOCK_ALL(PartColl_Win,iError)
 END IF ! myComputeNodeRank.EQ.0
 CALL BARRIER_AND_SYNC(PartColl_Shared_Win,MPI_COMM_SHARED)
 
@@ -452,7 +465,6 @@ DO iElem = offsetElem+1,offsetElem+nElems
 
     ! apply the power
     CALL ComputeHardSphereCollision(iPart1,iPart2,dtLoc-dtColl,dtLoc)
-
   END DO ! iPart1
 END DO ! iElem
 

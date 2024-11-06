@@ -502,6 +502,10 @@ IF(ALLOCATED(Pt))                 CALL ChangeSizeArray(Pt                ,PDM%ma
 IF(ALLOCATED(Pt_temp))            CALL ChangeSizeArray(Pt_temp           ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize,0.)
 
+#if PARTICLES_COUPLING >= 2
+IF(ALLOCATED(PartNodeSource))     CALL ChangeSizeArray(PartNodeSource    ,PDM%maxParticleNumber,NewSize,0.)
+#endif /*PARTICLES_COUPLING >= 2*/
+
 #if USE_BASSETFORCE
 IF(ALLOCATED(durdt))              CALL ChangeSizeArray(durdt             ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(bIter))              CALL ChangeSizeArray(bIter             ,PDM%maxParticleNumber,NewSize,0)
@@ -613,6 +617,10 @@ IF(ALLOCATED(PartIndex))          CALL ChangeSizeArray(PartIndex         ,PDM%ma
 IF(ALLOCATED(Pt))                 CALL ChangeSizeArray(Pt                ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(Pt_temp))            CALL ChangeSizeArray(Pt_temp           ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize,0.)
+
+#if PARTICLES_COUPLING >= 2
+IF(ALLOCATED(PartNodeSource))     CALL ChangeSizeArray(PartNodeSource    ,PDM%maxParticleNumber,NewSize,0.)
+#endif /*PARTICLES_COUPLING >= 2*/
 
 #if USE_BASSETFORCE
 IF(ALLOCATED(durdt))              CALL ChangeSizeArray(durdt             ,PDM%maxParticleNumber,NewSize,0.)

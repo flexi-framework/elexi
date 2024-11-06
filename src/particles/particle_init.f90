@@ -75,7 +75,7 @@ USE MOD_Particle_Vars
 USE MOD_Particle_Deposition_Method, ONLY:DefineParametersDepositionMethod
 #endif /*PARTICLES_COUPLING >= 2*/
 #if PARTICLES_COUPLING == 4
-USE MOD_Particle_Collision,         ONLY:DefineParametersCollission
+USE MOD_Particle_Collision,         ONLY:DefineParametersCollision
 #endif /*PARTICLES_COUPLING == 4*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -527,7 +527,7 @@ CALL prms%CreateRealArrayOption(    'Part-Boundary[$]-WallVelo'   , 'Velocity (g
 CALL DefineParametersDepositionMethod()
 #endif /*PARTICLES_COUPLING >= 2*/
 #if PARTICLES_COUPLING == 4
-CALL DefineParametersCollission()
+CALL DefineParametersCollision()
 #endif /*PARTICLES_COUPLING == 4*/
 CALL DefineParametersParticleAnalyze()
 CALL DefineParametersParticleBoundarySampling()
@@ -977,21 +977,25 @@ ArraySize = INT(((2.*REAL(PP_nVarPart) + REAL(PP_nVarPartRHS) + 6.)*SIZE_REAL + 
 IF (.NOT.VerifyMemUsage(ArraySize)) &
   CALL Abort(__STAMP__,'ERROR in particle_init.f90: Cannot allocate particle arrays. Array size too large!')
 
-ALLOCATE(PartState(1:PP_nVarPart,1:PDM%maxParticleNumber),    &
-         PartReflCount(          1:PDM%maxParticleNumber),    &
-         LastPartPos(        1:3,1:PDM%maxParticleNumber),    &
-         PartPosRef(         1:3,1:PDM%MaxParticleNumber),    &
-         PartSpecies(            1:PDM%maxParticleNumber),    &
+ALLOCATE(PartState(     1:PP_nVarPart,1:PDM%maxParticleNumber), &
+         PartReflCount(               1:PDM%maxParticleNumber), &
+         LastPartPos(             1:3,1:PDM%maxParticleNumber), &
+         PartPosRef(              1:3,1:PDM%MaxParticleNumber), &
+         PartSpecies(                 1:PDM%maxParticleNumber), &
 ! Allocate array for Runge-Kutta time stepping
-         Pt(     1:PP_nVarPartRHS,1:PDM%maxParticleNumber),  &
-         Pt_temp(1:PP_nVarPartRHS+3,1:PDM%maxParticleNumber), &
+         Pt(       1:PP_nVarPartRHS  ,1:PDM%maxParticleNumber), &
+         Pt_temp(  1:PP_nVarPartRHS+3,1:PDM%maxParticleNumber), &
 ! Allocate array for particle position in reference coordinates
-         PDM%ParticleInside(     1:PDM%maxParticleNumber),    &
-         PDM%nextFreePosition(   1:PDM%maxParticleNumber),    &
-         PDM%IsNewPart(          1:PDM%maxParticleNumber),    &
+         PDM%ParticleInside(          1:PDM%maxParticleNumber), &
+         PDM%nextFreePosition(        1:PDM%maxParticleNumber), &
+         PDM%IsNewPart(               1:PDM%maxParticleNumber), &
 ! Allocate particle-to-element-mapping (PEM) arrays
-         PEM%Element(            1:PDM%maxParticleNumber),    &
-         PEM%lastElement(        1:PDM%maxParticleNumber))
+         PEM%Element(                 1:PDM%maxParticleNumber), &
+         PEM%lastElement(             1:PDM%maxParticleNumber)  &
+#if PARTICLES_COUPLING >= 2
+        ,PartNodeSource(1:PP_nVar,1:8,1:PDM%maxParticleNumber)  &
+#endif /*PARTICLES_COUPLING >= 2*/
+         )
 
 PDM%ParticleInside(1:PDM%maxParticleNumber)  = .FALSE.
 PDM%IsNewPart(     1:PDM%maxParticleNumber)  = .FALSE.
@@ -1004,6 +1008,9 @@ PDM%nextFreePosition(1:PDM%maxParticleNumber)= 0
 PEM%Element(         1:PDM%maxParticleNumber)= 0
 PEM%lastElement(     1:PDM%maxParticleNumber)= 0
 Pt_temp                                      = 0
+#if PARTICLES_COUPLING >= 2
+PartNodeSource                               = 0
+#endif /*PARTICLES_COUPLING >= 2*/
 PartPosRef                                   =-888.
 
 IF(doPartIndex) THEN
@@ -1919,6 +1926,11 @@ SDEALLOCATE(PEM%pStart)
 SDEALLOCATE(PEM%pNumber)
 SDEALLOCATE(PEM%pEnd)
 SDEALLOCATE(PEM%pNext)
+
+! Particle deposition
+#if PARTICLES_COUPLING >= 2
+SDEALLOCATE(PartNodeSource)
+#endif /*PARTICLES_COUPLING >= 2*/
 
 ! Extended RHS
 #if USE_FAXEN_CORR

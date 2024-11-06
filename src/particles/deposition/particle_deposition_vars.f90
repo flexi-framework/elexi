@@ -47,7 +47,6 @@ REAL,ALLOCATABLE                  :: Ut_src(:,:,:,:,:)                       !< 
 INTEGER                           :: nUniqueFEMNodes                         !< Number of unique corner nodes (including periodic sides)
 ! REAL,ALLOCATABLE                  :: FEMNodeSource(:,:)                      !< Source term on unique corner nodes (non-normalized)
 REAL,ALLOCATABLE                  :: CellVolWeightFac(:)                     !< Weighing factor for each corner node
-REAL,ALLOCATABLE                  :: NodeSource_tmp(:,:)                     !< Source term on unique corner nodes (normalized with volume)
 
 ! MPI-SHM arrays
 REAL,ALLOCPOINT,DIMENSION(:,:)    :: FEMNodeSource_Shared                    !< Array for the cummulative source on each FEM node

@@ -184,6 +184,7 @@ USE MOD_Particle_Deposition_Vars
 USE MOD_Particle_Mesh_Vars       ,ONLY: VertexInfo_Shared,VertexVol_Shared
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 USE MOD_Particle_Vars            ,ONLY: PDM,PEM,PartPosRef,PartState,Species,PartSpecies
+USE MOD_Particle_Vars            ,ONLY: PartNodeSource
 #if USE_MPI
 USE MOD_MPI_Shared               ,ONLY: BARRIER_AND_SYNC
 USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
@@ -206,17 +207,22 @@ REAL                :: Source(PP_nVar)
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) FEMNodeSource_Shared(:,:) = 0.
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
+CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 
 !> Start an RMA exposure epoch
 ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
 ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
 ! No local operations prior to this epoch, so give an assertion
-CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 #else
 FEMNodeSource_Shared(:,:) = 0.
 #endif /*USE_MPI*/
+PartNodeSource            = 0.
 
 ! Loop all particles and deposit their force contribution
 DO iPart = 1,PDM%ParticleVecLength
@@ -250,35 +256,29 @@ DO iPart = 1,PDM%ParticleVecLength
 
   iElem = PEM%Element(iPart)
   Vol   = 0.
-  NodeSource_tmp = 0.
 
   DO iNode = 1,8
     FEMNodeID(iNode) = VertexInfo_Shared(1,(iElem-1)*8 + iNode)
     ! FEMNodeSource(MOMV,FEMNodeID(iNode)) = FEMNodeSource(MOMV,FEMNodeID(iNode)) + Source(MOMV)*PartDistDepo(iNode)
     ! FEMNodeSource(ENER,FEMNodeID(iNode)) = FEMNodeSource(ENER,FEMNodeID(iNode)) + Source(ENER)*PartDistDepo(iNode)
     Vol = Vol + VertexVol_Shared(FEMNodeID(iNode))
-    NodeSource_tmp(MOMV,iNode) = NodeSource_tmp(MOMV,iNode) + Source(MOMV)*PartDistDepo(iNode)
-    NodeSource_tmp(ENER,iNode) = NodeSource_tmp(ENER,iNode) + Source(ENER)*PartDistDepo(iNode)
+    PartNodeSource(MOMV,iNode,iPart) = PartNodeSource(MOMV,iNode,iPart) + Source(MOMV)*PartDistDepo(iNode)
+    PartNodeSource(ENER,iNode,iPart) = PartNodeSource(ENER,iNode,iPart) + Source(ENER)*PartDistDepo(iNode)
   END DO ! iNode = 1,8
 
   ! Normalize deposition with volume
-  NodeSource_tmp(:,:) = NodeSource_tmp(:,:) / Vol
+  PartNodeSource(:,:,iPart) = PartNodeSource(:,:,iPart) / Vol
 
   ! Loop over all nodes and add normalized deposition to shared array
   DO iNode = 1,8
 #if USE_MPI
-    CALL MPI_ACCUMULATE(NodeSource_tmp(:,iNode),PP_nVar,MPI_DOUBLE_PRECISION,0,INT(PP_nVar*(FEMNodeID(iNode)-1)*SIZE_REAL,MPI_ADDRESS_KIND) , &
-                                                PP_nVar,MPI_DOUBLE_PRECISION,MPI_SUM,FEMNodeSource_Shared_Win,iError)
+    CALL MPI_ACCUMULATE(PartNodeSource(:,iNode,iPart)                                                                        ,&
+                        PP_nVar, MPI_DOUBLE_PRECISION, 0,       INT(PP_nVar*(FEMNodeID(iNode)-1)*SIZE_REAL,MPI_ADDRESS_KIND) ,&
+                        PP_nVar, MPI_DOUBLE_PRECISION, MPI_SUM, FEMNodeSource_Shared_Win, iError)
 #else
-    FEMNodeSource_Shared(:,FEMNodeID(iNode)) = FEMNodeSource_Shared(:,FEMNodeID(iNode)) + NodeSource_tmp(:,iNode)
+    FEMNodeSource_Shared(:,FEMNodeID(iNode)) = FEMNodeSource_Shared(:,FEMNodeID(iNode)) + PartNodeSource(:,iNode,iPart)
 #endif /*USE_MPI*/
   END DO
-
-  ! Locally completes at the origin all outstanding RMA operations initiated by the calling
-  ! process to the target process specified by rank on the specified window. For example,
-  ! after this routine completes, the user may reuse any buffers provided to put, get, or
-  ! accumulate operations.
-  CALL MPI_WIN_FLUSH_LOCAL(0,FEMNodeSource_Shared_Win,iError)
 
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
@@ -286,18 +286,30 @@ DO iPart = 1,PDM%ParticleVecLength
 END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
+! Locally completes at the origin all outstanding RMA operations initiated by the calling
+! process to the target process specified by rank on the specified window. For example,
+! after this routine completes, the user may reuse any buffers provided to put, get, or
+! accumulate operations.
+! CALL MPI_WIN_FLUSH_LOCAL(0                                                                 &
+!                         ,FEMNodeSource_Shared_Win                                          &
+!                         ,iError)
+
 ! Finalize all RMA operation
 ! CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
 
 !> Complete the epoch - this will block until MPI is complete
-CALL MPI_WIN_FENCE(    0                                                                 &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
-! All done with the window - tell MPI there are no more epochs
-CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    0                                                                 &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+! ! All done with the window - tell MPI there are no more epochs
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 
+CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 ! Communicate results between CN roots
 IF (myComputeNodeRank.EQ.0) THEN
@@ -375,7 +387,7 @@ DO iPart = 1,PDM%ParticleVecLength
   kmax = MIN(GEO%FIBGMkmax,kmax)
 
   ! Radius of particle
-  r = PartState(PART_DIAM,iPart)*0.5
+  r   = PartState(PART_DIAM,iPart)*0.5
   Vol = 0.
   PartSource_tmp = 0.
 
@@ -486,6 +498,7 @@ USE MOD_Particle_Globals         ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars       ,ONLY: VertexInfo_Shared,VertexVol_Shared
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 USE MOD_Particle_Vars            ,ONLY: PDM,PEM,PartPosRef,PartState,Species,PartSpecies
+USE MOD_Particle_Vars            ,ONLY: PartNodeSource
 #if USE_MPI
 USE MOD_MPI_Shared               ,ONLY: BARRIER_AND_SYNC
 USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
@@ -511,14 +524,18 @@ REAL                :: Source(PP_nVar)
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) FEMNodeSource_Shared(:,:) = 0.
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
+CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 
 !> Start an RMA exposure epoch
 ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
 ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
 ! No local operations prior to this epoch, so give an assertion
-CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 #else
 FEMNodeSource_Shared(:,:) = 0.
 #endif /*USE_MPI*/
@@ -551,35 +568,34 @@ DO iPart = 1,PDM%ParticleVecLength
   PartDistDepo(7) = VECNORM((/1.,1.,1./)-alpha) ! (1,1,1)
   PartDistDepo(8) = VECNORM((/0.,1.,1./)-alpha) ! (0,1,1)
 
+  Vol   = 0.
+  iElem = PEM%Element(iPart)
+
   DO iNode = 1,8
     FEMNodeID(iNode) = VertexInfo_Shared(1,(iElem-1)*8 + iNode)
     ! FEMNodeSource(MOMV,FEMNodeID(iNode)) = FEMNodeSource(MOMV,FEMNodeID(iNode)) + Source(MOMV)*PartDistDepo(iNode)
     ! FEMNodeSource(ENER,FEMNodeID(iNode)) = FEMNodeSource(ENER,FEMNodeID(iNode)) + Source(ENER)*PartDistDepo(iNode)
     kernel = EXP(-0.5*PartDistDepo(iNode)**2/sigma**2)
     Vol    = Vol + kernel*VertexVol_Shared(FEMNodeID(iNode))
-    NodeSource_tmp(MOMV,iNode) = NodeSource_tmp(MOMV,iNode) + Source(MOMV)*PartDistDepo(iNode)
-    NodeSource_tmp(ENER,iNode) = NodeSource_tmp(ENER,iNode) + Source(ENER)*PartDistDepo(iNode)
+    PartNodeSource(MOMV,iNode,iPart) = PartNodeSource(MOMV,iNode,iPart) + Source(MOMV)*PartDistDepo(iNode)
+    PartNodeSource(ENER,iNode,iPart) = PartNodeSource(ENER,iNode,iPart) + Source(ENER)*PartDistDepo(iNode)
   END DO ! iNode = 1,8
 
   ! Normalize deposition with volume
-  NodeSource_tmp(:,:) = NodeSource_tmp(:,:) / Vol
+  PartNodeSource(:,:,iPart) = PartNodeSource(:,:,iPart) / Vol
 
   ! Loop over all nodes and add normalized deposition to shared array
   DO iNode = 1,8
     ! FEMNodeID(iNode) = VertexInfo_Shared(1,(iElem-1)*8 + iNode)
 #if USE_MPI
-    CALL MPI_ACCUMULATE(NodeSource_tmp(:,iNode),PP_nVar,MPI_DOUBLE_PRECISION,0,INT(PP_nVar*(FEMNodeID(iNode)-1)*SIZE_REAL,MPI_ADDRESS_KIND) , &
-                                                PP_nVar,MPI_DOUBLE_PRECISION,MPI_SUM,FEMNodeSource_Shared_Win,iError)
+    CALL MPI_ACCUMULATE(PartNodeSource(:,iNode,iPart)                                                                        ,&
+                        PP_nVar, MPI_DOUBLE_PRECISION, 0,       INT(PP_nVar*(FEMNodeID(iNode)-1)*SIZE_REAL,MPI_ADDRESS_KIND) ,&
+                        PP_nVar, MPI_DOUBLE_PRECISION, MPI_SUM, FEMNodeSource_Shared_Win, iError)
+
 #else
-    FEMNodeSource_Shared(:,FEMNodeID(iNode)) = FEMNodeSource_Shared(:,FEMNodeID(iNode)) + NodeSource_tmp(:,iNode)
+    FEMNodeSource_Shared(:,FEMNodeID(iNode)) = FEMNodeSource_Shared(:,FEMNodeID(iNode)) + PartNodeSource(:,iNode,iPart)
 #endif /*USE_MPI*/
   END DO
-
-  ! Locally completes at the origin all outstanding RMA operations initiated by the calling
-  ! process to the target process specified by rank on the specified window. For example,
-  ! after this routine completes, the user may reuse any buffers provided to put, get, or
-  ! accumulate operations.
-  CALL MPI_WIN_FLUSH_LOCAL(0,FEMNodeSource_Shared_Win,iError)
 
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
@@ -587,18 +603,30 @@ DO iPart = 1,PDM%ParticleVecLength
 END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
+! Locally completes at the origin all outstanding RMA operations initiated by the calling
+! process to the target process specified by rank on the specified window. For example,
+! after this routine completes, the user may reuse any buffers provided to put, get, or
+! accumulate operations.
+! CALL MPI_WIN_FLUSH_LOCAL(0                                                                 &
+!                         ,FEMNodeSource_Shared_Win                                          &
+!                         ,iError)
+
 ! Finalize all RMA operation
 ! CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
 
 !> Complete the epoch - this will block until MPI is complete
-CALL MPI_WIN_FENCE(    0                                                                 &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
-! All done with the window - tell MPI there are no more epochs
-CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    0                                                                 &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+! ! All done with the window - tell MPI there are no more epochs
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 
+CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 ! Communicate results between CN roots
 IF (myComputeNodeRank.EQ.0) THEN
@@ -623,6 +651,7 @@ USE MOD_Particle_Globals         ,ONLY: VECNORM
 USE MOD_Particle_Mesh_Vars       ,ONLY: VertexInfo_Shared,VertexVol_Shared
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 USE MOD_Particle_Vars            ,ONLY: PDM,PEM,PartPosRef,PartState,Species,PartSpecies
+USE MOD_Particle_Vars            ,ONLY: PartNodeSource
 #if USE_MPI
 USE MOD_MPI_Shared               ,ONLY: BARRIER_AND_SYNC
 USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
@@ -647,14 +676,18 @@ REAL                :: Source(PP_nVar)
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) FEMNodeSource_Shared(:,:) = 0.
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
+CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 
 !> Start an RMA exposure epoch
 ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
 ! > "The call to MPI_WIN_START can block until the matching call to MPI_WIN_POST occurs at all target processes."
 ! No local operations prior to this epoch, so give an assertion
-CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 #else
 FEMNodeSource_Shared(:,:) = 0.
 #endif /*USE_MPI*/
@@ -689,6 +722,9 @@ DO iPart = 1,PDM%ParticleVecLength
   PartDistDepo(7) = VECNORM((/1.,1.,1./)-alpha) ! (1,1,1)
   PartDistDepo(8) = VECNORM((/0.,1.,1./)-alpha) ! (0,1,1)
 
+  Vol   = 0.
+  iElem = PEM%Element(iPart)
+
   DO iNode = 1,8
     FEMNodeID(iNode) = VertexInfo_Shared(1,(iElem-1)*8 + iNode)
     ! FEMNodeSource(MOMV,FEMNodeID(iNode)) = FEMNodeSource(MOMV,FEMNodeID(iNode)) + Source(MOMV)*PartDistDepo(iNode)
@@ -696,29 +732,25 @@ DO iPart = 1,PDM%ParticleVecLength
     kernel = EXP(-0.5*PartDistDepo(iNode)**2/sigma**2)
     Vol    = Vol + kernel*VertexVol_Shared(FEMNodeID(iNode))
     Vol = Vol + VertexVol_Shared(FEMNodeID(iNode))
-    NodeSource_tmp(MOMV,iNode) = NodeSource_tmp(MOMV,iNode) + Source(MOMV)*PartDistDepo(iNode)
-    NodeSource_tmp(ENER,iNode) = NodeSource_tmp(ENER,iNode) + Source(ENER)*PartDistDepo(iNode)
+    PartNodeSource(MOMV,iNode,iPart) = Source(MOMV)*PartDistDepo(iNode)
+    PartNodeSource(ENER,iNode,iPart) = Source(ENER)*PartDistDepo(iNode)
   END DO ! iNode = 1,8
 
   ! Normalize deposition with volume
-  NodeSource_tmp(:,:) = NodeSource_tmp(:,:) / Vol
+  PartNodeSource(:,:,iPart) = PartNodeSource(:,:,iPart) / Vol
 
   ! Loop over all nodes and add normalized deposition to shared array
   DO iNode = 1,8
     ! FEMNodeID(iNode) = VertexInfo_Shared(1,(iElem-1)*8 + iNode)
 #if USE_MPI
-    CALL MPI_ACCUMULATE(NodeSource_tmp(:,iNode),PP_nVar,MPI_DOUBLE_PRECISION,0,INT(PP_nVar*(FEMNodeID(iNode)-1)*SIZE_REAL,MPI_ADDRESS_KIND) , &
-                                                PP_nVar,MPI_DOUBLE_PRECISION,MPI_SUM,FEMNodeSource_Shared_Win,iError)
+    CALL MPI_ACCUMULATE(PartNodeSource(:,iNode,iPart)                                                                        ,&
+                        PP_nVar, MPI_DOUBLE_PRECISION, 0,       INT(PP_nVar*(FEMNodeID(iNode)-1)*SIZE_REAL,MPI_ADDRESS_KIND) ,&
+                        PP_nVar, MPI_DOUBLE_PRECISION, MPI_SUM, FEMNodeSource_Shared_Win, iError)
+
 #else
-    FEMNodeSource_Shared(:,FEMNodeID(iNode)) = FEMNodeSource_Shared(:,FEMNodeID(iNode)) + NodeSource_tmp(:,iNode)
+    FEMNodeSource_Shared(:,FEMNodeID(iNode)) = FEMNodeSource_Shared(:,FEMNodeID(iNode)) + PartNodeSource(:,iNode,iPart)
 #endif /*USE_MPI*/
   END DO
-
-  ! Locally completes at the origin all outstanding RMA operations initiated by the calling
-  ! process to the target process specified by rank on the specified window. For example,
-  ! after this routine completes, the user may reuse any buffers provided to put, get, or
-  ! accumulate operations.
-  CALL MPI_WIN_FLUSH_LOCAL(0,FEMNodeSource_Shared_Win,iError)
 
 ! #if USE_LOADBALANCE
 !   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
@@ -726,18 +758,31 @@ DO iPart = 1,PDM%ParticleVecLength
 END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
+! Locally completes at the origin all outstanding RMA operations initiated by the calling
+! process to the target process specified by rank on the specified window. For example,
+! after this routine completes, the user may reuse any buffers provided to put, get, or
+! accumulate operations.
+! CALL MPI_WIN_FLUSH_LOCAL(0                                                                 &
+!                         ,FEMNodeSource_Shared_Win                                          &
+!                         ,iError)
+
 ! Finalize all RMA operation
 ! CALL MPI_WIN_FLUSH( 0,FEMNodeSource_Shared_Win,iError)
 
 !> Complete the epoch - this will block until MPI is complete
-CALL MPI_WIN_FENCE(    0                                                                 &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
-! All done with the window - tell MPI there are no more epochs
-CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
-                  ,    FEMNodeSource_Shared_Win                                          &
-                  ,    iError)
+!> > ACTIVE SYNCHRONIZATION
+! CALL MPI_WIN_FENCE(    0                                                                 &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+! ! All done with the window - tell MPI there are no more epochs
+! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+!                   ,    FEMNodeSource_Shared_Win                                          &
+!                   ,    iError)
+!> > PASSIVE SYNCHRONIZATION
+CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
 
+!> Return to shared memory paradigm
+CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 ! Communicate results between CN roots
 IF (myComputeNodeRank.EQ.0) THEN

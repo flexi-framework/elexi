@@ -116,34 +116,38 @@ Ut = 0.
 
 #if FV_ENABLED
 FV_Ut = 0.
-ALLOCATE(FV_w(0:NRef))        ! 1D width of FV-Subcells
+ALLOCATE(FV_w(    0:NRef))       ! 1D width of FV-Subcells
 ALLOCATE(FV_w_inv(0:NRef))
 FV_w(:)     = 2./(9+1) ! equidistant widths of FV-Subcells
 FV_w_inv(:) = 1./FV_w(:)
 ALLOCATE(FV_Elems(1:1))
 ALLOCATE(FV_Elems_master(1:nSidesRef))
 ALLOCATE(FV_Elems_slave (1:nSidesRef))
-FV_Elems = 0
+FV_Elems        = 0
 FV_Elems_master = 0
-FV_Elems_slave = 0
+FV_Elems_slave  = 0
 #endif
 #if ((PP_NodeType==1) && defined(SPLIT_DG))
-ALLOCATE(U(PP_nVar,0:NRef,0:NRef,0:NRefZ,nElems))
-ALLOCATE(UPrim(PP_nVarPrim,0:NRef,0:NRef,0:NRefZ,nElems))
-ALLOCATE(U_master(PP_nVar,0:NRef,0:NRefZ,nElems))
+ALLOCATE(U(           PP_nVar,    0:NRef,0:NRef,0:NRefZ,nElems))
+ALLOCATE(UPrim(       PP_nVarPrim,0:NRef,0:NRef,0:NRefZ,nElems))
+ALLOCATE(U_master(    PP_nVar,    0:NRef,0:NRefZ,nSidesRef))
 ALLOCATE(UPrim_master(PP_nVarPrim,0:NRef,0:NRefZ,nSidesRef))
-U = 1.; UPrim=1.; U_master=1.; UPrim_master=1.
+U               = 1.
+UPrim           = 1.
+U_master        = 1.
+UPrim_master    = 1.
 ALLOCATE(Metrics_fTilde(3,0:NRef,0:NRef,0:NRefZ,nElems,0:0))
 ALLOCATE(Metrics_gTilde(3,0:NRef,0:NRef,0:NRefZ,nElems,0:0))
-Metrics_fTilde=1.; Metrics_gTilde=1.
+Metrics_fTilde  = 1.
+Metrics_gTilde  = 1.
 #if PP_dim == 3
 ALLOCATE(Metrics_hTilde(3,0:NRef,0:NRef,0:NRefZ,nElems,0:0))
-Metrics_hTilde=1.
+Metrics_hTilde  = 1.
 #endif
 ALLOCATE( Ja_Face(3,3,0:NRef,0:NRefZ,1:nSidesRef)) ! temp
 ALLOCATE(Ja_slave(3,3,0:NRef,0:NRefZ,1:nSidesRef)) ! temp
-Ja_slave = 1.
-Ja_Face  = 1.
+Ja_slave        = 1.
+Ja_Face         = 1.
 CALL InitSplitDG(0)
 #endif /*((PP_NodeType==1) && defined(SPLIT_DG))*/
 ! Call SurfInt
@@ -154,9 +158,9 @@ DO i=2,PP_nVar
 END DO
 #endif /*((PP_NodeType==1) && defined(SPLIT_DG))*/
 #if FV_ENABLED
-FV_Elems = 1
+FV_Elems        = 1
 FV_Elems_master = 1
-FV_Elems_slave = 1
+FV_Elems_slave  = 1
 CALL SurfIntCons(NRef,Flux_nVar,Flux_nVar,FV_Ut,.FALSE.,L_HatMinus,L_HatPlus)
 #endif
 

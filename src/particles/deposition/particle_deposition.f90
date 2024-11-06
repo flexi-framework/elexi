@@ -78,7 +78,7 @@ INTEGER             :: i,j,k
 INTEGER             :: FirstElemInd,LastElemInd
 INTEGER             :: FirstNodeInd,LastNodeInd
 INTEGER             :: nNodes,offsetNode
-REAL                :: Vol(8)
+REAL                :: Vol(8,nElems)
 REAL                :: FEM_xGP(0:1),FEM_wGP(0:1)
 REAL                :: FEM_wGPVol(    0:1,0:1,0:1)
 REAL                :: FEM_sJ     (   0:1,0:1,0:1)
@@ -170,12 +170,18 @@ SELECT CASE(DepositionType)
 
       ! Add the vertex volume
       CALL Allocate_Shared((/nUniqueFEMNodes/),VertexVol_Shared_Win,VertexVol_Shared)
+
+      CALL MPI_WIN_LOCK_ALL(0,VertexVol_Shared_Win,iError)
       IF (myComputeNodeRank.EQ.0) VertexVol_Shared = 0.
       CALL BARRIER_AND_SYNC(VertexVol_Shared_Win  ,MPI_COMM_SHARED)
+      CALL MPI_WIN_UNLOCK_ALL(VertexVol_Shared_Win,iError)
 
-      CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
-                        ,    VertexVol_Shared_Win                                              &
-                        ,    iError)
+      !> > ACTIVE SYNCHRONIZATION
+      ! CALL MPI_WIN_FENCE(    MPI_MODE_NOPRECEDE                                                &
+      !                   ,    VertexVol_Shared_Win                                              &
+      !                   ,    iError)
+      !> > PASSIVE SYNCHRONIZATION
+      CALL MPI_WIN_LOCK_ALL(0,VertexVol_Shared_Win,iError)
 
       CALL GetNodesAndWeights(1,NodeType,FEM_xGP,FEM_wGP)
       DO k=0,1; DO j=0,1; DO i=0,1
@@ -191,39 +197,45 @@ SELECT CASE(DepositionType)
           FEM_sJ(i,j,k) = 1./FEM_DetJac_1(1,i,j,k)
         END DO; END DO; END DO !i,j,k=0,PP_N
 
-        Vol(1) = FEM_wGPVol(0,0,0)/FEM_sJ(0,0,0)
-        Vol(2) = FEM_wGPVol(1,0,0)/FEM_sJ(1,0,0)
-        Vol(3) = FEM_wGPVol(0,1,0)/FEM_sJ(0,1,0)
-        Vol(4) = FEM_wGPVol(1,1,0)/FEM_sJ(1,1,0)
-        Vol(5) = FEM_wGPVol(0,0,1)/FEM_sJ(0,0,1)
-        Vol(6) = FEM_wGPVol(1,0,1)/FEM_sJ(1,0,1)
-        Vol(7) = FEM_wGPVol(0,1,1)/FEM_sJ(0,1,1)
-        Vol(8) = FEM_wGPVol(1,1,1)/FEM_sJ(1,1,1)
+        Vol(1,iElem) = FEM_wGPVol(0,0,0)/FEM_sJ(0,0,0)
+        Vol(2,iElem) = FEM_wGPVol(1,0,0)/FEM_sJ(1,0,0)
+        Vol(3,iElem) = FEM_wGPVol(0,1,0)/FEM_sJ(0,1,0)
+        Vol(4,iElem) = FEM_wGPVol(1,1,0)/FEM_sJ(1,1,0)
+        Vol(5,iElem) = FEM_wGPVol(0,0,1)/FEM_sJ(0,0,1)
+        Vol(6,iElem) = FEM_wGPVol(1,0,1)/FEM_sJ(1,0,1)
+        Vol(7,iElem) = FEM_wGPVol(0,1,1)/FEM_sJ(0,1,1)
+        Vol(8,iElem) = FEM_wGPVol(1,1,1)/FEM_sJ(1,1,1)
 
         DO iNode = 1,8
           ASSOCIATE(NodeID => VertexInfo_Shared(1,(offsetElem+iElem-1)*8 + iNode))
-          CALL MPI_FETCH_AND_OP(Vol(iNode),dummyReal,MPI_DOUBLE_PRECISION,0,INT((NodeID-1)*SIZE_REAL,MPI_ADDRESS_KIND),MPI_SUM,VertexVol_Shared_Win,iError)
+          CALL MPI_FETCH_AND_OP(Vol(iNode,iElem),dummyReal,MPI_DOUBLE_PRECISION,0,INT((NodeID-1)*SIZE_REAL,MPI_ADDRESS_KIND),MPI_SUM,VertexVol_Shared_Win,iError)
           END ASSOCIATE
         END DO ! iNode = 1,8
+
         ! Locally completes at the origin all outstanding RMA operations initiated by the calling
         ! process to the target process specified by rank on the specified window. For example,
         ! after this routine completes, the user may reuse any buffers provided to put, get, or
         ! accumulate operations.
-        CALL MPI_WIN_FLUSH_LOCAL(0,VertexVol_Shared_Win,iError)
+        ! WARNING: THIS IS NOT COMPATIBLE WITH MPI_WIN_FENCE
+        ! CALL MPI_WIN_FLUSH_LOCAL(0,VertexVol_Shared_Win,iError)
       END DO ! iElem = 1,nElems
 
       ! > Complete the epoch - this will block until MPI is complete
-      CALL MPI_WIN_FENCE(    0                                                                 &
-                        ,    VertexVol_Shared_Win                                              &
-                        ,    iError)
-      ! All done with the window - tell MPI there are no more epochs
-      CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
-                        ,    VertexVol_Shared_Win                                              &
-                        ,    iError)
+      !> > ACTIVE SYNCHRONIZATION
+      ! CALL MPI_WIN_FENCE(    0                                                                 &
+      !                   ,    VertexVol_Shared_Win                                              &
+      !                   ,    iError)
+      ! ! All done with the window - tell MPI there are no more epochs
+      ! CALL MPI_WIN_FENCE(    MPI_MODE_NOSUCCEED                                                &
+      !                   ,    VertexVol_Shared_Win                                              &
+      !                   ,    iError)
+      !> > PASSIVE SYNCHRONIZATION
+      CALL MPI_WIN_UNLOCK_ALL(VertexVol_Shared_Win,iError)
 
       ! Finish all RMA operation, flush the buffers and synchronize between compute nodes
       ! CALL MPI_WIN_FLUSH(0,VertexVol_Shared_Win,iError)
 
+      CALL MPI_WIN_LOCK_ALL(0,VertexVol_Shared_Win,iError)
       CALL BARRIER_AND_SYNC(VertexVol_Shared_Win  ,MPI_COMM_SHARED)
       IF (myComputeNodeRank.EQ.0) THEN
         CALL MPI_ALLREDUCE(MPI_IN_PLACE,VertexVol_Shared,nUniqueFEMNodes,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,iError)
@@ -232,7 +244,7 @@ SELECT CASE(DepositionType)
 
       ! Results array
       CALL Allocate_Shared((/PP_nVar,nUniqueFEMNodes/),FEMNodeSource_Shared_Win,FEMNodeSource_Shared)
-      CALL MPI_WIN_LOCK_ALL(0,FEMNodeSource_Shared_Win,iError)
+      CALL MPI_WIN_LOCK_ALL(MPI_MODE_NOCHECK,FEMNodeSource_Shared_Win,iError)
 #if USE_LOADBALANCE
     END IF
 #endif /*USE_LOADBALANCE*/
@@ -284,9 +296,6 @@ SELECT CASE(DepositionType)
 #endif  /*USE_MPI*/
 
     CALL CloseDataFile()
-
-    ALLOCATE(NodeSource_tmp(PP_nVar,8))
-
 END SELECT
 
 GETTIME(EndT)
@@ -309,6 +318,9 @@ USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_SHARED
 USE MOD_Particle_Mesh_Vars        ,ONLY: FEMElemInfo_Shared_Win
 USE MOD_Particle_Mesh_Vars        ,ONLY: VertexInfo_Shared_Win
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Vars          ,ONLY: PerformLoadBalance
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -319,9 +331,12 @@ IMPLICIT NONE
 
 SDEALLOCATE(PartSource)
 SDEALLOCATE(PartSource_tmp)
-SDEALLOCATE(NodeSource_tmp)
 SDEALLOCATE(Ut_src)
 SDEALLOCATE(CellVolWeightFac)
+
+#if USE_LOADBALANCE
+IF (PerformLoadBalance) RETURN
+#endif /*USE_LOADBALANCE*/
 
 SELECT CASE(DepositionType)
   CASE(DEPO_CVLM,DEPO_SF_GAUSS,DEPO_SF_POLY)

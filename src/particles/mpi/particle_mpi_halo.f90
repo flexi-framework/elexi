@@ -750,9 +750,9 @@ IF(CheckExchangeProcs)THEN
   DO iProc = 0,nProcessors_Global-1
     IF (iProc.EQ.myRank) CYCLE
 
-    CALL MPI_WAIT(RecvRequest(iProc),MPIStatus,IERROR)
+    CALL MPI_WAIT(RecvRequest(iProc),MPI_STATUS_IGNORE,IERROR)
     IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
-    CALL MPI_WAIT(SendRequest(iProc),MPIStatus,IERROR)
+    CALL MPI_WAIT(SendRequest(iProc),MPI_STATUS_IGNORE,IERROR)
     IF(IERROR.NE.MPI_SUCCESS) CALL Abort(__STAMP__,' MPI Communication error', IERROR)
   END DO
 

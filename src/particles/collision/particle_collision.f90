@@ -927,7 +927,7 @@ IF (myComputeNodeRank.EQ.0) THEN
                          , MPI_DOUBLE_PRECISION                                             &
                          , CNRank                                                           &
                          , INT((PP_nVarPart+1)*offsetFirstPart,MPI_ADDRESS_KIND)            &
-                         , 1                                                                &
+                         , (PP_nVarPart+1)*nPart                                            &
                          , MPI_DOUBLE_PRECISION                                             &
                          , PartData_Win                                                     &
                          , iError)

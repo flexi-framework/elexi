@@ -173,7 +173,11 @@ CHARACTER(LEN=255)               :: DataArray
 
 CALL SetStackSizeUnlimited()
 postiMode = .TRUE. ! Flag used in FLEXI routines to do things only for POSTI usage
-CALL InitMPI(mpi_comm_IN)
+CALL InitMPI( &
+#if USE_MPI
+             mpi_comm_IN &
+#endif /*USE_MPI*/
+            )
 CALL InitMPIInfo()
 
 

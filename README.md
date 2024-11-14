@@ -8,25 +8,24 @@
 
 # About
 
-[ƎLexi][elexi] is a high-order numerical Eulerian-Lagrangian framework for solving PDEs, with a special focus on Computational Fluid Dynamics. [FLEXI][flexi] is based on the Discontinuous Galerkin Spectral Element Method (DGSEM), which allows for high-order of accuracy and fully unstructured hexahedral meshes. The solver is parallelized very efficiently for large-scale applications and scales to 500,000+ cores. Moreover, [FLEXI][flexi] comes with a capable pre- and postprocessing suite that enables complex simulation setups up to the finished visualization.
+[ƎLexi][elexi] is a high-order numerical Eulerian-Lagrangian framework for solving PDEs, with a special focus on Computational Fluid Dynamics. It is an extension of [FLEXI][flexi] which is based on the Discontinuous Galerkin Spectral Element Method (DGSEM). DGSEM allows for high-order of accuracy and fully unstructured hexahedral meshes. The solver is parallelized very efficiently for large-scale applications and scales to 500,000+ cores. Moreover, [ƎLexi][elexi] comes with a capable pre- and post-processing suite that enables complex simulation setups up to the finished visualization.
 
 For the main development branch, see [flexi-framework/flexi](https://github.com/flexi-framework/flexi). This repository contains an extension of FLEXI towards particle-laden flows. The particle tracking approach operates in physical space and is based on methods from ray-tracing to handle intersections with possibly curved boundaries. Particles are implemented with a Lagrangian point-particle ansatz and can either be one- or two-way coupled to the fluid phase. Particle-wall interactions are handled via a hard-sphere approach, where multiple models are available. 
 
 For details on the available models and implementation, see our paper in [Computer Physics Communications](https://doi.org/10.1016/j.cpc.2023.108762) or the manuscript on [arxiv](https://arxiv.org/abs/2211.05458).
 
-[FLEXI][flexi] has been developed by the [Numerics Research Group (NRG)][nrg] founded by Prof. Claus-Dieter Munz and currently lead by Prof. Andrea Beck at the Institute of Aerodynamics and Gasdynamics at the University of Stuttgart, Germany.
-
+[ƎLexi][elexi]/[FLEXI][flexi] has been developed by the [Numerics Research Group (NRG)][nrg] founded by Prof. Claus-Dieter Munz and currently lead by Prof. Andrea Beck at the Institute of Aerodynamics and Gasdynamics at the University of Stuttgart, Germany.
 
 You can find detailed installation instructions, the extensive documentation and several tutorial cases for FLEXI [here][flexi].
 
-FLEXI is Copyright (C) 2016, Prof. Claus-Dieter Munz and is released under the **GNU General Public License v3.0**. For the full license terms see the included [license file](LICENSE.md).
+[ƎLexi][elexi]/[FLEXI][flexi] is Copyright (C) 2016, Prof. Claus-Dieter Munz and is released under the **GNU General Public License v3.0**. For the full license terms see the included [license file](LICENSE.md).
 
-Numerous people have worked on and with FLEXI over the last years. We would like to thank all these [contributors](CONTRIBUTORS.md) for their efforts they spent on building FLEXI.
+Numerous people have worked on and with [ƎLexi][elexi]/[FLEXI][flexi] over the last years. We would like to thank all these [contributors](CONTRIBUTORS.md) for their efforts they spent on building [ƎLexi][elexi]/[FLEXI][flexi].
  
-In case you have questions regarding FLEXI or want to contribute yourself by either reporting bugs, requesting features or adding somthing different to the project, feel free to open an issue or pull request.
+In case you have questions regarding ƎLexi or want to contribute yourself by either reporting bugs, requesting features or adding somthing different to the project, feel free to open an issue or pull request.
 
 # Cite
-FLEXI is a scientific project. If you use ƎLexi for publications or presentations in science, please support the project by citing it. As general reference, please cite
+ƎLexi is a scientific project. If you use ƎLexi for publications or presentations in science, please support the project by citing it. As general reference, please cite
 ```
 Kopper, P., Schwarz, A., Copplestone, S. M., Ortwein, P., Staudacher, S., and Beck, A.
 A framework for high-fidelity particle tracking on massively parallel systems
@@ -50,9 +49,9 @@ To refer to specific applications and features, you can also cite the appropriat
 # Quick Start Guide
 For a more detailed installation instructions, please see the documention [here][userguide].
 
-FLEXI is tested for various Linux distributions including Ubuntu, OpenSUSE, CentOS, or Arch. FLEXI also runs on macOS. For the installation, you need the following dependencies:
+ƎLexi is tested for various Linux distributions including Ubuntu, OpenSUSE, CentOS, or Arch. ƎLexi also runs on macOS. For the installation, you need the following dependencies:
 
-| Package          | Required | Installed by FLEXI |
+| Package          | Required | Installed by ƎLexi |
 |:-----------------|:--------:|:------------------:|
 | Git              |      x   |                    |
 | CMake            |      x   |                    |
@@ -62,34 +61,32 @@ FLEXI is tested for various Linux distributions including Ubuntu, OpenSUSE, Cent
 | HDF5             |      x   |      x             |
 | MPI              |     (x)  |                    |
 
-The MPI library is only required for running parallel simulations on multiple ranks. The HDF5 and LAPACK libraries can are optionally built and locally installed during the FLEXI build process. The names of the packages and the package manager might differ depending on the specific distribution used.
+The MPI library is only required for running parallel simulations on multiple ranks. The HDF5 and LAPACK libraries can are optionally built and locally installed during the ƎLexi build process. The names of the packages and the package manager might differ depending on the specific distribution used.
 
 ### Getting the code
-Open a terminal, download FLEXI via git and optionally export the FLEXI directory:
+Open a terminal, download ƎLexi via git
 
     git clone git@github.com:flexi-framework/elexi.git
-    export FLEXI_DIR="$(pwd)/flexi"
 
 ### Compiling the code
-Enter the FLEXI directory, create a build directory and use CMake to configure and compile the code
+Enter the ƎLexi directory, create a build directory and use CMake to configure and compile the code
 
-    cd $FLEXI_DIR
-    mkdir build; cd build
-    cmake ../
-    make
+    cd elexi
+    cmake -B build
+    cmake --build build
 
-The executable `flexi` is now contained in the FLEXI directory in `build/bin/`. Custom configurations of the compiler options, dependencies, and code features can be set using
+The executable `elexi` is now contained in the ƎLexi directory in `build/bin/`. Custom configurations of the compiler options, dependencies, and code features can be set using
 
-    ccmake ../
+    ccmake -B build
 
 ### Running the code
-Navigate to the directory of the tutorial **cavity** and run FLEXI
+Navigate to the directory of the tutorial **cavity** and run ƎLexi
 
-    cd $FLEXI_DIR/tutorials/cavity
-    $FLEXI_DIR/build/bin/flexi parameter_flexi.ini
+    cd tutorials/cavity
+    elexi parameter_flexi.ini
 
 # Used libraries
-FLEXI uses several external libraries as well as auxiliary functions from open source projects, including:
+ƎLexi uses several external libraries as well as auxiliary functions from open source projects, including:
 * [CMake](https://cmake.org)
 * [FFTW](https://www.fftw.org)
 * [HDF5](https://www.hdfgroup.org)

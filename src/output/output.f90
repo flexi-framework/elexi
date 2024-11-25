@@ -485,6 +485,9 @@ USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeFVTot
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartTot
+#if PARTICLES_COUPLING >= 2
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartDepoTot
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
@@ -543,6 +546,12 @@ IF (ElemTimePartTot.GT.0) THEN
   IF (nGlobalNbrOfParticles(3).GT.0) THEN; PID_disc = ElemTimePartTot/(REAL(nGlobalNbrOfParticles(3)))
   ELSE                                   ; PID_disc = 0.; END IF
   WRITE(UNIT_stdOut,'(A,ES12.5,A)')' > Discrete   Phase (last time step)        [',PID_disc          ,' sec/Part ]'
+#if PARTICLES_COUPLING == 2
+  IF (nGlobalNbrOfParticles(3).GT.0) THEN; PID_depo = ElemTimePartDepoTot/(REAL(nGlobalNbrOfParticles(3)))
+  ELSE                                   ; PID_depo = 0.; END IF
+  WRITE(UNIT_stdOut,'(A,2(ES12.5,A),A)')'   - 1-way / 2-way                          [',PID_disc-PID_depo,' sec/Part ] / [' &
+                                                                                       ,PID_depo         ,' sec/Part ]'
+#endif /*PARTICLES_COUPLING*/
 END IF ! ElemTimePartTot.GT.0
 #endif /*USE_PARTICLES*/
 #endif /*USE_LOADBALANCE*/

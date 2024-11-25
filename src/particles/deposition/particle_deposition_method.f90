@@ -126,6 +126,12 @@ USE MOD_Eval_xyz                 ,ONLY: GetPositionInRefElem
 USE MOD_Particle_Deposition_Vars
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 USE MOD_Particle_Vars            ,ONLY: PDM,PEM,PartPosRef,PartState,Species,PartSpecies
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Timers       ,ONLY: LBStartTime,LBPauseTime
+USE MOD_LoadBalance_Vars         ,ONLY: nDeposPerElem
+USE MOD_Mesh_Vars                ,ONLY: offsetElem
+USE MOD_Particle_Globals         ,ONLY: ElementOnProc
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -136,7 +142,15 @@ INTEGER             :: iElem,iPart
 INTEGER             :: i,j,k
 REAL                :: Vol
 REAL                :: Source(PP_nVar)
+! Timers
+#if USE_LOADBALANCE
+REAL                :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
+
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 DO iPart = 1,PDM%ParticleVecLength
   ! Particle not inside
@@ -166,7 +180,15 @@ DO iPart = 1,PDM%ParticleVecLength
   PartSource_tmp            = PartSource_tmp / Vol
   PartSource(:,:,:,:,iElem) = PartSource(:,:,:,:,iElem) + PartSource_tmp
 
+#if USE_LOADBALANCE
+  ! Cell is on current proc, assign load to this cell
+  IF (ElementOnProc(iElem)) nDeposPerElem(iElem-offsetElem) = nDeposPerElem(iElem-offsetElem) + 1
+#endif /*USE_LOADBALANCE*/
 END DO ! iPart = 1,PDM%ParticleVecLength
+
+#if USE_LOADBALANCE
+CALL LBPauseTime(LB_DEPOSITION,tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE DepositionMethod_CV
 
@@ -190,6 +212,12 @@ USE MOD_MPI_Shared               ,ONLY: BARRIER_AND_SYNC
 USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
 USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Timers       ,ONLY: LBStartTime,LBPauseTime
+USE MOD_LoadBalance_Vars         ,ONLY: nDeposPerElem
+USE MOD_Mesh_Vars                ,ONLY: offsetElem
+USE MOD_Particle_Globals         ,ONLY: ElementOnProc
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -202,12 +230,20 @@ REAL                :: PartDistDepo(1:8)
 REAL                :: alpha1,alpha2,alpha3
 REAL                :: Vol
 REAL                :: Source(PP_nVar)
+! Timers
+#if USE_LOADBALANCE
+REAL                :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
 ! Nullify
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) FEMNodeSource_Shared(:,:) = 0.
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
+
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 !> Start an RMA exposure epoch
 ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
@@ -280,9 +316,10 @@ DO iPart = 1,PDM%ParticleVecLength
 #endif /*USE_MPI*/
   END DO
 
-! #if USE_LOADBALANCE
-!   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
-! #endif /*USE_LOADBALANCE*/
+#if USE_LOADBALANCE
+  ! Cell is on current proc, assign load to this cell
+  IF (ElementOnProc(iElem)) nDeposPerElem(iElem-offsetElem) = nDeposPerElem(iElem-offsetElem) + 1
+#endif /*USE_LOADBALANCE*/
 END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
@@ -317,6 +354,10 @@ IF (myComputeNodeRank.EQ.0) THEN
 END IF ! myComputeNodeRank.EQ.0
 #endif /*USE_MPI*/
 
+#if USE_LOADBALANCE
+CALL LBPauseTime(LB_DEPOSITION,tLBStart)
+#endif /*USE_LOADBALANCE*/
+
 END SUBROUTINE DepositionMethod_CVLM
 
 
@@ -338,6 +379,12 @@ USE MOD_Particle_Mesh_Vars       ,ONLY: Elem_xGP_Shared
 USE MOD_Particle_Mesh_Tools      ,ONLY: GetCNElemID
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 USE MOD_Particle_Vars            ,ONLY: PDM,PEM,PartPosRef,PartState,Species,PartSpecies
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Timers       ,ONLY: LBStartTime,LBPauseTime
+USE MOD_LoadBalance_Vars         ,ONLY: nDeposPerElem
+USE MOD_Mesh_Vars                ,ONLY: offsetElem
+USE MOD_Particle_Globals         ,ONLY: ElementOnProc
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -353,7 +400,15 @@ INTEGER             :: imax,jmax,kmax
 REAL                :: r
 REAL                :: Vol
 REAL                :: Source(PP_nVar)
+! Timers
+#if USE_LOADBALANCE
+REAL                :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
+
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 ! Loop all particles and deposit their force contribution
 DO iPart = 1,PDM%ParticleVecLength
@@ -412,9 +467,18 @@ DO iPart = 1,PDM%ParticleVecLength
       PartSource_tmp             = PartSource_tmp / Vol
       PartSource(:,:,:,:,ElemID) = PartSource(:,:,:,:,ElemID) + PartSource_tmp
     END DO ! iElem = 1, FIBGM_nElems(iBGM,jBGM,kBGM)
+
+#if USE_LOADBALANCE
+    ! Cell is on current proc, assign load to this cell
+    IF (ElementOnProc(ElemID)) nDeposPerElem(ElemID-offsetElem) = nDeposPerElem(ElemID-offsetElem) + 1
+#endif /*USE_LOADBALANCE*/
   END DO; END DO; END DO ! iBGM,jBGM,kBGM
 
 END DO ! iPart = 1,PDM%ParticleVecLength
+
+#if USE_LOADBALANCE
+CALL LBPauseTime(LB_DEPOSITION,tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE DepositionMethod_Step
 
@@ -436,6 +500,12 @@ USE MOD_Particle_Deposition_Vars
 USE MOD_Particle_Globals         ,ONLY: VECNORM
 USE MOD_Particle_Tracking_Vars   ,ONLY: TrackingMethod
 USE MOD_Particle_Vars            ,ONLY: PDM,PEM,PartPosRef,PartState,Species,PartSpecies
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Timers       ,ONLY: LBStartTime,LBPauseTime
+USE MOD_LoadBalance_Vars         ,ONLY: nDeposPerElem
+USE MOD_Mesh_Vars                ,ONLY: offsetElem
+USE MOD_Particle_Globals         ,ONLY: ElementOnProc
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -447,7 +517,15 @@ INTEGER             :: i,j,k
 INTEGER             :: ijk(3)
 REAL                :: dist_tmp,dist_loc
 REAL                :: Source(PP_nVar)
+! Timers
+#if USE_LOADBALANCE
+REAL                :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
+
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 ! Loop all particles and deposit their force contribution
 DO iPart = 1,PDM%ParticleVecLength
@@ -479,7 +557,15 @@ DO iPart = 1,PDM%ParticleVecLength
   PartSource(:,ijk(1),ijk(2),ijk(3),iElem) = PartSource(:,ijk(1),ijk(2),ijk(3),iElem) + &
                                               Source*sJ(ijk(1),ijk(2),ijk(3),iElem,0)/wGPVol(ijk(1),ijk(2),ijk(3))
 
+#if USE_LOADBALANCE
+  ! Cell is on current proc, assign load to this cell
+  IF (ElementOnProc(iElem)) nDeposPerElem(iElem-offsetElem) = nDeposPerElem(iElem-offsetElem) + 1
+#endif /*USE_LOADBALANCE*/
 END DO ! iPart = 1,PDM%ParticleVecLength
+
+#if USE_LOADBALANCE
+CALL LBPauseTime(LB_DEPOSITION,tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE DepositionMethod_Dirac
 
@@ -504,6 +590,12 @@ USE MOD_MPI_Shared               ,ONLY: BARRIER_AND_SYNC
 USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
 USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Timers       ,ONLY: LBStartTime,LBPauseTime
+USE MOD_LoadBalance_Vars         ,ONLY: nDeposPerElem
+USE MOD_Mesh_Vars                ,ONLY: offsetElem
+USE MOD_Particle_Globals         ,ONLY: ElementOnProc
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -519,12 +611,20 @@ INTEGER             :: FEMNodeID(   1:8)
 REAL                :: PartDistDepo(1:8)
 REAL                :: alpha(3)
 REAL                :: Source(PP_nVar)
+! Timers
+#if USE_LOADBALANCE
+REAL                :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
 ! Nullify
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) FEMNodeSource_Shared(:,:) = 0.
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
+
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 !> Start an RMA exposure epoch
 ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
@@ -597,9 +697,10 @@ DO iPart = 1,PDM%ParticleVecLength
 #endif /*USE_MPI*/
   END DO
 
-! #if USE_LOADBALANCE
-!   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
-! #endif /*USE_LOADBALANCE*/
+#if USE_LOADBALANCE
+  ! Cell is on current proc, assign load to this cell
+  IF (ElementOnProc(iElem)) nDeposPerElem(iElem-offsetElem) = nDeposPerElem(iElem-offsetElem) + 1
+#endif /*USE_LOADBALANCE*/
 END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
@@ -634,6 +735,10 @@ IF (myComputeNodeRank.EQ.0) THEN
 END IF ! myComputeNodeRank.EQ.0
 #endif /*USE_MPI*/
 
+#if USE_LOADBALANCE
+CALL LBPauseTime(LB_DEPOSITION,tLBStart)
+#endif /*USE_LOADBALANCE*/
+
 END SUBROUTINE DepositionMethod_SF_Gauss
 
 
@@ -657,6 +762,12 @@ USE MOD_MPI_Shared               ,ONLY: BARRIER_AND_SYNC
 USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank
 USE MOD_MPI_Shared_Vars          ,ONLY: MPI_COMM_SHARED,MPI_COMM_LEADERS_SHARED
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Timers       ,ONLY: LBStartTime,LBPauseTime
+USE MOD_LoadBalance_Vars         ,ONLY: nDeposPerElem
+USE MOD_Mesh_Vars                ,ONLY: offsetElem
+USE MOD_Particle_Globals         ,ONLY: ElementOnProc
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -671,12 +782,20 @@ INTEGER             :: FEMNodeID(   1:8)
 REAL                :: PartDistDepo(1:8)
 REAL                :: alpha(3)
 REAL                :: Source(PP_nVar)
+! Timers
+#if USE_LOADBALANCE
+REAL                :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
 ! Nullify
 #if USE_MPI
 IF (myComputeNodeRank.EQ.0) FEMNodeSource_Shared(:,:) = 0.
 CALL BARRIER_AND_SYNC(FEMNodeSource_Shared_Win,MPI_COMM_SHARED)
 CALL MPI_WIN_UNLOCK_ALL(FEMNodeSource_Shared_Win,iError)
+
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 !> Start an RMA exposure epoch
 ! MPI_WIN_POST must complete first as per https://www.mpi-forum.org/docs/mpi-3.1/mpi31-report/node281.htm
@@ -752,9 +871,10 @@ DO iPart = 1,PDM%ParticleVecLength
 #endif /*USE_MPI*/
   END DO
 
-! #if USE_LOADBALANCE
-!   CALL LBElemSplitTime(PEM%LocalElemID(iPart),tLBStart) ! Split time measurement (Pause/Stop and Start again) and add time to iElem
-! #endif /*USE_LOADBALANCE*/
+#if USE_LOADBALANCE
+  ! Cell is on current proc, assign load to this cell
+  IF (ElementOnProc(iElem)) nDeposPerElem(iElem-offsetElem) = nDeposPerElem(iElem-offsetElem) + 1
+#endif /*USE_LOADBALANCE*/
 END DO ! iPart = 1,PDM%ParticleVecLength
 
 #if USE_MPI
@@ -789,6 +909,10 @@ IF (myComputeNodeRank.EQ.0) THEN
   CALL MPI_IALLREDUCE(MPI_IN_PLACE,FEMNodeSource_Shared,PP_nVar*nUniqueFEMNodes,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_LEADERS_SHARED,MPI_DEPO_REQUEST,iError)
 END IF ! myComputeNodeRank.EQ.0
 #endif /*USE_MPI*/
+
+#if USE_LOADBALANCE
+CALL LBPauseTime(LB_DEPOSITION,tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 END SUBROUTINE DepositionMethod_SF_Poly
 

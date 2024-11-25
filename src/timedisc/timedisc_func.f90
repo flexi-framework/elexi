@@ -620,6 +620,9 @@ IF(doAnalyze)THEN
     ElemTime         = 0. ! nullify ElemTime before measuring the time in the next cycle
 #if USE_PARTICLES
     ElemTimePart     = 0.
+#if PARTICLES_COUPLING >= 2
+    ElemTimePartDepo = 0.
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
     ElemTimeField    = 0.
   END IF

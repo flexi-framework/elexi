@@ -118,6 +118,11 @@ INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nTracksPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nSurfacefluxPerElem(:)
 INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerBCElem(:)
+#if PARTICLES_COUPLING >= 2
+REAL                                :: ElemTimePartDepoTot                      ! Total time spent for particle deposition (all procs)
+REAL                                :: ElemTimePartDepo                         ! Time spent for particle deposition
+INTEGER(KIND=4),ALLOCATABLE         :: nDeposPerElem(:)
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 
 

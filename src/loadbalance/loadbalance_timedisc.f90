@@ -35,7 +35,7 @@ CONTAINS
 
 SUBROUTINE LoadBalance(OutputTime)
 !===================================================================================================================================
-! routine perfoming the load balancing
+! Routine performing the load balancing
 !===================================================================================================================================
 ! USED MODULES
 USE MOD_Globals
@@ -80,6 +80,9 @@ USE MOD_Indicator                  ,ONLY: InitIndicator,FinalizeIndicator
 USE MOD_LoadBalance_Vars           ,ONLY: ElemTimePart
 USE MOD_Particle_Init              ,ONLY: InitParticles,FinalizeParticles
 USE MOD_Particle_MPI               ,ONLY: InitParticleMPI,FinalizeParticleMPI
+#if PARTICLES_COUPLING >= 2
+USE MOD_LoadBalance_Vars           ,ONLY: ElemTimePartDepo
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -98,6 +101,9 @@ IF (.NOT.PerformLoadBalance) THEN
 #if USE_PARTICLES
   ElemTimePart           = 0.
 #endif /*USE_PARTICLES*/
+#if PARTICLES_COUPLING >= 2
+  ElemTimePartDepo       = 0.
+#endif /*PARTICLES_COUPLING*/
   RETURN
 END IF
 
@@ -208,8 +214,11 @@ CALL InitParticles(doLoadBalance_opt=.TRUE.)
 ElemTime         = 0.
 #if USE_PARTICLES
 ElemTimePart     = 0.
+#if PARTICLES_COUPLING >= 2
+ElemTimePartDepo = 0.
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
-ElemTimeField = 0.
+ElemTimeField    = 0.
 
 IF(NewImbalance.GT.CurrentImbalance) THEN
   CALL set_formatting('red')

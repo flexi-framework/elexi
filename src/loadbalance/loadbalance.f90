@@ -274,6 +274,9 @@ SUBROUTINE InitLoadBalanceTracking
 USE MOD_IO_HDF5                ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars              ,ONLY: nElems
 USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem,nSurfacefluxPerElem
+#if PARTICLES_COUPLING >= 2
+USE MOD_LoadBalance_Vars       ,ONLY: nDeposPerElem
+#endif /*PARTICLES_COUPLING*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -285,16 +288,23 @@ USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem,nSurfacefluxP
 ! allocate element counters
 ! Maybe this could happen in shared memory
 SDEALLOCATE(nPartsPerElem)
-ALLOCATE(nPartsPerElem(1:nElems))
+ALLOCATE(nPartsPerElem(      1:nElems))
 SDEALLOCATE(nTracksPerElem)
-ALLOCATE(nTracksPerElem(1:nElems))
+ALLOCATE(nTracksPerElem(     1:nElems))
 SDEALLOCATE(nSurfacefluxPerElem)
 ALLOCATE(nSurfacefluxPerElem(1:nElems))
+#if PARTICLES_COUPLING >= 2
+SDEALLOCATE(nDeposPerElem)
+ALLOCATE(nDeposPerElem(      1:nElems))
+#endif /*PARTICLES_COUPLING*/
 
 CALL AddToElemData(ElementOut,'nPartsPerElem',IntArray=nPartsPerElem(:))
 nPartsPerElem       = 0
 nTracksPerElem      = 0
 nSurfacefluxPerElem = 0
+#if PARTICLES_COUPLING >= 2
+nDeposPerElem       = 0
+#endif /*PARTICLES_COUPLING*/
 
 END SUBROUTINE InitLoadBalanceTracking
 #endif /*USE_PARTICLES*/
@@ -321,10 +331,15 @@ USE MOD_LoadBalance_Vars       ,ONLY: ElemTimeFVTot,ElemTimeFV
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
 ! USE MOD_Particle_Globals
-USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight,ElemTimePartTot,ElemTimePart
+USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight
 USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem,nSurfacefluxPerElem
+USE MOD_LoadBalance_Vars       ,ONLY: ElemTimePartTot,ElemTimePart
 USE MOD_Particle_Localization  ,ONLY: CountPartsPerElem
 USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
+#if PARTICLES_COUPLING >= 2
+USE MOD_LoadBalance_Vars       ,ONLY: nDeposPerElem
+USE MOD_LoadBalance_Vars       ,ONLY: ElemTimePartDepoTot,ElemTimePartDepo
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 !USE MOD_TimeDisc_Vars          ,ONLY: nRKStages
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -354,6 +369,9 @@ ElemTimeFVTot       = 0.
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
 ElemTimePartTot     = 0.
+#if PARTICLES_COUPLING >= 2
+ElemTimePartDepoTot = 0.
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 
 ! If elem times are calculated by time measurement (PerformLBSample) and no Partweight Loadbalance is enabled
@@ -432,6 +450,18 @@ IF(PerformLBSample .AND. LoadBalanceSample.GT.0) THEN
 
     ElemTime(iElem) = ElemTime(iElem) + ElemTimePartElem
     ElemTimePart    = ElemTimePart    + ElemTimePartElem
+
+#if PARTICLES_COUPLING >= 2
+    ElemTimePartElem = 0.
+    ElemTimePartElem =                                                             &
+        + tCurrent(LB_DEPOSITION)     * nDeposPerElem(iElem)       * sTotalParts
+
+    ElemTime(iElem)  = ElemTime(iElem) + ElemTimePartElem
+    ElemTimePart     = ElemTimePart    + ElemTimePartElem
+
+    ! Also count the deposition time separately
+    ElemTimePartDepo = ElemTimePartDepo + ElemTimePartElem
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
   END DO ! iElem=1,nElems
 
@@ -501,6 +531,9 @@ USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeFVTot,ElemTimeFV
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartTot,ElemTimePart
 USE MOD_Particle_Tools      ,ONLY: GetOffsetAndGlobalNumberOfParts
 USE MOD_Particle_Output_Vars,ONLY: offsetnPart,locnPart
+#if PARTICLES_COUPLING >= 2
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartDepoTot,ElemTimePartDepo
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -531,6 +564,11 @@ ELSE
   ! Collect ElemTime for particles and field separately (only on root process)
   CALL MPI_REDUCE(ElemTimePart ,ElemTimePartTot ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
   WeightSum = WeightSum + ElemTimePartTot ! only correct on MPI root
+
+#if PARTICLES_COUPLING >= 2
+  ! Also count the deposition time separately
+  CALL MPI_REDUCE(ElemTimePartDepo,ElemTimePartDepoTot,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
   ! send WeightSum from MPI root to all other procs
   CALL MPI_BCAST(WeightSum,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)

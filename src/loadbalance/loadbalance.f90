@@ -353,7 +353,7 @@ ElemTimeFieldTot    = 0.
 ElemTimeFVTot       = 0.
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
-ElemTimePartTot  = 0.
+ElemTimePartTot     = 0.
 #endif /*USE_PARTICLES*/
 
 ! If elem times are calculated by time measurement (PerformLBSample) and no Partweight Loadbalance is enabled

@@ -349,8 +349,8 @@ IF (UseManualTimeStep) THEN
   ! Activate normal load balancing (NOT initial restart load balancing)
   ! 1.) Catch all iterations within sampling interval (make sure to get the first iteration in interval): LESSEQUALTOLERANCE(a,b,tol)
   ! 2.)             Load balancing is activated: DoLoadBalance=T
-  IF( (LESSEQUALTOLERANCE(dt_Min(DT_ANALYZE), LoadBalanceSample*dt, 1e-5) &
-      .OR. LESSEQUALTOLERANCE(dt_Min(DT_END), LoadBalanceSample*dt, 1e-5))&
+  IF( (LESSEQUALTOLERANCE(dt_Min(DT_ANALYZE), 1.01*LoadBalanceSample*dt, 1e-5) &
+      .OR. LESSEQUALTOLERANCE(dt_Min(DT_END), 1.01*LoadBalanceSample*dt, 1e-5))&
       .AND. DoLoadBalance) PerformLBSample=.TRUE. ! Activate load balancing in this time step
 #endif /*USE_LOADBALANCE*/
 
@@ -394,8 +394,8 @@ END IF
 ! Activate normal load balancing (NOT initial restart load balancing)
 ! 1.) Catch all iterations within sampling interval (make sure to get the first iteration in interval): LESSEQUALTOLERANCE(a,b,tol)
 ! 2.)             Load balancing is activated: DoLoadBalance=T
-IF( (LESSEQUALTOLERANCE(dt_Min(DT_ANALYZE), LoadBalanceSample*dt, 1e-5) &
-    .OR. LESSEQUALTOLERANCE(dt_Min(DT_END), LoadBalanceSample*dt, 1e-5))&
+IF( (LESSEQUALTOLERANCE(dt_Min(DT_ANALYZE), 1.01*LoadBalanceSample*dt, 1e-5) &
+    .OR. LESSEQUALTOLERANCE(dt_Min(DT_END), 1.01*LoadBalanceSample*dt, 1e-5))&
     .AND. DoLoadBalance) PerformLBSample=.TRUE. ! Activate load balancing in this time step
 #endif /*USE_LOADBALANCE*/
 
@@ -465,6 +465,12 @@ USE MOD_Particle_TimeDisc_Vars,ONLY: PreviousTime,UseManualTimeStep
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars      ,ONLY: ElemTimePart
 USE MOD_Particle_Localization ,ONLY: CountPartsPerElem
+#if PARTICLES_COUPLING >= 2
+USE MOD_LoadBalance_Vars      ,ONLY: ElemTimePartDepo
+#endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+USE MOD_LoadBalance_Vars      ,ONLY: ElemTimePartColl
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_LOADBALANCE*/
 #endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
@@ -480,6 +486,33 @@ IF(iter.EQ.maxIter) THEN
   tEnd=t; tAnalyze=t; tWriteData=t
   doAnalyze=.TRUE.; doFinalize=.TRUE.
 END IF
+
+! Analysis (possible PerformAnalyze+WriteStateToHDF5 and/or LoadBalance)
+#if USE_LOADBALANCE
+! For automatic initial restart, check if the number of sampling steps has been achieved and force a load balance step, but skip
+! this procedure in the final iteration after which the simulation if finished
+!      DoInitialAutoRestart: user-activated load balance restart in first time step (could already be a restart)
+! iter.GE.LoadBalanceSample: as soon as the number of time steps for sampling is reached, perform the load balance restart
+!                   maxIter: prevent removal of last state file even though no load balance restart was performed
+ForceInitialLoadBalance = .FALSE. ! Initialize
+IF(DoInitialAutoRestart.AND.(iter.GE.LoadBalanceSample).AND.(iter.NE.maxIter)) ForceInitialLoadBalance=.TRUE.
+
+IF(   ALMOSTEQUAL(dt,dt_Min(DT_ANALYZE)) &
+  .OR.ALMOSTEQUAL(dt,dt_Min(DT_END    )) &
+  .OR.doAnalyze                          &
+  .OR.ForceInitialLoadBalance) THEN
+  ! Check if loadbalancing is enabled with partweight and set PerformLBSample true to calculate elemtimes with partweight
+  ! LoadBalanceSample is 0 if partweightLB or IAR_partweighlb are enabled. If only one of them is set Loadbalancesample switches
+  ! during time loop
+  IF (LoadBalanceSample.EQ.0 .AND. DoLoadBalance) PerformLBSample=.TRUE.
+  ! Routine calculates imbalance and if greater than threshold sets PerformLoadBalance=.TRUE.
+  CALL ComputeElemLoad()
+  ! Force load balance step after elem time has been calculated when doing an initial load balance step at iter=0
+  IF (ForceInitialLoadBalance) PerformLoadBalance=.TRUE.
+  ! Do not perform a load balance restart when the last timestep is performed
+  IF (iter.EQ.maxIter .OR. ALMOSTEQUAL(dt,dt_Min(DT_END))) PerformLoadBalance = .FALSE.
+END IF
+#endif /*USE_LOADBALANCE*/
 
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 IF (doAnalyze) THEN
@@ -512,33 +545,6 @@ IF (doAnalyze) THEN
   END IF
 #endif /*USE_PARTICLES*/
 END IF
-
-! Analysis (possible PerformAnalyze+WriteStateToHDF5 and/or LoadBalance)
-#if USE_LOADBALANCE
-! For automatic initial restart, check if the number of sampling steps has been achieved and force a load balance step, but skip
-! this procedure in the final iteration after which the simulation if finished
-!      DoInitialAutoRestart: user-activated load balance restart in first time step (could already be a restart)
-! iter.GE.LoadBalanceSample: as soon as the number of time steps for sampling is reached, perform the load balance restart
-!                   maxIter: prevent removal of last state file even though no load balance restart was performed
-ForceInitialLoadBalance = .FALSE. ! Initialize
-IF(DoInitialAutoRestart.AND.(iter.GE.LoadBalanceSample).AND.(iter.NE.maxIter)) ForceInitialLoadBalance=.TRUE.
-
-IF(   ALMOSTEQUAL(dt,dt_Min(DT_ANALYZE)) &
-  .OR.ALMOSTEQUAL(dt,dt_Min(DT_END    )) &
-  .OR.doAnalyze                          &
-  .OR.ForceInitialLoadBalance) THEN
-  ! Check if loadbalancing is enabled with partweight and set PerformLBSample true to calculate elemtimes with partweight
-  ! LoadBalanceSample is 0 if partweightLB or IAR_partweighlb are enabled. If only one of them is set Loadbalancesample switches
-  ! during time loop
-  IF (LoadBalanceSample.EQ.0 .AND. DoLoadBalance) PerformLBSample=.TRUE.
-  ! Routine calculates imbalance and if greater than threshold sets PerformLoadBalance=.TRUE.
-  CALL ComputeElemLoad()
-  ! Force load balance step after elem time has been calculated when doing an initial load balance step at iter=0
-  IF (ForceInitialLoadBalance) PerformLoadBalance=.TRUE.
-  ! Do not perform a load balance restart when the last timestep is performed
-  IF (iter.EQ.maxIter .OR. ALMOSTEQUAL(dt,dt_Min(DT_END))) PerformLoadBalance = .FALSE.
-END IF
-#endif /*USE_LOADBALANCE*/
 
 ! Call your analysis routine for your testcase here.
 IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t,doFinalize)
@@ -611,11 +617,11 @@ IF(doAnalyze)THEN
       CALL CPU_TIME(time_start)      ! Set the start CPU time to the time after loadbalance init
     END IF
   ELSE
-    ElemTime      = 0. ! nullify ElemTime before measuring the time in the next cycle
+    ElemTime         = 0. ! nullify ElemTime before measuring the time in the next cycle
 #if USE_PARTICLES
-    ElemTimePart  = 0.
+    ElemTimePart     = 0.
 #endif /*USE_PARTICLES*/
-    ElemTimeField = 0.
+    ElemTimeField    = 0.
   END IF
 
   ! Switch off Initial Auto Restart (initial load balance) after the restart was performed

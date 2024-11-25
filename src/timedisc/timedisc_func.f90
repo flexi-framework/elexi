@@ -623,6 +623,9 @@ IF(doAnalyze)THEN
 #if PARTICLES_COUPLING >= 2
     ElemTimePartDepo = 0.
 #endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+    ElemTimePartColl = 0.
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
     ElemTimeField    = 0.
   END IF

@@ -83,6 +83,9 @@ USE MOD_Particle_MPI               ,ONLY: InitParticleMPI,FinalizeParticleMPI
 #if PARTICLES_COUPLING >= 2
 USE MOD_LoadBalance_Vars           ,ONLY: ElemTimePartDepo
 #endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+USE MOD_LoadBalance_Vars           ,ONLY: ElemTimePartColl
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
@@ -103,6 +106,9 @@ IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_PARTICLES*/
 #if PARTICLES_COUPLING >= 2
   ElemTimePartDepo       = 0.
+#endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+  ElemTimePartColl       = 0.
 #endif /*PARTICLES_COUPLING*/
   RETURN
 END IF
@@ -216,6 +222,9 @@ ElemTime         = 0.
 ElemTimePart     = 0.
 #if PARTICLES_COUPLING >= 2
 ElemTimePartDepo = 0.
+#endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+ElemTimePartColl = 0.
 #endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 ElemTimeField    = 0.

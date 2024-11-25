@@ -62,6 +62,11 @@ USE MOD_MPI_Shared_Vars          ,ONLY: myComputeNodeRank,nComputeNodeProcessors
 ! USE MOD_MPI_Shared_Vars          ,ONLY: nLeaderGroupProcs
 USE MOD_Particle_Vars            ,ONLY: offsetPartMPI
 #endif /*USE_MPI*/
+#if USE_LOADBALANCE
+USE MOD_LoadBalance_Timers       ,ONLY: LBStartTime,LBPauseTime
+USE MOD_LoadBalance_Vars         ,ONLY: nCollsPerElem
+USE MOD_Particle_Globals         ,ONLY: ElementOnProc
+#endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -87,6 +92,10 @@ LOGICAL,ALLOCATABLE            :: PartColl(:)
 INTEGER                        :: ElemProc
 INTEGER                        :: CNRank,CNRootRank
 ! INTEGER                        :: MPI_WINDOW(   0:nLeaderGroupProcs)
+! Timers
+#if USE_LOADBALANCE
+REAL                           :: tLBStart
+#endif /*USE_LOADBALANCE*/
 !===================================================================================================================================
 
 IF (.NOT.doCalcPartCollision) RETURN
@@ -101,6 +110,10 @@ CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
 ! nullify the collision counter
 IF (myComputeNodeRank.EQ.0) PartColl_Shared = 0.
 CALL BARRIER_AND_SYNC(PartColl_Shared_Win,MPI_COMM_SHARED)
+
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 ! loop over internal elements
 DO iElem = offsetElem+1,offsetElem+nElems
@@ -144,6 +157,10 @@ DO iElem = offsetElem+1,offsetElem+nElems
     END SELECT
 END DO ! iElem
 CALL BARRIER_AND_SYNC(PartBC_Shared_Win,MPI_COMM_SHARED)
+
+#if USE_LOADBALANCE
+CALL LBPauseTime(LB_COLLISION,tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 IF (myComputeNodeRank.EQ.0) THEN
   ! Communicate the PartBC_shared
@@ -228,6 +245,10 @@ DO iElem = 1,nProcNeighElems
   !> Increment the counter by the current number of particles
   nProcParts = nProcParts + PartInt_Shared(2,CNElemID)-PartInt_Shared(1,CNElemID)
 END DO
+
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 ! > Allocate an array to hold the mapping
 ALLOCATE(PartColl(nProcParts))
@@ -329,7 +350,16 @@ PartLoop: DO iCNNeighElem = Neigh_offsetElem(CNElemID)+1,Neigh_offsetElem(CNElem
         EXIT PartLoop
       END DO ! iPart2
     END DO PartLoop ! iCNNeighElem
+
+#if USE_LOADBALANCE
+    ! Cell is on current proc, assign load to this cell
+    IF (ElementOnProc(iElem)) nCollsPerElem(iElem-offsetElem) = nCollsPerElem(iElem-offsetElem) + 1
+#endif /*USE_LOADBALANCE*/
   END DO ! iPart1
+
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_COLLISION,tLBStart)
+#endif /*USE_LOADBALANCE*/
 END DO ! iElem
 SDEALLOCATE(PartColl)
 
@@ -387,6 +417,10 @@ IF (myComputeNodeRank.EQ.0) THEN
   CALL MPI_WIN_UNLOCK_ALL(PartColl_Win,iError)
 END IF ! myComputeNodeRank.EQ.0
 CALL BARRIER_AND_SYNC(PartColl_Shared_Win,MPI_COMM_SHARED)
+
+#if USE_LOADBALANCE
+CALL LBStartTime(tLBStart)
+#endif /*USE_LOADBALANCE*/
 
 ! loop over internal elements
 DO iElem = offsetElem+1,offsetElem+nElems
@@ -466,6 +500,10 @@ DO iElem = offsetElem+1,offsetElem+nElems
     ! apply the power
     CALL ComputeHardSphereCollision(iPart1,iPart2,dtLoc-dtColl,dtLoc)
   END DO ! iPart1
+
+#if USE_LOADBALANCE
+  CALL LBPauseTime(LB_COLLISION,tLBStart)
+#endif /*USE_LOADBALANCE*/
 END DO ! iElem
 
 DEALLOCATE( PEM%pStart   &

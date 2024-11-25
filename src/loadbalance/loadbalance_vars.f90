@@ -123,7 +123,11 @@ REAL                                :: ElemTimePartDepoTot                      
 REAL                                :: ElemTimePartDepo                         ! Time spent for particle deposition
 INTEGER(KIND=4),ALLOCATABLE         :: nDeposPerElem(:)
 #endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+REAL                                :: ElemTimePartCollTot                      ! Total time spent for particle collision (all procs)
+REAL                                :: ElemTimePartColl                         ! Time spent for particle collision
+INTEGER(KIND=4),ALLOCATABLE         :: nCollsPerElem(:)
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
-
 
 END MODULE MOD_LoadBalance_Vars

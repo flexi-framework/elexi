@@ -210,8 +210,9 @@
 #define LB_PARTCOMM      10
 #define LB_SURFFLUX      11
 #define LB_DEPOSITION    12
+#define LB_COLLISION     13
 
-#define LB_NTIMES        11
+#define LB_NTIMES        13
 
 ! Macros for LB timings
 #define MeasureStartTime()               CALL LBStartTime(tLBStart)
@@ -238,6 +239,7 @@
 #define MeasureSplitTime_PARTCOMM()      CALL LBSplitTime(LB_PARTCOMM     ,tLBStart)
 #define MeasureSplitTime_SURFFLUX()      CALL LBSplitTime(LB_SURFFLUX     ,tLBStart)
 #define MeasureSplitTime_DEPOSITION()    CALL LBSplitTime(LB_DEPOSITION   ,tLBStart)
+#define MeasureSplitTime_COLLISION()     CALL LBSplitTime(LB_COLLISION    ,tLBStart)
 #define MeasureElemPauseTime()           CALL LBElemPauseTime(ElemID      ,tLBStart)
 #define MeasureElemSplitTime()           CALL LBElemSplitTime(ElemID      ,tLBStart)
 #else
@@ -266,6 +268,7 @@
 ! #define MeasureSplitTime_PARTCOMM()      CALL NOP_INLINE(0) ! do nothing
 ! #define MeasureSplitTime_SURFFLUX()      CALL NOP_INLINE(0) ! do nothing
 ! #define MeasureSplitTime_DEPOSITION()    CALL NOP_INLINE(0) ! do nothing
+! #define MeasureSplitTime_COLLISION()     CALL NOP_INLINE(0) ! do nothing
 ! #define MeasureElemPauseTime()           CALL NOP_INLINE(0) ! do nothing
 ! #define MeasureElemSplitTime()           CALL NOP_INLINE(0) ! do nothing
 #define MeasureStartTime()               ! do nothing
@@ -292,6 +295,7 @@
 #define MeasureSplitTime_PARTCOMM()      ! do nothing
 #define MeasureSplitTime_SURFFLUX()      ! do nothing
 #define MeasureSplitTime_DEPOSITION()    ! do nothing
+#define MeasureSplitTime_COLLISION()     ! do nothing
 #define MeasureElemPauseTime()           ! do nothing
 #define MeasureElemSplitTime()           ! do nothing
 #endif /*USE_LOADBALANCE*/

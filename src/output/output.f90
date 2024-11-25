@@ -488,6 +488,9 @@ USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartTot
 #if PARTICLES_COUPLING >= 2
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartDepoTot
 #endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartCollTot
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
@@ -505,6 +508,12 @@ REAL    :: PID_FV
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
 REAL    :: PID_disc
+#if PARTICLES_COUPLING >= 2
+REAL    :: PID_depo
+#endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+REAL    :: PID_coll
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 #endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
@@ -551,6 +560,14 @@ IF (ElemTimePartTot.GT.0) THEN
   ELSE                                   ; PID_depo = 0.; END IF
   WRITE(UNIT_stdOut,'(A,2(ES12.5,A),A)')'   - 1-way / 2-way                          [',PID_disc-PID_depo,' sec/Part ] / [' &
                                                                                        ,PID_depo         ,' sec/Part ]'
+#endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+  IF (nGlobalNbrOfParticles(3).GT.0) THEN; PID_depo = ElemTimePartDepoTot/(REAL(nGlobalNbrOfParticles(3)))
+                                           PID_coll = ElemTimePartCollTot/(REAL(nGlobalNbrOfParticles(3)))
+  ELSE                                   ; PID_depo = 0.; PID_coll = 0.; END IF
+  WRITE(UNIT_stdOut,'(A,3(ES12.5,A),A)')'   - 1-way / 2-way / 4-way                  [',PID_disc-PID_depo-PID_coll,' sec/Part ] / [' &
+                                                                                       ,PID_depo                  ,' sec/Part ] / [' &
+                                                                                       ,PID_coll                  ,' sec/Part ]'
 #endif /*PARTICLES_COUPLING*/
 END IF ! ElemTimePartTot.GT.0
 #endif /*USE_PARTICLES*/

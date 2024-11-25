@@ -277,6 +277,9 @@ USE MOD_LoadBalance_Vars       ,ONLY: nPartsPerElem,nTracksPerElem,nSurfacefluxP
 #if PARTICLES_COUPLING >= 2
 USE MOD_LoadBalance_Vars       ,ONLY: nDeposPerElem
 #endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+USE MOD_LoadBalance_Vars       ,ONLY: nCollsPerElem
+#endif /*PARTICLES_COULING*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -297,6 +300,10 @@ ALLOCATE(nSurfacefluxPerElem(1:nElems))
 SDEALLOCATE(nDeposPerElem)
 ALLOCATE(nDeposPerElem(      1:nElems))
 #endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+SDEALLOCATE(nCollsPerElem)
+ALLOCATE(nCollsPerElem(      1:nElems))
+#endif /*PARTICLES_COUPLING == 4*/
 
 CALL AddToElemData(ElementOut,'nPartsPerElem',IntArray=nPartsPerElem(:))
 nPartsPerElem       = 0
@@ -304,6 +311,9 @@ nTracksPerElem      = 0
 nSurfacefluxPerElem = 0
 #if PARTICLES_COUPLING >= 2
 nDeposPerElem       = 0
+#endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+nCollsPerElem       = 0
 #endif /*PARTICLES_COUPLING*/
 
 END SUBROUTINE InitLoadBalanceTracking
@@ -340,6 +350,10 @@ USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod
 USE MOD_LoadBalance_Vars       ,ONLY: nDeposPerElem
 USE MOD_LoadBalance_Vars       ,ONLY: ElemTimePartDepoTot,ElemTimePartDepo
 #endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+USE MOD_LoadBalance_Vars       ,ONLY: nCollsPerElem
+USE MOD_LoadBalance_Vars       ,ONLY: ElemTimePartCollTot,ElemTimePartColl
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 !USE MOD_TimeDisc_Vars          ,ONLY: nRKStages
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -371,6 +385,9 @@ ElemTimeFVTot       = 0.
 ElemTimePartTot     = 0.
 #if PARTICLES_COUPLING >= 2
 ElemTimePartDepoTot = 0.
+#endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+ElemTimePartCollTot = 0.
 #endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 
@@ -462,6 +479,18 @@ IF(PerformLBSample .AND. LoadBalanceSample.GT.0) THEN
     ! Also count the deposition time separately
     ElemTimePartDepo = ElemTimePartDepo + ElemTimePartElem
 #endif /*PARTICLES_COUPLING*/
+
+#if PARTICLES_COUPLING == 4
+    ElemTimePartElem = 0.
+    ElemTimePartElem =                                                             &
+        + tCurrent(LB_COLLISION)     * nCollsPerElem(iElem)       * sTotalParts
+
+    ElemTime(iElem)  = ElemTime(iElem) + ElemTimePartElem
+    ElemTimePart     = ElemTimePart    + ElemTimePartElem
+
+    ! Also count the collision time separately
+    ElemTimePartColl = ElemTimePartColl + ElemTimePartElem
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
   END DO ! iElem=1,nElems
 
@@ -534,6 +563,9 @@ USE MOD_Particle_Output_Vars,ONLY: offsetnPart,locnPart
 #if PARTICLES_COUPLING >= 2
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartDepoTot,ElemTimePartDepo
 #endif /*PARTICLES_COUPLING*/
+#if PARTICLES_COUPLING == 4
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartCollTot,ElemTimePartColl
+#endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -568,6 +600,11 @@ ELSE
 #if PARTICLES_COUPLING >= 2
   ! Also count the deposition time separately
   CALL MPI_REDUCE(ElemTimePartDepo,ElemTimePartDepoTot,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+#endif /*PARTICLES_COUPLING*/
+
+#if PARTICLES_COUPLING == 4
+  ! Also count the collision time separately
+  CALL MPI_REDUCE(ElemTimePartColl,ElemTimePartCollTot,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
 #endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
   ! send WeightSum from MPI root to all other procs

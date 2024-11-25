@@ -100,7 +100,10 @@ INTEGER               :: nVar_loc
 !==================================================================================================================================
 ! check if recordpoints are activated
 RP_inUse = GETLOGICAL('RP_inUse')
-IF (.NOT.RP_inUse) RETURN
+IF (.NOT.RP_inUse) THEN
+  SWRITE(UNIT_stdOut,'(132("-"))')
+  RETURN
+END IF
 
 IF((.NOT.InterpolationInitIsDone) .OR. RecordPointsInitIsDone) &
    CALL Abort(__STAMP__,"InitRecordPoints not ready to be called or already called.")

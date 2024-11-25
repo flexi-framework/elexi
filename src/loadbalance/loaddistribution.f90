@@ -1221,6 +1221,9 @@ USE MOD_MPI_Shared_Vars           ,ONLY: MPI_COMM_LEADERS_SHARED,MPI_COMM_SHARED
 USE MOD_MPI_Shared_Vars           ,ONLY: NbrOfPhysicalNodes,nLeaderGroupProcs
 #endif /*! (CORE_SPLIT==0)*/
 #endif /*USE_MPI*/
+#if FV_ENABLED
+USE MOD_LoadBalance_Vars          ,ONLY: ElemTimeFV
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_Globals                   ,ONLY: nGlobalNbrOfParticles
 USE MOD_LoadBalance_Vars          ,ONLY: ElemTimePart
@@ -1238,11 +1241,22 @@ CHARACTER(LEN=22),PARAMETER              :: outfile='ElemTimeStatistics.csv'
 INTEGER                                  :: ioUnit,I
 CHARACTER(LEN=255)                       :: formatStr
 REAL                                     :: SumElemTime,ElemTimeFieldPercent
+#if FV_ENABLED
+REAL                                     :: ElemTimeFVPercent
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 REAL                                     :: ElemTimePartPercent
+#if FV_ENABLED
+INTEGER,PARAMETER                        :: nOutputVar=25
+#else
 INTEGER,PARAMETER                        :: nOutputVar=23
+#endif /*FV_ENABLED*/
+#else /*USE_PARTICLES*/
+#if FV_ENABLED
+INTEGER,PARAMETER                        :: nOutputVar=22
 #else
 INTEGER,PARAMETER                        :: nOutputVar=20
+#endif /*FV_ENABLED*/
 #endif /*!USE_PARTICLES*/
 CHARACTER(LEN=255),DIMENSION(nOutputVar) :: StrVarNames(nOutputVar)=(/ CHARACTER(LEN=255) :: &
     'time'                   , &
@@ -1267,10 +1281,16 @@ CHARACTER(LEN=255),DIMENSION(nOutputVar) :: StrVarNames(nOutputVar)=(/ CHARACTER
     '#Particles'             , &
 #endif /*USE_PARTICLES*/
     'FieldTime'              , &
+#if FV_ENABLED
+    'FVTime'                 , &
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
     'PartTime'               , &
 #endif /*USE_PARTICLES*/
     'FieldTimePercent'         &
+#if FV_ENABLED
+    ,'FVTimePercent'           &
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
    ,'PartTimePercent'          &
 #endif /*USE_PARTICLES*/
@@ -1390,16 +1410,25 @@ IF (WriteHeader) THEN
 ELSE !
   ! Calculate elem time proportions for field and particle routines
   SumElemTime = ElemTimeField
+#if FV_ENABLED
+  SumElemTime = SumElemTime + ElemTimeFV
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
   SumElemTime = SumElemTime + ElemTimePart
 #endif /*USE_PARTICLES*/
   IF(SumElemTime.LE.0.)THEN
     ElemTimeFieldPercent = 0.
+#if FV_ENABLED
+    ElemTimeFVPercent    = 0.
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
     ElemTimePartPercent  = 0.
 #endif /*USE_PARTICLES*/
   ELSE
     ElemTimeFieldPercent = 100. * ElemTimeField / SumElemTime
+#if FV_ENABLED
+    ElemTimeFVPercent    = 100. * ElemTimeFV    / SumElemTime
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
     ElemTimePartPercent  = 100. * ElemTimePart  / SumElemTime
 #endif /*USE_PARTICLES*/
@@ -1431,10 +1460,16 @@ ELSE !
         delimiter,REAL(nGlobalNbrOfParticles(3)),&
 #endif /*USE_PARTICLES*/
         delimiter,ElemTimeField           ,&
+#if FV_ENABLED
+        delimiter,ElemTimeFV              ,&
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
         delimiter,ElemTimePart            ,&
 #endif /*USE_PARTICLES*/
         delimiter,ElemTimeFieldPercent     &
+#if FV_ENABLED
+        ,delimiter,ElemTimeFVPercent       &
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
        ,delimiter,ElemTimePartPercent
 #endif /*USE_PARTICLES*/

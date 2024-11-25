@@ -299,7 +299,7 @@ USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
 USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta
 #if VOLINT_VISC
 USE MOD_FV_Vars             ,ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
-USE MOD_FV_Vars             ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave
+USE MOD_FV_Vars             ,ONLY: FV_surf_gradU_slave
 USE MOD_FV_Reconstruction   ,ONLY: FV_SurfCalcGradients_Parabolic
 #endif /* VOLINT_VISC */
 USE MOD_FV_Vars             ,ONLY: FV_surf_gradU,FV_multi_master,FV_multi_slave
@@ -409,6 +409,7 @@ MeasureSplitTime_DGCOMM()   ! LoadBalance
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
 CALL StartReceiveMPIData(FV_U_slave,DataSizeSide,1,nSides,MPIRequest_FV_U(:,SEND),SendID=2) ! Receive MINE / FV_U_slave: slave -> master
 #endif
+MeasureSplitTime_DG()       ! LoadBalance
 
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
 #if PP_EntropyVars == 0
@@ -421,6 +422,7 @@ CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,d
 #else
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 #endif /*if PP_EntropyVars == 1*/
+MeasureSplitTime_FV()
 #endif /*FV_ENABLED*/
 
 MeasureStartTime()          ! LoadBalance
@@ -445,8 +447,9 @@ CALL FV_PrepareSurfGradient(UPrim,FV_multi_master,FV_multi_slave,doMPiSides=.TRU
 CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.TRUE.)
 CALL StartSendMPIData(   FV_multi_slave,DataSizeSidePrim,1,nSides,MPIRequest_FV_gradU(:,RECV),SendID=2)
                                                                  ! SEND YOUR / FV_multi_slave: slave -> master
-#endif /* FV_RECONSTRUCT */
-#endif /* FV_ENABLED */
+#endif /*FV_RECONSTRUCT*/
+MeasureSplitTime_FV()
+#endif /*FV_ENABLED*/
 #endif /*USE_MPI*/
 
 ! Step 3 for all remaining sides
@@ -468,6 +471,7 @@ CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.
 #endif
 
 CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)
+MeasureSplitTime_DG()       ! LoadBalance
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
 CALL U_MortarCons(FV_U_master,FV_U_slave,doMPISides=.FALSE.)
 #endif
@@ -478,8 +482,9 @@ CALL FV_Elems_Mortar(FV_Elems_master,FV_Elems_slave,doMPISides=.FALSE.)
 ! 3.3)
 CALL FV_PrepareSurfGradient(UPrim,FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
-#endif
-#endif
+#endif /*FV_RECONSTRUCT*/
+MeasureSplitTime_FV()
+#endif /*FV_ENABLED*/
 
 #if USE_MPI
 ! 3.4) complete send / receive of side data from step 3.
@@ -572,6 +577,7 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 #if VOLINT_VISC && USE_MPI
 CALL StartSendMPIData(FV_surf_gradU_slave,DataSizeSideGradParabolic,1,nSides,MPIRequest_FV_gradU(:,SEND),SendID=2)
 #endif
+MeasureSplitTime_FV()
 #endif /*FV_ENABLED && FV_RECONSTRUCT*/
 
 #if PARABOLIC
@@ -626,12 +632,14 @@ MeasureSplitTime_DG()       ! LoadBalance
 #if FV_ENABLED
 ! [ 9. Volume integral (advective and viscous) for all FV elements ]
 CALL FV_VolInt(UPrim,Ut)
+MeasureSplitTime_FV()
 #endif /*FV_ENABLED*/
 
 
 #if (FV_ENABLED >= 2) && PARABOLIC
 ! [10. Compute viscous volume integral contribution separately and add to Ut (FV-blending only)]
 CALL VolInt_Visc(Ut)
+MeasureSplitTime_FV()
 #endif
 
 #if PARABOLIC && USE_MPI
@@ -688,6 +696,7 @@ CALL FV_ConsToPrim(PP_nVarPrim,PP_nVar,UPrim_master,UPrim_slave,U_master,U_slave
 ! 10.2)
 CALL GetConservativeStateSurface(UPrim_master, UPrim_slave, U_master, U_slave, FV_Elems_master, FV_Elems_slave, 1)
 #endif /*FV_RECONSTRUCT*/
+MeasureSplitTime_FV()
 #endif /*FV_ENABLED*/
 
 #if USE_MPI
@@ -791,18 +800,23 @@ CALL ReduceMaxParticleNumber()
 
 ! 14. Perform overintegration and apply Jacobian
 ! Perform overintegration (projection filtering type overintegration)
+MeasureStartTime()          ! LoadBalance
 SELECT CASE (OverintegrationType)
   CASE (OVERINTEGRATIONTYPE_CONSCUTOFF )
     CALL Overintegration(Ut)
+    MeasureSplitTime_DG()   ! LoadBalance
 #if FV_ENABLED
     ! Apply Jacobian (for OverintegrationType==CUTOFFCONS this is already done within the Overintegration, but for DG only)
     CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.,FVE=1)
+    MeasureSplitTime_FV()   ! LoadBalance
 #endif /*FV_ENABLED*/
   CASE (OVERINTEGRATIONTYPE_CUTOFF)
     CALL Overintegration(Ut)
     CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
+    MeasureSplitTime_DG()   ! LoadBalance
   CASE DEFAULT
     CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
+    MeasureSplitTime_DG()   ! LoadBalance
 END SELECT
 
 END SUBROUTINE DGTimeDerivative_weakForm

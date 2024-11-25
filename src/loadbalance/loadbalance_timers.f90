@@ -125,8 +125,8 @@ END SUBROUTINE LBPauseTime
 
 SUBROUTINE LBElemSplitTime(ElemID,tLBStart)
 !===================================================================================================================================
-!> Measure particle-related times for specific elements. Splits the time and resets LB_start.
-!> Adds time to Elemtime(ElemID) and ElemTimePart.
+!> Measure times for specific elements. Splits the time and resets LB_start.
+!> Adds time to ElemTime(ElemID) and ElemTimePart.
 !===================================================================================================================================
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -137,8 +137,8 @@ USE MOD_LoadBalance_Vars ,ONLY: ElemTimePart
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)  :: ElemID   ! Element ID
-REAL,INTENT(INOUT)  :: tLBStart ! Time when timer was started
+INTEGER,INTENT(IN)          :: ElemID   ! Element ID
+REAL,INTENT(INOUT)          :: tLBStart ! Time when timer was started
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -148,7 +148,7 @@ REAL                :: tLBEnd,DeltaTime
 IF(.NOT. PerformLBSample) RETURN
 tLBEnd           = LOCALTIME() ! LB Time End
 DeltaTime        = tLBEnd-tLBStart
-ElemTime(ELemID) = ElemTime(ElemID) + DeltaTime
+ElemTime(ElemID) = ElemTime(ElemID) + DeltaTime
 #if USE_PARTICLES
 ElemTimePart     = ElemTimePart     + DeltaTime
 #endif /*USE_PARTICLES*/
@@ -158,7 +158,7 @@ END SUBROUTINE LBElemSplitTime
 
 SUBROUTINE LBElemPauseTime(ElemID,tLBStart)
 !===================================================================================================================================
-!> Measure particle-related times for specific elements.
+!> Measure times for specific elements.
 !> Calculates end time and adds time to Elemtime(ElemID) and ElemTimePart.
 !> Does not reset tLBstart
 !===================================================================================================================================
@@ -182,7 +182,7 @@ REAL                :: tLBEnd,DeltaTime
 IF(.NOT. PerformLBSample) RETURN
 tLBEnd = LOCALTIME() ! LB Time End
 DeltaTime        = tLBEnd-tLBStart
-ElemTime(ELemID) = ElemTime(ElemID) + DeltaTime
+ElemTime(ElemID) = ElemTime(ElemID) + DeltaTime
 #if USE_PARTICLES
 ElemTimePart     = ElemTimePart     + DeltaTime
 #endif /*USE_PARTICLES*/

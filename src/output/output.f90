@@ -480,6 +480,9 @@ USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeFieldTot
 USE MOD_LoadBalance_Vars    ,ONLY: LoadBalanceSample
 USE MOD_Mesh_Vars           ,ONLY: nGlobalElems
 USE MOD_TimeDisc_Vars       ,ONLY: nRKStages
+#if FV_ENABLED
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeFVTot
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartTot
 #endif /*USE_PARTICLES*/
@@ -494,6 +497,9 @@ REAL,INTENT(IN) :: dt     !< current time step
 INTEGER :: timeArray(8)              !> Array for system time
 #if USE_LOADBALANCE
 REAL    :: PID_cont
+#if FV_ENABLED
+REAL    :: PID_FV
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 REAL    :: PID_disc
 #endif /*USE_PARTICLES*/
@@ -517,10 +523,21 @@ WRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
   ' Sys date  :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
 WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF:            [',PID                 ,' sec ]'
 #if USE_LOADBALANCE
+#if FV_ENABLED
+IF (ElemTimeFieldTot.GT.0 .OR. ElemTimeFVTot   .GT.0) THEN
+  PID_cont =       (ElemTimeFieldTot + ElemTimeFVTot)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*LoadBalanceSample*nRKStages)
+  WRITE(UNIT_stdOut,'(A,ES12.5,A)')' > Continuous Phase (last time step)        [',PID_cont          ,' sec/DOF  ]'
+END IF ! ElemTimeFieldTot.GT.0
+IF (ElemTimeFVTot   .GT.0) THEN
+  PID_FV   =       ElemTimeFVTot   /(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*LoadBalanceSample*nRKStages)
+  WRITE(UNIT_stdOut,'(A,ES12.5,A)')'   - Shock-capturing (FV)                   [',PID_FV            ,' sec/DOF  ]'
+END IF ! ElemTimeFieldTot.GT.0
+#else
 IF (ElemTimeFieldTot.GT.0) THEN
   PID_cont =       ElemTimeFieldTot/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*LoadBalanceSample*nRKStages)
   WRITE(UNIT_stdOut,'(A,ES12.5,A)')' > Continuous Phase (last time step)        [',PID_cont          ,' sec/DOF  ]'
 END IF ! ElemTimeFieldTot.GT.0
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 IF (ElemTimePartTot.GT.0) THEN
   IF (nGlobalNbrOfParticles(3).GT.0) THEN; PID_disc = ElemTimePartTot/(REAL(nGlobalNbrOfParticles(3)))

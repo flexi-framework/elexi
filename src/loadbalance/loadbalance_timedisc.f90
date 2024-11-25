@@ -205,9 +205,9 @@ CALL InitParticles(doLoadBalance_opt=.TRUE.)
 #endif /*USE_PARTICLES*/
 
 ! zero ElemTime, the measurement starts again
-ElemTime      = 0.
+ElemTime         = 0.
 #if USE_PARTICLES
-ElemTimePart  = 0.
+ElemTimePart     = 0.
 #endif /*USE_PARTICLES*/
 ElemTimeField = 0.
 

@@ -107,6 +107,10 @@ REAL,ALLOCATABLE                    :: ElemTime_tmp(:)                          
 REAL                                :: ElemTimeFieldTot                         ! Total time spent for field routines (all procs)
 REAL                                :: ElemTimeField                            ! Time spent for field routines
 REAL,ALLOCATABLE                    :: ElemGlobalTime(:)
+#if FV_ENABLED
+REAL                                :: ElemTimeFVTot                            ! Total time spent for FV routines (all procs)
+REAL                                :: ElemTimeFV                               ! Time spent for FV routines
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 REAL                                :: ElemTimePartTot                          ! Total time spent for particle routines (all procs)
 REAL                                :: ElemTimePart                             ! Time spent for particle routines

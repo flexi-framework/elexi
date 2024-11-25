@@ -219,7 +219,8 @@ DO SideID=firstSideID,lastSideID
       FV_multi_master(:,p,q,SideID) = tmp(:,ijk(1),ijk(2))
     END DO; END DO
   END IF
-END DO !SideID
+END DO ! SideID
+
 END SUBROUTINE FV_PrepareSurfGradient
 
 
@@ -285,6 +286,7 @@ DO SideID=firstSideID,lastSideID
   END SELECT
 
 END DO
+
 END SUBROUTINE FV_SurfCalcGradients
 
 
@@ -319,7 +321,10 @@ DO SideID=firstBCSide,lastBCSide
                                          Face_xGP(:,:,:,1,SideID),&
                                         FV_sdx_Face(:,:,:,SideID))
 END DO
+
 END SUBROUTINE FV_SurfCalcGradients_BC
+
+
 
 !==================================================================================================================================
 !> Calculate slopes in the inside and limit them using TVD limiters.
@@ -439,6 +444,7 @@ END DO
 
 END SUBROUTINE FV_CalcGradients
 
+
 !==================================================================================================================================
 !> Copy surface data at the face specified by dir to the volume.
 !==================================================================================================================================
@@ -476,7 +482,9 @@ END SELECT
 IF (flip.GT.0) THEN
   volume(:,:,:,l) = -volume(:,:,:,l)
 END IF
+
 END SUBROUTINE CopySurfaceToVolume
+
 
 #if VOLINT_VISC
 !==================================================================================================================================
@@ -489,7 +497,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Lifting_Vars ,ONLY: gradUx_master,gradUx_slave,gradUy_master,gradUy_slave
 USE MOD_FV_Vars      ,ONLY: FV_Elems_Sum,FV_surf_gradU_master,FV_surf_gradU_slave
-USE MOD_Mesh_Vars    ,ONLY: nSides,NormVec,TangVec1,firstMortarInnerSide,lastMPISide_MINE
+USE MOD_Mesh_Vars    ,ONLY: NormVec,TangVec1,firstMortarInnerSide,lastMPISide_MINE
 #if PP_dim==3
 USE MOD_Mesh_Vars    ,ONLY: TangVec2
 USE MOD_Lifting_Vars ,ONLY: gradUz_master,gradUz_slave
@@ -595,8 +603,10 @@ DO SideID = firstMortarInnerSide, lastMPISide_MINE
 #if PP_dim==3
   gradUz_slave(:,:,:,SideID) = gradUz_master(:,:,:,SideID)
 #endif /* PP_dim==3 */
-END DO ! SideID = 1, nSides
+END DO ! SideID = firstMortarInnerSide, lastMPISide_MINE
+
 END SUBROUTINE FV_SurfCalcGradients_Parabolic
+
 
 !==================================================================================================================================
 !> Calculate gradients used for the viscous fluxes on faces
@@ -796,6 +806,7 @@ END DO; END DO; END DO! i,j,k=0,PP_N
 
 END SUBROUTINE FV_CalcGradients_Parabolic
 
+
 !==================================================================================================================================
 !> Calculate gradients used for the viscous fluxes on faces
 !==================================================================================================================================
@@ -923,10 +934,10 @@ DO locSideID = 2, 5
     END IF ! flip
   END DO; END DO ! q,p = 0, PP_N
 END DO ! locSide
+
 END SUBROUTINE FV_PrepareSurfGradient_Parabolic
 #endif /* VOLINT_VISC */
 #endif /* FV_RECONSTRUCT */
-
 
 END MODULE MOD_FV_Reconstruction
 #endif /* FV_ENABLED */

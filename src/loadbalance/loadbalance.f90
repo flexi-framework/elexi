@@ -175,7 +175,7 @@ CHARACTER(LEN=5)  :: tmpStr
 LOGICAL           :: InitialAutoRestartPartWeight
 #endif /*USE_PARTICLES*/
 !===================================================================================================================================
-!SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT LOAD BALANCE...'
 
 #if USE_LOADBALANCE
@@ -259,7 +259,8 @@ END IF
 
 InitLoadBalanceIsDone  = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LOAD BALANCE DONE!'
-!SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
+
 END SUBROUTINE InitLoadBalance
 
 
@@ -309,10 +310,15 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_LoadBalance_Vars       ,ONLY: ElemTime,ProcTime,tCurrent,nLoadBalance
 USE MOD_LoadBalance_Vars       ,ONLY: DeviationThreshold,PerformLoadBalance,LoadBalanceSample
-USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance,PerformLBSample,ElemTimeFieldTot,ElemTimeField
+USE MOD_LoadBalance_Vars       ,ONLY: CurrentImbalance,PerformLBSample
+USE MOD_LoadBalance_Vars       ,ONLY: ElemTimeFieldTot,ElemTimeField
 USE MOD_LoadDistribution       ,ONLY: WriteElemTimeStatistics
 USE MOD_Mesh_Vars              ,ONLY: nElems
 USE MOD_TimeDisc_Vars          ,ONLY: t
+#if FV_ENABLED
+USE MOD_FV_Vars                ,ONLY: FV_Elems
+USE MOD_LoadBalance_Vars       ,ONLY: ElemTimeFVTot,ElemTimeFV
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 ! USE MOD_Particle_Globals
 USE MOD_LoadBalance_Vars       ,ONLY: ParticleMPIWeight,ElemTimePartTot,ElemTimePart
@@ -330,6 +336,10 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER               :: iElem
 REAL                  :: ElemTimeFieldElem
+#if FV_ENABLED
+REAL                  :: nElemsFV
+REAL                  :: ElemTimeFVElem
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 INTEGER(KIND=8)       :: helpSum
 REAL                  :: ElemTimePartElem
@@ -338,7 +348,10 @@ REAL                  :: sTotalSurfaceFluxes
 #endif /*USE_PARTICLES*/
 !===================================================================================================================================
 ! Initialize
-ElemTimeFieldTot = 0.
+ElemTimeFieldTot    = 0.
+#if FV_ENABLED
+ElemTimeFVTot       = 0.
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 ElemTimePartTot  = 0.
 #endif /*USE_PARTICLES*/
@@ -347,6 +360,10 @@ ElemTimePartTot  = 0.
 IF(PerformLBSample .AND. LoadBalanceSample.GT.0) THEN
   ! number of load balance calls to Compute Elem Load
   nLoadBalance = nLoadBalance + 1
+
+#if FV_ENABLED
+  nElemsFV = REAL(COUNT(FV_Elems.EQ.1))
+#endif /*FV_ENABLED*/
 
 #if USE_PARTICLES
   ! Calculate weightings, these are the denominators
@@ -387,22 +404,31 @@ IF(PerformLBSample .AND. LoadBalanceSample.GT.0) THEN
   !   nPartsPerBCElem=1
   ! END IF
   ! ----------------------------------------------
-#endif /*PARTICLES*/
+#endif /*USE_PARTICLES*/
 
   ! distribute times of different routines on elements with respective weightings
   DO iElem = 1,nElems
     ! Add particle LB times to elements with respective weightings
     ! ElemTimeFieldElem = (tCurrent(LB_DG) + tCurrent(LB_DGANALYZE))/REAL(nElems)
-    ElemTimeFieldElem = (tCurrent(LB_DG) + tCurrent(LB_FV))/REAL(nElems)
-    ElemTime(iElem) = ElemTime(iElem)  + ElemTimeFieldElem
-    ElemTimeField   = ElemTimeField    + ElemTimeFieldElem
+    ElemTimeFieldElem = tCurrent(LB_DG)/REAL(nElems)
+    ElemTime(iElem)   = ElemTime(iElem)  + ElemTimeFieldElem
+    ElemTimeField     = ElemTimeField    + ElemTimeFieldElem
+
+#if FV_ENABLED
+    ! Add the time for FV
+    IF (FV_Elems(iElem).EQ.1) THEN
+      ElemTimeFVElem  = tCurrent(LB_FV)/nElemsFV
+      ElemTime(iElem) = ElemTime(iElem)  + ElemTimeFVElem
+      ElemTimeFV      = ElemTimeFV       + ElemTimeFVElem
+    END IF ! FV_Elems
+#endif /*FV_ENABLED*/
 
 #if USE_PARTICLES
-    ElemTimePartElem =                                                            &
-        + tCurrent(LB_INTERPOLATION)   * nPartsPerElem(iElem)*sTotalParts         &
-        + tCurrent(LB_PUSH)            * nPartsPerElem(iElem)*sTotalParts         &
-        + tCurrent(LB_TRACK)          * nTracksPerElem(iElem)*sTotalTracks        &
-        + tCurrent(LB_SURFFLUX)  * nSurfacefluxPerElem(iElem)*stotalSurfacefluxes
+    ElemTimePartElem =                                                             &
+        + tCurrent(LB_INTERPOLATION)  * nPartsPerElem(iElem)       * sTotalParts   &
+        + tCurrent(LB_PUSH)           * nPartsPerElem(iElem)       * sTotalParts   &
+        + tCurrent(LB_TRACK)          * nTracksPerElem(iElem)      * sTotalTracks  &
+        + tCurrent(LB_SURFFLUX)       * nSurfacefluxPerElem(iElem) * stotalSurfacefluxes
 
     ElemTime(iElem) = ElemTime(iElem) + ElemTimePartElem
     ElemTimePart    = ElemTimePart    + ElemTimePartElem
@@ -416,7 +442,7 @@ ELSE IF(PerformLBSample .AND. LoadBalanceSample.EQ.0) THEN
 #if USE_PARTICLES
   ! no time measurement and particles are present: simply add the ParticleMPIWeight times the number of particles present
   DO iElem = 1,nElems
-    ElemTimePartElem = nPartsPerElem(iElem)*ParticleMPIWeight + 1.0
+    ElemTimePartElem = nPartsPerElem(iElem) * ParticleMPIWeight + 1.0
     ElemTime(iElem)  = ElemTime(iElem) + ElemTimePartElem
     ElemTimePart     = ElemTimePart    + ElemTimePartElem
   END DO ! iElem=1,nElems
@@ -468,6 +494,9 @@ USE MOD_LoadBalance_Vars    ,ONLY: WeightSum,TargetWeight,CurrentImbalance,MaxWe
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTime,PerformLBSample
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeFieldTot,ElemTimeField
 USE MOD_Utils               ,ONLY: ALMOSTZERO
+#if FV_ENABLED
+USE MOD_LoadBalance_Vars    ,ONLY: ElemTimeFVTot,ElemTimeFV
+#endif /*FV_ENABLED*/
 #if USE_PARTICLES
 USE MOD_LoadBalance_Vars    ,ONLY: ElemTimePartTot,ElemTimePart
 USE MOD_Particle_Tools      ,ONLY: GetOffsetAndGlobalNumberOfParts
@@ -485,11 +514,16 @@ REAL :: WeightSum_loc
 IF(.NOT.PerformLBSample                               ) THEN
   WeightSum        = 0.
   TargetWeight     = 0.
-  CurrentImbalance = -1.0
+  CurrentImbalance = -1.
 ELSE
   ! Collect ElemTime for particles and field separately (only on root process)
   CALL MPI_REDUCE(ElemTimeField,ElemTimeFieldTot,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
   WeightSum = ElemTimeFieldTot            ! only correct on MPI root
+
+#if FV_ENABLED
+  CALL MPI_REDUCE(ElemTimeFV   ,ElemTimeFVTot   ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,IERROR)
+#endif /*FV_ENABLED*/
+
 #if USE_PARTICLES
   ! Collect total number of particles for output
   CALL GetOffsetAndGlobalNumberOfParts('ComputeImbalance',offsetnPart,nGlobalNbrOfParticles,locnPart,.FALSE.)

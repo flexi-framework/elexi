@@ -131,17 +131,18 @@ SUBROUTINE InitSponge
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_BaseFlow          ,ONLY: InitBaseFlow
-USE MOD_BaseFlow_Vars     ,ONLY: BaseFlow,doBaseFlow
-USE MOD_Equation_Vars     ,ONLY: RefStateCons
-USE MOD_Exactfunc         ,ONLY: ExactFunc
-USE MOD_Mesh_Vars         ,ONLY: Elem_xGP,nElems
-USE MOD_Output_Vars       ,ONLY: ProjectName
-USE MOD_ReadInTools       ,ONLY: GETLOGICAL,GETINT,GETINTFROMSTR,GETREAL,GETSTR
-USE MOD_Restart_Vars      ,ONLY: DoRestart,RestartTime,RestartFile
+USE MOD_BaseFlow            ,ONLY: InitBaseFlow
+USE MOD_BaseFlow_Vars       ,ONLY: BaseFlow,doBaseFlow
+USE MOD_Equation_Vars       ,ONLY: RefStateCons
+USE MOD_Exactfunc           ,ONLY: ExactFunc
+USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,nElems
+USE MOD_Output_Vars         ,ONLY: ProjectName
+USE MOD_ReadInTools         ,ONLY: GETLOGICAL,GETINT,GETINTFROMSTR,GETREAL,GETSTR
+USE MOD_Restart_Vars        ,ONLY: DoRestart,RestartTime,RestartFile
 USE MOD_Sponge_Vars
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Vars  ,ONLY: PerformLoadBalance
+USE MOD_LoadBalance_Vars    ,ONLY: PerformLoadBalance
+USE MOD_LoadBalance_BaseFlow,ONLY: SpongeRestart
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -211,9 +212,14 @@ SELECT CASE(SpBaseFlowType)
   CASE(SPONGEBASEFLOW_CONSTANT)  ! Constant baseflow from refstate
 #if USE_LOADBALANCE
 ! In case of load balancing, all dimensions match. Only shift the solution along the SFC!
-    IF (.NOT.PerformLoadBalance) &
+    IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
-    ALLOCATE(SpRefState(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+      ALLOCATE(SpRefState(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+#if USE_LOADBALANCE
+    ELSE
+      CALL SpongeRestart()
+    END IF
+#endif /*USE_LOADBALANCE*/
 
     DO iElem=1,nElems
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -225,9 +231,14 @@ SELECT CASE(SpBaseFlowType)
   CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exact function
 #if USE_LOADBALANCE
 ! In case of load balancing, all dimensions match. Only shift the solution along the SFC!
-    IF (.NOT.PerformLoadBalance) &
+    IF (.NOT.PerformLoadBalance) THEN
 #endif /*USE_LOADBALANCE*/
-    ALLOCATE(SpRefState(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+      ALLOCATE(SpRefState(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+#if USE_LOADBALANCE
+    ELSE
+      CALL SpongeRestart()
+    END IF
+#endif /*USE_LOADBALANCE*/
 
     DO iElem=1,nElems
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -590,16 +601,15 @@ SUBROUTINE ReadRefStateSp(FileName)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
-USE MOD_HDF5_Input,         ONLY: File_ID
-USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetDataProps,DatasetExists
-USE MOD_Interpolation,      ONLY: GetVandermonde
-USE MOD_Interpolation_Vars, ONLY: NodeType
-USE MOD_Mesh_Vars,          ONLY: offsetElem,nGlobalElems,nElems
-USE MOD_Sponge_Vars,        ONLY: SpRefState
+USE MOD_ChangeBasisByDim,    ONLY: ChangeBasisVolume
+USE MOD_HDF5_Input,          ONLY: File_ID
+USE MOD_HDF5_Input,          ONLY: OpenDataFile,CloseDataFile,ReadArray,GetDataProps,DatasetExists
+USE MOD_Interpolation,       ONLY: GetVandermonde
+USE MOD_Interpolation_Vars,  ONLY: NodeType
+USE MOD_Mesh_Vars,           ONLY: offsetElem,nGlobalElems,nElems
+USE MOD_Sponge_Vars,         ONLY: SpRefState
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Vars,   ONLY: PerformLoadBalance
-USE MOD_LoadBalance_Vars,   ONLY: MPInElemSend,MPInElemRecv,MPIoffsetElemSend,MPIoffsetElemRecv
+USE MOD_LoadBalance_BaseFlow,ONLY: SpongeRestart
 #endif /*USE_LOADBALANCE*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -608,37 +618,19 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: FileName                 !< HDF5 filename
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL            :: WriteSuccessful
-INTEGER            :: iElem
-INTEGER            :: N_RefState,nVar_RefState,nElems_RefState
-CHARACTER(LEN=255) :: NodeType_Refstate
-REAL,ALLOCATABLE   :: UTmp(:,:,:,:,:),Vdm_NRefState_N(:,:)
+LOGICAL                       :: WriteSuccessful
+INTEGER                       :: iElem
+INTEGER                       :: N_RefState,nVar_RefState,nElems_RefState
+CHARACTER(LEN=255)            :: NodeType_Refstate
+REAL,ALLOCATABLE              :: UTmp(:,:,:,:,:),Vdm_NRefState_N(:,:)
 ! Timers
-REAL               :: StartT,EndT
-#if USE_LOADBALANCE
-REAL,ALLOCATABLE   :: SpRefStateTmp(:,:,:,:,:)
-#endif /*USE_LOADBALANCE*/
+REAL                          :: StartT,EndT
 ! ==================================================================================================================================
 
 #if USE_LOADBALANCE
 ! In case of load balancing, all dimensions match. Only shift the solution along the SFC!
 IF (PerformLoadBalance) THEN
-  StartT = MPI_WTIME()
-  SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') ' REDISTRIBUTING SPONGE REFERENCE STATE DURING LOADBALANCE...'
-
-  ALLOCATE(SpRefStateTmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-  ASSOCIATE (&
-          counts_send  => (PP_nVar*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*MPInElemSend     ) ,&
-          disp_send    => (PP_nVar*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*MPIoffsetElemSend) ,&
-          counts_recv  => (PP_nVar*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*MPInElemRecv     ) ,&
-          disp_recv    => (PP_nVar*(PP_N+1)*(PP_N+1)*(PP_NZ+1)*MPIoffsetElemRecv))
-    ! Communicate PartInt over MPI
-    CALL MPI_ALLTOALLV(SpRefState,counts_send,disp_send,MPI_DOUBLE_PRECISION,SpRefStateTmp,counts_recv,disp_recv,MPI_DOUBLE_PRECISION,MPI_COMM_FLEXI,iError)
-  END ASSOCIATE
-  CALL MOVE_ALLOC(SpRefStateTmp,SpRefState)
-
-  GETTIME(EndT)
-  CALL DisplayMessageAndTime(EndT-StartT, 'DONE!', DisplayDespiteLB=.TRUE., DisplayLine=.TRUE.)
+  CALL SpongeRestart()
 ! Full restart
 ELSE
 #endif /*USE_LOADBALANCE*/

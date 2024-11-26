@@ -100,21 +100,22 @@ CALL addStrListEntry('IniExactFunc','blasius'        ,1338)
 CALL addStrListEntry('IniExactFunc','blasius_round_x',1339)
 CALL addStrListEntry('IniExactFunc','blasius_round_y',1340)
 #endif
-CALL prms%CreateRealArrayOption(    'AdvVel',                  "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
-CALL prms%CreateRealArrayOption(    'AdvArray',                "Advection velocity array for linear setup.")
-CALL prms%CreateRealOption(         'IniAmplitude',            "Amplitude for synthetic test case")
-CALL prms%CreateRealOption(         'IniFrequency',            "Frequency for synthetic test case")
-CALL prms%CreateRealOption(         'MachShock',               "Parameter required for CASE(10,14)", '1.5')
-CALL prms%CreateRealOption(         'PreShockDens',            "Parameter required for CASE(10,14)", '1.0')
-CALL prms%CreateRealArrayOption(    'IniCenter',               "Shu Vortex CASE(7) (x,y,z)")
-CALL prms%CreateRealArrayOption(    'IniAxis',                 "Shu Vortex CASE(7) (x,y,z)")
-CALL prms%CreateRealOption(         'IniHalfwidth',            "Shu Vortex CASE(7)", '0.2')
-CALL prms%CreateRealOption(         'JetRadius',               "Roundjet CASE(5/33)", '1.0')
-CALL prms%CreateRealOption(         'JetEnd',                  "Roundjet CASE(5/33)", '10.0')
-CALL prms%CreateRealOption(         'Ramping',                 "Subsonic mass inflow CASE(28)"  , '1.0')
-CALL prms%CreateRealOption(         'P_Parameter',             "Couette-Poiseuille flow CASE(8)", '0.0')
-CALL prms%CreateRealOption(         'U_Parameter',             "Couette-Poiseuille flow CASE(8)", '0.01')
-CALL prms%CreateRealOption(         'xs'         ,             "1D shock position", '0.5')
+CALL prms%CreateRealArrayOption(    'AdvVel',                "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
+CALL prms%CreateRealArrayOption(    'AdvArray',              "Advection velocity array for linear setup.")
+CALL prms%CreateRealOption(         'IniAmplitude',          "Amplitude for synthetic test case")
+CALL prms%CreateRealOption(         'IniFrequency',          "Frequency for synthetic test case")
+CALL prms%CreateRealOption(         'MachShock',             "Parameter required for CASE(10,14)", '1.5')
+CALL prms%CreateRealOption(         'PreShockDens',          "Parameter required for CASE(10,14)", '1.0')
+CALL prms%CreateRealOption(         'ShockPos',              "1D shock position", '0.5')
+CALL prms%CreateRealArrayOption(    'IniCenter',             "Shu Vortex CASE(7) (x,y,z)")
+CALL prms%CreateRealArrayOption(    'IniAxis',               "Shu Vortex CASE(7) (x,y,z)")
+CALL prms%CreateRealOption(         'IniHalfwidth',          "Shu Vortex CASE(7)", '0.2')
+CALL prms%CreateRealOption(         'JetRadius',             "Roundjet CASE(5,51,33)", '1.0')
+CALL prms%CreateRealOption(         'JetEnd',                "Roundjet CASE(5,51,33)", '10.0')
+CALL prms%CreateRealOption(         'JetAmplitude',          "Roundjet CASE(5,51,33)", '1.0')
+CALL prms%CreateRealOption(         'Ramping',               "Subsonic mass inflow CASE(28)"  , '1.0')
+CALL prms%CreateRealOption(         'P_Parameter',           "Couette-Poiseuille flow CASE(8)", '0.0')
+CALL prms%CreateRealOption(         'U_Parameter',           "Couette-Poiseuille flow CASE(8)", '0.01')
 CALL prms%CreateRealOption(         'AmplitudeFactor',         "Harmonic Gauss Pulse CASE(15)", '0.1')
 CALL prms%CreateRealOption(         'HarmonicFrequency',       "Harmonic Gauss Pulse CASE(15)", '400')
 CALL prms%CreateRealOption(         'SigmaSqr',                "Harmonic Gauss Pulse CASE(15)", '0.1')
@@ -150,61 +151,61 @@ IniRefState  = GETINT('IniRefState', "-1")
 ! Read in boundary parameters
 SELECT CASE (IniExactFunc)
   CASE(2,21) ! sinus
-    AdvVel          = GETREALARRAY('AdvVel',3)
-    IniFrequency    = GETREAL('IniFrequency','0.5')
-    IniAmplitude    = GETREAL('IniAmplitude','0.3')
+    AdvVel            = GETREALARRAY('AdvVel',3)
+    IniFrequency      = GETREAL('IniFrequency','0.5')
+    IniAmplitude      = GETREAL('IniAmplitude','0.3')
   CASE(3) ! synthetic test cases
-    AdvVel          = GETREALARRAY('AdvVel',3)
+    AdvVel            = GETREALARRAY('AdvVel',3)
   CASE(31)
-    AdvArray        = GETREALARRAY('AdvArray',9)
+    AdvArray          = GETREALARRAY('AdvArray',9)
   CASE(35) ! sinus x (vel)
-    IniFrequency    = GETREAL('IniFrequency','1.0')
-    IniAmplitude    = GETREAL('IniAmplitude','1.0')
+    IniFrequency      = GETREAL('IniFrequency','1.0')
+    IniAmplitude      = GETREAL('IniAmplitude','1.0')
   CASE(36,37) ! synthetic test cases
-    IniFrequency    = GETREAL('IniFrequency','1.0')
-    IniAmplitude    = GETREAL('IniAmplitude','0.1')
+    IniFrequency      = GETREAL('IniFrequency','1.0')
+    IniAmplitude      = GETREAL('IniAmplitude','0.1')
   CASE(4,41,42,43,44) ! synthetic test cases
-    AdvVel          = GETREALARRAY('AdvVel',3)
-    IniFrequency    = GETREAL('IniFrequency','1.0')
-    IniAmplitude    = GETREAL('IniAmplitude','0.1')
+    AdvVel            = GETREALARRAY('AdvVel',3)
+    IniFrequency      = GETREAL('IniFrequency','1.0')
+    IniAmplitude      = GETREAL('IniAmplitude','0.1')
   CASE(5,33)
-    JetRadius       = GETREAL('JetRadius')
-    JetEnd          = GETREAL('JetEnd')
-    RoundjetInitDone =.TRUE.
+    JetRadius         = GETREAL('JetRadius')
+    JetEnd            = GETREAL('JetEnd')
+    RoundjetInitDone  =.TRUE.
   CASE(51)
-    JetRadius       = GETREAL('JetRadius')
-    JetEnd          = GETREAL('JetEnd')
-    JetAmplitude    = GETREAL('JetAmplitude')
-    RoundjetInitDone =.TRUE.
+    JetRadius         = GETREAL('JetRadius')
+    JetEnd            = GETREAL('JetEnd')
+    JetAmplitude      = GETREAL('JetAmplitude')
+    RoundjetInitDone  =.TRUE.
   CASE(7) ! Shu Vortex
-    IniCenter        = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
-    IniAxis          = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
-    IniAmplitude     = GETREAL('IniAmplitude','0.2')
-    IniHalfwidth     = GETREAL('IniHalfwidth','0.2')
+    IniCenter         = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
+    IniAxis           = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
+    IniAmplitude      = GETREAL('IniAmplitude','0.2')
+    IniHalfwidth      = GETREAL('IniHalfwidth','0.2')
   CASE(8) ! couette-poiseuille flow
-    P_Parameter     = GETREAL('P_Parameter')
-    U_Parameter     = GETREAL('U_Parameter')
+    P_Parameter       = GETREAL('P_Parameter')
+    U_Parameter       = GETREAL('U_Parameter')
   CASE(10,14) ! shock
-    MachShock       = GETREAL('MachShock')
-    PreShockDens    = GETREAL('PreShockDens')
-    xShock           = GETREAL('xs')
-  CASE(11) ! sod
-    xShock           = GETREAL('xs')
+    MachShock         = GETREAL('MachShock')
+    PreShockDens      = GETREAL('PreShockDens')
+    ShockPos          = GETREAL('ShockPos')
+  CASE(11,111) ! 1D shock tube problem
+    ShockPos          = GETREAL('ShockPos')
   CASE(15)
     HarmonicFrequency = GETREAL('HarmonicFrequency')
     AmplitudeFactor   = GETREAL('AmplitudeFactor')
     SiqmaSqr          = GETREAL('SigmaSqr')
 #if PARABOLIC
   CASE(1338) ! Blasius boundary layer solution
-    delta99_in       = GETREAL('delta99_in')
-    x_in             = GETREALARRAY('x_in',2,'(/0.,0./)')
-    BlasiusInitDone  = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
+    delta99_in        = GETREAL('delta99_in')
+    x_in              = GETREALARRAY('x_in',2,'(/0.,0./)')
+    BlasiusInitDone   = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
   CASE(1339,1340) ! Blasius boundary layer solution
-    delta99_in       = GETREAL('delta99_in')
-    x_in             = GETREALARRAY('x_in',2,'(/0.,0./)')
-    BlasiusInitDone  = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
-    JetRadius        = GETREAL('JetRadius','1.0')
-    RoundjetInitDone = .TRUE.
+    delta99_in        = GETREAL('delta99_in')
+    x_in              = GETREALARRAY('x_in',2,'(/0.,0./)')
+    BlasiusInitDone   = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
+    JetRadius         = GETREAL('JetRadius','1.0')
+    RoundjetInitDone  = .TRUE.
 #endif
   ! CASE DEFAULT
   !   ! Everything defined, do nothing
@@ -238,7 +239,7 @@ USE MOD_Globals        ,ONLY: Abort
 USE MOD_Mathtools      ,ONLY: CROSS
 USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
 USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniFrequency,IniAxis,AdvVel,AdvArray
-USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens,xShock
+USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens,ShockPos
 USE MOD_Exactfunc_Vars ,ONLY: P_Parameter,U_Parameter
 USE MOD_Exactfunc_Vars ,ONLY: JetRadius,JetEnd,JetAmplitude
 USE MOD_Equation_Vars  ,ONLY: IniRefState,RefStateCons,RefStatePrim
@@ -736,14 +737,14 @@ CASE(10) ! shock
   END IF
   prim(3)=0. ! reset temporal storage
   CALL PrimToCons(prim,Resul)
-  xs=xShock+Ms*tEval ! 5. bei 10x10x10 Rechengebiet
+  xs=ShockPos+Ms*tEval ! 5. bei 10x10x10 Rechengebiet
   ! Tanh boundary
   Resu=-0.5*(Resul-Resur)*TANH(5.0*(x(1)-xs))+Resur+0.5*(Resul-Resur)
 CASE(14) ! shock
   prim=0.
   Ms  = MachShock
 
-  IF (x(1) .LE. xShock) THEN
+  IF (X(1).LE.ShockPos) THEN
     ! post-shock
     prim(DENS) = PreShockDens*((KappaP1)*Ms*Ms)/(KappaM1*Ms*Ms+2.)
     prim(PRES) = 1.*(2.*Kappa*Ms*Ms-KappaM1)/(KappaP1)
@@ -757,15 +758,14 @@ CASE(14) ! shock
   END IF
   CALL PrimToCons(prim,Resu)
 CASE(11) ! Sod Shock tube
-  IF (X(1).LE.xShock) THEN
+  IF (X(1).LE.ShockPos) THEN
     Resu = RefStateCons(:,1)
   ELSE
     Resu = RefStateCons(:,2)
   END IF
 CASE(111) ! Sedov blast wave
-  xs = 0.5
   Ms = SQRT(SUM((X(1:3)-1.5)**2))
-  IF ((Ms.LE.xs).AND.(Ms.NE.0)) THEN
+  IF ((Ms.LE.ShockPos).AND.(Ms.NE.0)) THEN
     prim(DENS)      = 1.3416
     prim(VEL1:VEL3) = 0.3615*(X(1:3)-1.5)/Ms
     prim(PRES)      = 1.5133

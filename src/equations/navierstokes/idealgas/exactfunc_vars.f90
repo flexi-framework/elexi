@@ -27,6 +27,7 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL              :: MachShock         !< Shock Mach speed for ExactFunction = 6 (shock)
 REAL              :: PreShockDens      !< Pre-shock density for ExactFunction = 6 (shock)
+REAL              :: ShockPos          !< Shock position for 1D shock tube
 REAL              :: AdvVel(3)         !< Advection Velocity for the test cases
 REAL              :: AdvArray(9)       !< Advection array
 REAL              :: IniFrequency      !< parameter used for synthetic test cases
@@ -37,7 +38,6 @@ REAL              :: IniHalfwidth      !< parameter used for Shu vortex
 REAL              :: P_Parameter       !< parameter for Couette-Poiseuille flow
 REAL              :: U_Parameter       !< parameter for Couette-Poiseuille flow
 REAL              :: Ramping           !< parameter for subsonic mass inflow BC
-REAL              :: xShock            !< parameter for shock tube
 REAL              :: HarmonicFrequency !< frequency of the harmonic gauss pulse
 REAL              :: AmplitudeFactor   !< amplitudefactor of the harmoinic gauss pulse
 REAL              :: SiqmaSqr          !< Sigma squared of the gaussian distribution

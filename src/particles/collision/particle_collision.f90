@@ -757,7 +757,7 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
                        , iError)
   END IF ! CN root
 ! Re-allocate the SHM window if it became too small
-ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
+ELSEIF (INT(SIZE(PartData_Shared)/(PP_nVarPart+1)).LT.nComputeNodeTotalParts) THEN
   ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
   CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
   CALL MPI_WIN_UNLOCK_ALL(PartData_Shared_Win,iError)
@@ -771,6 +771,7 @@ ELSEIF (INT(SIZE(PartData_Shared)/PP_nVarPart).LT.nComputeNodeTotalParts) THEN
   ! Then, free the pointers or arrays
   MDEALLOCATE(PartData_Shared)
   MDEALLOCATE(PartBC_Shared)
+  MDEALLOCATE(PartColl_Shared)
   ! Increase array size if needed, 20% margin
   CALL Allocate_Shared((/PP_nVarPart+1,INT(nComputeNodeTotalParts*1.2)/),PartData_Shared_Win,PartData_Shared)
   CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)

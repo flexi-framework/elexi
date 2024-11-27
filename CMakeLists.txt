@@ -117,7 +117,7 @@ IF("${CMAKE_GENERATOR}" MATCHES "Unix Makefiles")
 ENDIF()
 
 # add basedir for location of corresponding userblock-file
-ADD_DEFINITIONS("-DBASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
+ADD_COMPILE_DEFINITIONS("BASEDIR='\"${CMAKE_CURRENT_BINARY_DIR}/\"'")
 
 # =========================================================================
 # echo COMPILE_DEFINITIONS

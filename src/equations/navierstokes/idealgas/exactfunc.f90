@@ -745,13 +745,13 @@ CASE(14) ! shock
 
   IF (x(1) .LE. xShock) THEN
     ! post-shock
-    prim(DENS) = PreShockDens*((KappaP1)*Ms*Ms)/(KappaM1*Ms*Ms+2.)
-    prim(PRES) = 1.*(2.*Kappa*Ms*Ms-KappaM1)/(KappaP1)
+    prim(DENS) = RefStatePrim(DENS,RefState)*((KappaP1)*Ms*Ms)/(KappaM1*Ms*Ms+2.)
+    prim(PRES) = RefStatePrim(PRES,RefState)*(2.*Kappa*Ms*Ms-KappaM1)/(KappaP1)
     prim(TEMP) = prim(PRES)/(prim(DENS)*R)
-    prim(VEL1) = Ms*(1.-PreShockDens/prim(DENS))
+    prim(VEL1) = Ms*(1.-RefStatePrim(DENS,RefState)/prim(DENS))
   ELSE
     ! pre-shock
-    prim(DENS) = PreShockDens
+    prim(DENS) = RefStatePrim(DENS,RefState)
     prim(PRES) = 1.
     prim(TEMP) = prim(PRES)/(prim(DENS)*R)
   END IF

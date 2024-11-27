@@ -596,6 +596,7 @@ INTEGER                        :: iPart,iElem
 INTEGER                        :: locnPartRecv
 INTEGER                        :: CNElemID,ElemID,ElemProc
 INTEGER                        :: CNRank,CNRootRank,dispElemCN
+LOGICAL                        :: PartSizeChanged
 ! INTEGER                        :: MPI_WINDOW(   0:nLeaderGroupProcs)
 !===================================================================================================================================
 
@@ -715,15 +716,17 @@ IF (myComputeNodeRank.EQ.0) THEN
 END IF
 
 CALL MPI_BCAST(nComputeNodeTotalParts,1,MPI_INTEGER,0,MPI_COMM_SHARED,iError)
+PartSizeChanged = INT(SIZE(PartData_Shared)/(PP_nVarPart+1)).LT.nComputeNodeTotalParts
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,PartSizeChanged,1,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
 
 ! Allocate data arrays for mean particle quantities
 IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
   ! Allocate array if not yet associated
   ! > FIXME: This array should be changed to nComputeNodeTotalElems. Use GetGlobalElemID to map CN to global elemID and expose
   ! >        remote memory windows using one-sided RMA appraoch. Get the desired data using MPI_IGET and build a mapping
-  CALL Allocate_Shared((/PP_nVarPart+1,INT(nComputeNodeTotalParts*1.2)/),PartData_Shared_Win,PartData_Shared)
-  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
-  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartColl_Shared_Win,PartColl_Shared)
+  CALL Allocate_Shared((/PP_nVarPart+1,INT(nComputeNodeTotalParts*1.2+1)/),PartData_Shared_Win,PartData_Shared)
+  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2+1)/),PartBC_Shared_Win  ,PartBC_Shared)
+  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2+1)/),PartColl_Shared_Win,PartColl_Shared)
   CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
   CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win  ,iError)
   CALL MPI_WIN_LOCK_ALL(0,PartColl_Shared_Win,iError)
@@ -733,7 +736,7 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
     !> Specify a window of existing memory that is exposed to RMA accesses
     !> A process may elect to expose no memory by specifying size = 0
     CALL MPI_WIN_CREATE( PartData_Shared                                                            &
-                       , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
+                       , INT(SIZE_REAL*((PP_nVarPart+1)*nComputeNodeTotalParts*1.2+1),MPI_ADDRESS_KIND) & ! Only local particles are to be sent
                        , SIZE_REAL                                                                  &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
@@ -741,7 +744,7 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
                        , iError)
     ! Create an MPI Window object for one-sided communication
     CALL MPI_WIN_CREATE( PartBC_Shared                                                              &
-                       , INT(SIZE_REAL*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
+                       , INT(SIZE_REAL*(nComputeNodeTotalParts*1.2+1),MPI_ADDRESS_KIND)             & ! Only local particles are to be sent
                        , SIZE_REAL                                                                  &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
@@ -749,7 +752,7 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
                        , iError)
     ! Create an MPI Window object for one-sided communication
     CALL MPI_WIN_CREATE( PartColl_Shared                                                            &
-                       , INT(SIZE_INT*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND)                  & ! Only local particles are to be sent
+                       , INT(SIZE_INT*(nComputeNodeTotalParts*1.2+1),MPI_ADDRESS_KIND)              & ! Only local particles are to be sent
                        , SIZE_INT                                                                   &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
@@ -757,7 +760,7 @@ IF (.NOT.ASSOCIATED(PartData_Shared)) THEN
                        , iError)
   END IF ! CN root
 ! Re-allocate the SHM window if it became too small
-ELSEIF (INT(SIZE(PartData_Shared)/(PP_nVarPart+1)).LT.nComputeNodeTotalParts) THEN
+ELSEIF (PartSizeChanged) THEN
   ! First, free every shared memory window. This requires MPI_BARRIER as per MPI3.1 specification
   CALL MPI_BARRIER(MPI_COMM_SHARED,iError)
   CALL MPI_WIN_UNLOCK_ALL(PartData_Shared_Win,iError)
@@ -773,9 +776,9 @@ ELSEIF (INT(SIZE(PartData_Shared)/(PP_nVarPart+1)).LT.nComputeNodeTotalParts) TH
   MDEALLOCATE(PartBC_Shared)
   MDEALLOCATE(PartColl_Shared)
   ! Increase array size if needed, 20% margin
-  CALL Allocate_Shared((/PP_nVarPart+1,INT(nComputeNodeTotalParts*1.2)/),PartData_Shared_Win,PartData_Shared)
-  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartBC_Shared_Win  ,PartBC_Shared)
-  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2)/),PartColl_Shared_Win,PartColl_Shared)
+  CALL Allocate_Shared((/PP_nVarPart+1,INT(nComputeNodeTotalParts*1.2+1)/),PartData_Shared_Win,PartData_Shared)
+  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2+1)/),PartBC_Shared_Win  ,PartBC_Shared)
+  CALL Allocate_Shared((/              INT(nComputeNodeTotalParts*1.2+1)/),PartColl_Shared_Win,PartColl_Shared)
   CALL MPI_WIN_LOCK_ALL(0,PartData_Shared_Win,iError)
   CALL MPI_WIN_LOCK_ALL(0,PartBC_Shared_Win  ,iError)
   CALL MPI_WIN_LOCK_ALL(0,PartColl_Shared_Win,iError)
@@ -795,7 +798,7 @@ ELSEIF (INT(SIZE(PartData_Shared)/(PP_nVarPart+1)).LT.nComputeNodeTotalParts) TH
     !> Create an MPI Window object for one-sided communication
     !> A process may elect to expose no memory by specifying size = 0
     CALL MPI_WIN_CREATE( PartData_Shared                                                            &
-                       , INT(SIZE_REAL*(PP_nVarPart+1)*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND) & ! Only local particles are to be sent
+                       , INT(SIZE_REAL*(PP_nVarPart+1)*(nComputeNodeTotalParts*1.2+1),MPI_ADDRESS_KIND) & ! Only local particles are to be sent
                        , SIZE_REAL                                                                  &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
@@ -803,7 +806,7 @@ ELSEIF (INT(SIZE(PartData_Shared)/(PP_nVarPart+1)).LT.nComputeNodeTotalParts) TH
                        , iError)
     ! Create an MPI Window object for one-sided communication
     CALL MPI_WIN_CREATE( PartBC_Shared                                                              &
-                       , INT(SIZE_REAL*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND)                 & ! Only local particles are to be sent
+                       , INT(SIZE_REAL*(nComputeNodeTotalParts*1.2+1),MPI_ADDRESS_KIND)             & ! Only local particles are to be sent
                        , SIZE_REAL                                                                  &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
@@ -811,7 +814,7 @@ ELSEIF (INT(SIZE(PartData_Shared)/(PP_nVarPart+1)).LT.nComputeNodeTotalParts) TH
                        , iError)
     ! Create an MPI Window object for one-sided communication
     CALL MPI_WIN_CREATE( PartColl_Shared                                                            &
-                       , INT(SIZE_INT*nComputeNodeTotalParts*1.2,MPI_ADDRESS_KIND)                  & ! Only local particles are to be sent
+                       , INT(SIZE_INT*(nComputeNodeTotalParts*1.2+1),MPI_ADDRESS_KIND)              & ! Only local particles are to be sent
                        , SIZE_INT                                                                   &
                        , MPI_INFO_NULL                                                              &
                        , MPI_COMM_LEADERS_SHARED                                                    &
@@ -828,6 +831,10 @@ ALLOCATE(PEM2PartID(PartInt_Shared(1,firstCNElem)+1:PartInt_Shared(2,lastCNElem)
 PEM2PartID = -1
 END ASSOCIATE
 
+! Compute node always nullifieds
+IF (myComputeNodeRank.EQ.0) PartData_Shared(:,:) = 0
+CALL BARRIER_AND_SYNC(PartData_Shared_Win,MPI_COMM_SHARED)
+
 ! Walk over all elements on local proc
 DO iElem = offsetElem+1,offsetElem+nElems
   ! Sum up particles and add properties to output array
@@ -843,11 +850,14 @@ DO iElem = offsetElem+1,offsetElem+nElems
   ! ! ... but the PartID is global
   ! pcount   = PEM%pStart(iElem)
   ! DO iPart = PartInt_Shared(3,CNElemID)+1,PartInt_Shared(4,CNElemID)
-    PEM2PartID(iPart)                     = pcount
+    PEM2PartID(iPart)                    = pcount
     ! Set the index to the next particle
     pcount = PEM%pNext(pcount)
   END DO
 END DO ! iElem = offsetElem+1,offsetElem+nElems
+
+! CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
+CALL BARRIER_AND_SYNC(PartData_Shared_Win,MPI_COMM_SHARED)
 
 ! De-allocate linked list and return to normal particle array mode
 useLinkedList=.FALSE.
@@ -855,9 +865,6 @@ useLinkedList=.FALSE.
 !           , PEM%pNumber  &
 !           , PEM%pNext    &
 !           , PEM%pEnd)
-
-CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
-CALL BARRIER_AND_SYNC(PartData_Shared_Win,MPI_COMM_SHARED)
 
 IF (myComputeNodeRank.EQ.0) THEN
   ! CAVE: particle numbers redefined after here
@@ -933,7 +940,7 @@ IF (myComputeNodeRank.EQ.0) THEN
   !                   ,    iError)
 END IF ! myComputeNodeRank.EQ.0
 
-CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
+! CALL BARRIER_AND_SYNC(PartInt_Shared_Win ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(PartData_Shared_Win,MPI_COMM_SHARED)
 
 END SUBROUTINE UpdateParticleShared

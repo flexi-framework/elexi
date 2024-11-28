@@ -543,7 +543,7 @@ END IF ! ElemTimeFieldTot.GT.0
 IF (ElemTimeFVTot   .GT.0) THEN
   PID_FV   =       ElemTimeFVTot   /(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*LoadBalanceSample*nRKStages)
   WRITE(UNIT_stdOut,'(A,ES12.5,A)')'   - Shock-capturing (FV)                   [',PID_FV            ,' sec/DOF  ]'
-END IF ! ElemTimeFieldTot.GT.0
+END IF ! ElemTimeFVTot   .GT.0
 #else
 IF (ElemTimeFieldTot.GT.0) THEN
   PID_cont =       ElemTimeFieldTot/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*LoadBalanceSample*nRKStages)

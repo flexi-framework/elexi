@@ -460,6 +460,7 @@ MeasureStartTime()          ! LoadBalance
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 MeasureSplitTime_DG()       ! LoadBalance
 CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.FALSE.,pureFV=.TRUE.)
+MeasureSplitTime_FV()       ! LoadBalance
 #endif /*if PP_EntropyVars == 0*/
 #else /*FV_ENABLED*/
 MeasureStartTime()          ! LoadBalance
@@ -468,6 +469,7 @@ CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,d
 #else
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 #endif /*if PP_EntropyVars == 1*/
+MeasureSplitTime_DG()       ! LoadBalance
 #endif
 
 CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)

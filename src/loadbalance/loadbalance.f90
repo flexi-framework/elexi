@@ -443,7 +443,7 @@ IF(PerformLBSample .AND. LoadBalanceSample.GT.0) THEN
 
   ! distribute times of different routines on elements with respective weightings
   DO iElem = 1,nElems
-    ! Add particle LB times to elements with respective weightings
+    ! Add LB times to elements with respective weightings
     ! ElemTimeFieldElem = (tCurrent(LB_DG) + tCurrent(LB_DGANALYZE))/REAL(nElems)
     ElemTimeFieldElem = tCurrent(LB_DG)/REAL(nElems)
     ElemTime(iElem)   = ElemTime(iElem)  + ElemTimeFieldElem
@@ -454,6 +454,7 @@ IF(PerformLBSample .AND. LoadBalanceSample.GT.0) THEN
     IF (FV_Elems(iElem).EQ.1) THEN
       ElemTimeFVElem  = tCurrent(LB_FV)/nElemsFV
       ElemTime(iElem) = ElemTime(iElem)  + ElemTimeFVElem
+      ElemTimeField   = ElemTimeField    + ElemTimeFVElem
       ElemTimeFV      = ElemTimeFV       + ElemTimeFVElem
     END IF ! FV_Elems
 #endif /*FV_ENABLED*/
@@ -529,11 +530,11 @@ PerformLoadBalance = MERGE(.TRUE.,.FALSE.,CurrentImbalance.GT.DeviationThreshold
 
 ! Reset counters
 #if USE_PARTICLES
-nPartsPerElem        = 0
-nTracksPerElem       = 0
+nPartsPerElem      = 0
+nTracksPerElem     = 0
 ! nSurfacePartsPerElem = 0
-tCurrent             = 0.
 #endif /*USE_PARTICLES*/
+tCurrent           = 0.
 
 END SUBROUTINE ComputeElemLoad
 

@@ -307,7 +307,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -378,7 +378,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -448,7 +448,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -520,7 +520,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -591,7 +591,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -662,7 +662,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -733,7 +733,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -804,7 +804,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -875,7 +875,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -946,7 +946,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -1017,7 +1017,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)
@@ -1088,7 +1088,7 @@ IF (myComputeNodeRank.NE.0) THEN
   CALL MPI_WIN_SHARED_QUERY(SM_WIN, 0, WIN_SIZE, DISP_UNIT, SM_PTR, IERROR)
   IF (IERROR.NE.MPI_SUCCESS)  CALL abort(__STAMP__,'ERROR: MPI_WIN_SHARED_QUERY returned IERROR.NE.MPI_SUCCESS ('//TRIM(FuncName)//')')
 END IF
-IF (WIN_SIZE.LT.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
+IF (WIN_SIZE.LE.0) CALL abort(__STAMP__,'ERROR: WIN_SIZE ('//TRIM(FuncName)//') is zero')
 
 ! SM_PTR can now be associated with a Fortran pointer and thus used to access the shared data
 CALL C_F_POINTER(SM_PTR, DataPointer, nVal)

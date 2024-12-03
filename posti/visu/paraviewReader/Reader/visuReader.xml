@@ -130,7 +130,7 @@
                This property switches enables the use of high-order elements.
             </Documentation>
          </IntVectorProperty>
-#if PV_HIGHORDER
+<!-- #if PV_HIGHORDER -->
          <IntVectorProperty command="SetHighOrder"
             default_values="1"
             animateable="0"
@@ -145,7 +145,7 @@
                WARNING: This only works correctly with NodeType = VISU!
             </Documentation>
          </IntVectorProperty>
-#endif
+<!-- #endif -->
       <!-- ================================================================== -->
          <StringVectorProperty name="VarArrayInfo"
             information_only="1">

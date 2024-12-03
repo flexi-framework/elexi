@@ -336,6 +336,8 @@ CASE(2) ! Exact function or refstate
       CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),Cons)
       CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
     END DO; END DO
+  ELSE IF(BCState.EQ.-1)THEN
+    UPrim_boundary(:,:,:) = UPrim_master(:,:,:)
   ELSE
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
       UPrim_boundary(:,p,q) = RefStatePrim(:,BCState)

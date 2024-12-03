@@ -81,11 +81,15 @@ visuReader::visuReader()
    // create array for state,primitive and derived quantities
    this->VarDataArraySelection = vtkDataArraySelection::New();
    this->BCDataArraySelection  = vtkDataArraySelection::New();
+#if USE_PARTICLES
    this->VarParticleDataArraySelection = vtkDataArraySelection::New();
+#endif
    // add an observer
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
    this->BCDataArraySelection ->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
+#if USE_PARTICLES
    this->VarParticleDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
+#endif
 }
 
 /*
@@ -811,7 +815,9 @@ visuReader::~visuReader(){
    SWRITE("~visuReader");
    delete [] FileName;
    this->VarDataArraySelection->Delete();
+#if USE_PARTICLES
    this->VarParticleDataArraySelection->Delete();
+#endif
 }
 
 /*

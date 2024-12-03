@@ -59,16 +59,10 @@ ENDIF()
 # SplitDG
 # =========================================================================
 OPTION(FLEXI_SPLIT_DG "Use split DG formulation" OFF)
-CMAKE_DEPENDENT_OPTION(FLEXI_PROLONG_ENTROPY "Prolong on entropy variables" ON
-                       "FLEXI_SPLIT_DG; FLEXI_EQNSYSNAME STREQUAL navierstokes; FLEXI_NODETYPE STREQUAL GAUSS" ON)
 IF(FLEXI_SPLIT_DG)
   ADD_COMPILE_DEFINITIONS(SPLIT_DG)
   IF((FLEXI_EQNSYSNAME STREQUAL "navierstokes") AND (FLEXI_NODETYPE STREQUAL "GAUSS"))
-    IF(FLEXI_PROLONG_ENTROPY)
-      ADD_COMPILE_DEFINITIONS(PP_EntropyVars=1)
-    ELSE()
-      ADD_COMPILE_DEFINITIONS(PP_EntropyVars=0)
-    ENDIF()
+    ADD_COMPILE_DEFINITIONS(PP_EntropyVars=1)
   ELSE()
     ADD_COMPILE_DEFINITIONS(PP_EntropyVars=0)
   ENDIF()

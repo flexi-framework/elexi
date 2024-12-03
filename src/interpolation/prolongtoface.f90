@@ -45,14 +45,14 @@ MODULE MOD_ProlongToFaceCons
 IMPLICIT NONE
 PRIVATE
 #undef WITHnVar
-#define WITHEntropy 1
 INTEGER,PARAMETER :: TP_nVar = PP_nVar
 
 INTERFACE ProlongToFaceCons
-#if PP_EntropyVars
+#if PP_EntropyVars==1
   MODULE PROCEDURE ProlongToFaceEntropy
-#endif /*PP_EntropyVars*/
+#else
   MODULE PROCEDURE ProlongToFace
+#endif
 END INTERFACE
 
 PUBLIC::ProlongToFaceCons
@@ -68,7 +68,6 @@ MODULE MOD_ProlongToFacePrim
 IMPLICIT NONE
 PRIVATE
 #undef WITHnVar
-#undef WITHEntropy
 INTEGER,PARAMETER :: TP_nVar = PP_nVarPrim
 
 INTERFACE ProlongToFacePrim
@@ -88,7 +87,6 @@ MODULE MOD_ProlongToFaceLifting
 IMPLICIT NONE
 PRIVATE
 #undef WITHnVar
-#undef WITHEntropy
 INTEGER,PARAMETER :: TP_nVar = PP_nVarLifting
 
 INTERFACE ProlongToFaceLifting
@@ -109,7 +107,6 @@ MODULE MOD_ProlongToFace1
 IMPLICIT NONE
 PRIVATE
 #undef WITHnVar
-#undef WITHEntropy
 INTEGER,PARAMETER :: TP_nVar = 1
 
 INTERFACE ProlongToFace1

@@ -144,36 +144,57 @@ END DO
 END SUBROUTINE ProlongToFace
 
 
-#if PP_EntropyVars
-#ifdef WITHEntropy
+#if PP_EntropyVars==1
 !==================================================================================================================================
 !> Prolongs the conservatives variables to the sides
 !> In the case of Gauss disc2, we project the entropy variables and then transform back to conservative variables
 !==================================================================================================================================
-PPURE SUBROUTINE ProlongToFaceEntropy(Nloc,Vvol,Vface_master,Vface_slave,Uface_master,Uface_slave,L_Minus,L_Plus,doMPISides)
+SUBROUTINE ProlongToFaceEntropy(&
+#ifdef WITHnVar
+    TP_nVar,&
+#endif
+    Nloc,Vvol,Uface_master,Uface_slave,L_Minus,L_Plus,doMPISides &
+#if FV_ENABLED
+    ,pureDG,pureFV &
+#endif
+    )
 ! MODULES
 USE MOD_EOS,                ONLY: EntropyToCons
+USE MOD_DG_Vars,            ONLY: V_slave,V_master
 USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_Mesh_Vars,          ONLY: SideToElem
 USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR, lastMPISide_MINE, nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+#ifdef WITHnVar
+INTEGER,INTENT(IN)              :: TP_nVar
+#endif
 INTEGER,INTENT(IN)              :: Nloc
 REAL,INTENT(IN)                 :: Vvol(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)
-REAL,INTENT(INOUT)              :: Vface_master(TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
-REAL,INTENT(INOUT)              :: Vface_slave( TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
 REAL,INTENT(INOUT)              :: Uface_master(TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
 REAL,INTENT(INOUT)              :: Uface_slave( TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
 REAL,INTENT(IN)                 :: L_Minus(0:Nloc),L_Plus(0:Nloc)
 LOGICAL,INTENT(IN)              :: doMPISides  != .TRUE. only YOUR MPISides are filled, =.FALSE. BCSides +InnerSides +MPISides MINE
+#if FV_ENABLED
+LOGICAL,INTENT(IN),OPTIONAL     :: pureDG      != .TRUE. prolongates all elements as DG elements
+LOGICAL,INTENT(IN),OPTIONAL     :: pureFV      != .TRUE. prolongates all elements as FV elements
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: firstSideID,lastSideID
 INTEGER                         :: ElemID,nbElemID,SideID
 !==================================================================================================================================
 ! Prolong the entropy variables
-CALL ProlongToFace(Nloc,Vvol,Vface_master,Vface_slave,L_Minus,L_Plus,doMPISides=doMPISides)
+CALL ProlongToFace(&
+#ifdef WITHnVar
+    TP_nVar,&
+#endif
+    Nloc,Vvol,V_master,V_slave,L_Minus,L_Plus,doMPISides=doMPISides &
+#if FV_ENABLED
+    ,pureDG=pureDG,pureFV=pureFV &
+#endif
+    )
 
 ! Transform back to conservative variables
 IF(doMPISides)THEN
@@ -186,15 +207,14 @@ END IF
 
 DO SideID=firstSideID,lastSideID
   ElemID    = SideToElem(S2E_ELEM_ID,SideID)
-  IF(ElemID.GT.0)   CALL EntropyToCons(Nloc,Vface_master(:,:,:,SideID),Uface_master(:,:,:,SideID))
+  IF(ElemID.GT.0)   CALL EntropyToCons(Nloc,V_master(:,:,:,SideID),Uface_master(:,:,:,SideID))
 
   nbElemID  = SideToElem(S2E_NB_ELEM_ID,SideID)
-  IF(nbElemID.GT.0) CALL EntropyToCons(Nloc,Vface_slave(:,:,:,SideID) ,Uface_slave(:,:,:,SideID))
+  IF(nbElemID.GT.0) CALL EntropyToCons(Nloc,V_slave(:,:,:,SideID) ,Uface_slave(:,:,:,SideID))
 END DO
 
 END SUBROUTINE ProlongToFaceEntropy
-#endif /*WITHEntropy*/
-#endif /*PP_EntropyVars*/
+#endif /*PP_EntropyVars==1*/
 
 !==================================================================================================================================
 !> Interpolates the element volume data stored at Gauss points

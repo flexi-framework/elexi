@@ -337,12 +337,13 @@ USE MOD_Particle_Vars       ,ONLY: doCalcPartSource
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)                 :: t                      !< Current time
+REAL,INTENT(IN)                   :: t                      !< Current time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_LOADBALANCE
-REAL                            :: tLBStart
+REAL                              :: tLBStart
 #endif /*USE_LOADBALANCE*/
+REAL,DIMENSION(:,:,:,:,:),POINTER :: U_pointer
 !==================================================================================================================================
 
 ! -----------------------------------------------------------------------------
@@ -380,6 +381,9 @@ MeasureSplitTime_DG()       ! LoadBalance
 ! Compute entropy variables
 #if PP_EntropyVars == 1
 Call ConsToEntropy(PP_N,V,U)
+U_pointer => V
+#else
+U_pointer => U
 #endif
 
 ! 3. Prolong the solution to the face integration points for flux computation (and do overlapping communication)
@@ -411,18 +415,11 @@ CALL StartReceiveMPIData(FV_U_slave,DataSizeSide,1,nSides,MPIRequest_FV_U(:,SEND
 #endif
 MeasureSplitTime_DG()       ! LoadBalance
 
+CALL ProlongToFaceCons(PP_N,U_pointer,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+MeasureSplitTime_DG()       ! LoadBalance
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
-#if PP_EntropyVars == 0
-CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
-CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.TRUE.,pureFV=.TRUE.)
-#endif /*if PP_EntropyVars == 0*/
-#else /*FV_ENABLED*/
-#if PP_EntropyVars == 1
-CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
-#else
-CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
-#endif /*if PP_EntropyVars == 1*/
-MeasureSplitTime_FV()
+CALL ProlongToFaceCons(PP_N,U_pointer,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.TRUE.,pureFV=.TRUE.)
+MeasureSplitTime_FV()       ! LoadBalance
 #endif /*FV_ENABLED*/
 
 MeasureStartTime()          ! LoadBalance
@@ -454,23 +451,13 @@ MeasureSplitTime_FV()
 
 ! Step 3 for all remaining sides
 ! 3.1)
+MeasureStartTime()          ! LoadBalance
+CALL ProlongToFaceCons(PP_N,U_pointer,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+MeasureSplitTime_DG()       ! LoadBalance
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
-MeasureStartTime()          ! LoadBalance
-#if PP_EntropyVars == 0
-CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
-MeasureSplitTime_DG()       ! LoadBalance
-CALL ProlongToFaceCons(PP_N,U,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.FALSE.,pureFV=.TRUE.)
+CALL ProlongToFaceCons(PP_N,FV_U_pointer,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.FALSE.,pureFV=.TRUE.)
 MeasureSplitTime_FV()       ! LoadBalance
-#endif /*if PP_EntropyVars == 0*/
-#else /*FV_ENABLED*/
-MeasureStartTime()          ! LoadBalance
-#if PP_EntropyVars == 1
-CALL ProlongToFaceCons(PP_N,V,V_master,V_slave,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
-#else
-CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
-#endif /*if PP_EntropyVars == 1*/
-MeasureSplitTime_DG()       ! LoadBalance
-#endif
+#endif /*FV_ENABLED*/
 
 CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)
 MeasureSplitTime_DG()       ! LoadBalance

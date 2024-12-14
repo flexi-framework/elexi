@@ -29,8 +29,8 @@ output_dir/
 reggie_run/
 regressioncheck/**/*.csv
 
-# userguide
-doc/userguide/userguide.pdf
+# documentation / sphinx
+_build/
 
 # temporary files
 cache/

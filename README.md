@@ -49,7 +49,7 @@ To refer to specific applications and features, you can also cite the appropriat
 # Quick Start Guide
 For a more detailed installation instructions, please see the documention [here][userguide].
 
-ƎLexi is tested for various Linux distributions including Ubuntu, OpenSUSE, CentOS, or Arch. ƎLexi also runs on macOS. For the installation, you need the following dependencies:
+[ƎLexi][elexi] is tested for various Linux distributions including Ubuntu, OpenSUSE, CentOS, or Arch. ƎLexi also runs on macOS. For the installation, you require the following dependencies:
 
 | Package          | Required | Installed by ƎLexi |
 |:-----------------|:--------:|:------------------:|
@@ -61,15 +61,15 @@ For a more detailed installation instructions, please see the documention [here]
 | HDF5             |      x   |      x             |
 | MPI              |     (x)  |                    |
 
-The MPI library is only required for running parallel simulations on multiple ranks. The HDF5 and LAPACK libraries can are optionally built and locally installed during the ƎLexi build process. The names of the packages and the package manager might differ depending on the specific distribution used.
+The MPI library is only required for running parallel simulations on multiple ranks. The HDF5 and LAPACK libraries can are optionally built and locally installed during the [FLEXI][flexi] build process. The names of the packages and the package manager might differ depending on the specific distribution used.
 
 ### Getting the code
-Open a terminal, download ƎLexi via git
+Open a terminal, download [ƎLexi][elexi] via git
 
     git clone git@github.com:flexi-framework/elexi.git
 
 ### Compiling the code
-Enter the ƎLexi directory, create a build directory and use CMake to configure and compile the code
+Enter the [ƎLexi][elexi] directory, create a build directory and use CMake to configure and compile the code
 
     cd elexi
     cmake -B build
@@ -80,13 +80,13 @@ The executable `elexi` is now contained in the ƎLexi directory in `build/bin/`.
     ccmake -B build
 
 ### Running the code
-Navigate to the directory of the tutorial **cavity** and run ƎLexi
+Navigate to the directory of the tutorial **cavity** and run [ƎLexi][elexi]
 
     cd tutorials/cavity
-    elexi parameter_flexi.ini
+    flexi parameter_flexi.ini
 
 # Used libraries
-ƎLexi uses several external libraries as well as auxiliary functions from open source projects, including:
+[ƎLexi][elexi] uses several external libraries as well as auxiliary functions from open source projects, including:
 * [CMake](https://cmake.org)
 * [FFTW](https://www.fftw.org)
 * [HDF5](https://www.hdfgroup.org)

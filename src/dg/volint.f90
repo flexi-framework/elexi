@@ -372,7 +372,7 @@ END SUBROUTINE VolInt_splitForm
 
 
 !==================================================================================================================================
-!> Compute the tranformed states for all conservative variables using the metric terms
+!> Compute the transformed states for all conservative variables using the metric terms
 !==================================================================================================================================
 PPURE SUBROUTINE VolInt_Metrics(nDOFs,f,g,h,Mf,Mg,Mh)
 !----------------------------------------------------------------------------------------------------------------------------------

@@ -20,8 +20,8 @@ IMPLICIT NONE
 PRIVATE
 
 INTERFACE Lifting_VolInt_gen
-   MODULE PROCEDURE Lifting_VolInt_Nonconservative
    MODULE PROCEDURE Lifting_VolInt_Conservative
+   MODULE PROCEDURE Lifting_VolInt_Nonconservative
 END INTERFACE
 
 PUBLIC::Lifting_VolInt_gen
@@ -228,8 +228,8 @@ DO iElem=1,nElems
     END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
 #endif /*FV_ENABLED*/
-
 END DO ! iElem=1,nElems
+
 END SUBROUTINE Lifting_VolInt_Conservative
 
 !==================================================================================================================================

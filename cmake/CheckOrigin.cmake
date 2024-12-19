@@ -6,11 +6,12 @@ IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
   EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
   # Strip leading and trailing white space
-  STRING(STRIP ${GIT_ORIGIN} GIT_ORIGIN)
-  MESSAGE(STATUS "Checking git origin: " ${GIT_ORIGIN})
-
-  # Setup git hooks
-  SET(PRECOMMIT_FILE ".githooks/pre-commit")
+  IF (NOT ${GIT_ORIGIN} STREQUAL "")
+    STRING(STRIP ${GIT_ORIGIN} GIT_ORIGIN)
+    MESSAGE(STATUS "Checking git origin: " ${GIT_ORIGIN})
+    # Setup git hooks
+    SET(PRECOMMIT_FILE ".githooks/pre-commit")
+  ENDIF()
 ENDIF()
 
 # Perform checks only if origin points to IAG, other origins can't commit

@@ -311,12 +311,12 @@ IF (.NOT.PerformLoadBalance) THEN
 
         ! BGM indices must be >0 --> move by 1
         ! >> - Halo region extended by one in each direction to catch elements directly on the edge of a FIGBM cell
-        ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1))-1,0) + moveBGMindex
-        ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))+1    + moveBGMindex,GEO%FIBGMimaxglob)
-        ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2))-1,0) + moveBGMindex
-        ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))+1    + moveBGMindex,GEO%FIBGMjmaxglob)
-        ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3))-1,0) + moveBGMindex
-        ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))+1    + moveBGMindex,GEO%FIBGMkmaxglob)
+        ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
+        ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
+        ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
+        ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
+        ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
+        ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
     END DO ! iElem = firstElem, lastElem
 
     CASE(TRACING,REFMAPPING)
@@ -353,31 +353,31 @@ IF (.NOT.PerformLoadBalance) THEN
         BoundsOfElem_Shared(1,3,iElem) = zmin
         BoundsOfElem_Shared(2,3,iElem) = zmax
 
-      ! Flag elements depending on radius
-      origin(1:3) = (/ SUM(   BoundsOfElem_Shared(1:2,1,iElem)), &
-                       SUM(   BoundsOfElem_Shared(1:2,2,iElem)), &
-                       SUM(   BoundsOfElem_Shared(1:2,3,iElem)) /) / 2.
-      ! Calculate halo element outer radius
-      radius    = VECNORM ((/ BoundsOfElem_Shared(2  ,1,iElem)-BoundsOfElem_Shared(1,1,iElem), &
-                              BoundsOfElem_Shared(2  ,2,iElem)-BoundsOfElem_Shared(1,2,iElem), &
-                              BoundsOfElem_Shared(2  ,3,iElem)-BoundsOfElem_Shared(1,3,iElem) /) / 2.)
+        ! Flag elements depending on radius
+        origin(1:3) = (/ SUM(   BoundsOfElem_Shared(1:2,1,iElem)), &
+                         SUM(   BoundsOfElem_Shared(1:2,2,iElem)), &
+                         SUM(   BoundsOfElem_Shared(1:2,3,iElem)) /) / 2.
+        ! Calculate halo element outer radius
+        radius    = VECNORM ((/ BoundsOfElem_Shared(2  ,1,iElem)-BoundsOfElem_Shared(1,1,iElem), &
+                                BoundsOfElem_Shared(2  ,2,iElem)-BoundsOfElem_Shared(1,2,iElem), &
+                                BoundsOfElem_Shared(2  ,3,iElem)-BoundsOfElem_Shared(1,3,iElem) /) / 2.)
 
-      xmin = origin(1) - radius
-      xmax = origin(1) + radius
-      ymin = origin(2) - radius
-      ymax = origin(2) + radius
-      zmin = origin(3) - radius
-      zmax = origin(3) + radius
+        xmin = origin(1) - radius
+        xmax = origin(1) + radius
+        ymin = origin(2) - radius
+        ymax = origin(2) + radius
+        zmin = origin(3) - radius
+        zmax = origin(3) + radius
 
-      ! BGM indices must be >0 --> move by 1
-      ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
-      ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
-      ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
-      ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
-      ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
-      ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
-    END DO ! iElem = firstElem, lastElem
-END SELECT
+        ! BGM indices must be >0 --> move by 1
+        ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
+        ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
+        ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
+        ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
+        ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
+        ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
+      END DO ! iElem = firstElem, lastElem
+  END SELECT
 #if USE_LOADBALANCE
 END IF
 #endif /*USE_LOADBALANCE*/

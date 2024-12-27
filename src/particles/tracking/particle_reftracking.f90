@@ -438,7 +438,11 @@ doubleCheck = .FALSE.
 alphaOld    = -1.
 
 DO WHILE(DoTracing)
-  IF (GEO%nPeriodicVectors.GT.0.AND.CartesianPeriodic) THEN
+  PeriMoved = .FALSE.
+  locAlpha  = -1.
+  nInter    = 0
+  ! CartesianPeriodic is only active with nPeriodicVectors > 0
+  IF (CartesianPeriodic) THEN
     ! Account for periodic displacement
     CALL PeriodicMovement(PartID,PeriMoved)
     ! Position and trajectory has to be recomputed after periodic displacement
@@ -446,11 +450,7 @@ DO WHILE(DoTracing)
       PartTrajectory       = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
       lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
     END IF
-  ELSE
-    PeriMoved = .FALSE.
   END IF
-  locAlpha = -1.
-  nInter   = 0
 
   ! track particle vector until the final particle position is achieved
   ! check if particle can intersect with current side
@@ -467,8 +467,74 @@ DO WHILE(DoTracing)
     ! BezierControlPoints are now built in cell local system. Hence, sides have always the flip from the shared SideInfo
     flip = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
 
+    ! not double check (default)
+    IF (.NOT. doublecheck) THEN
+      SELECT CASE(SideType(CNSideID))
+        CASE(PLANAR_RECT)
+          CALL ComputePlanarRectIntersection(  isHit                = isHit                 &
+                                            ,  PartTrajectory       = PartTrajectory        &
+                                            ,  lengthPartTrajectory = lengthPartTrajectory  &
+                                            ,  LastPartPos          = LastPartPos(:,PartID) &
+                                            ,  alpha                = locAlpha(ilocSide)    &
+                                            ,  xi                   = xi(ilocSide)          &
+                                            ,  eta                  = eta(ilocSide)         &
+#if CODE_ANALYZE
+                                            ,   PartID               = PartID                &
+#endif /*CODE_ANALYZE*/
+                                            ,  flip                 = flip                  &
+                                            ,  SideID               = SideID)
+        CASE(BILINEAR,PLANAR_NONRECT)
+          CALL ComputeBiLinearIntersection(    isHit                = isHit                 &
+                                            ,  PartTrajectory       = PartTrajectory        &
+                                            ,  lengthPartTrajectory = lengthPartTrajectory  &
+                                            ,  PartState            = PartState(1:3,PartID) &
+                                            ,  LastPartPos          = LastPartPos(:,PartID) &
+                                            ,  alpha                = locAlpha(ilocSide)    &
+                                            ,  xitild               = xi(ilocSide)          &
+                                            ,  etatild              = eta(ilocSide)         &
+                                            ,  PartID               = PartID                &
+                                            ,  flip                 = flip                  &
+                                            ,  SideID               = SideID                &
+                                            ,  alpha2               = alphaOld)
+        CASE(PLANAR_CURVED)
+          CALL ComputePlanarCurvedIntersection(isHit                = isHit                 &
+                                            ,  PartTrajectory       = PartTrajectory        &
+                                            ,  lengthPartTrajectory = lengthPartTrajectory  &
+                                            ,  LastPartPos          = LastPartPos(:,PartID) &
+                                            ,  alpha                = locAlpha(ilocSide)    &
+                                            ,  xi                   = xi(ilocSide)          &
+                                            ,  eta                  = eta(ilocSide)         &
+                                            ,  PartID               = PartID                &
+                                            ,  flip                 = flip                  &
+                                            ,  SideID               = SideID)
+        CASE(CURVED)
+          CALL ComputeCurvedIntersection(      isHit                = isHit                 &
+                                            ,  PartTrajectory       = PartTrajectory        &
+                                            ,  lengthPartTrajectory = lengthPartTrajectory  &
+                                            ,  PartState            = PartState(1:3,PartID) &
+                                            ,  LastPartPos          = LastPartPos(:,PartID) &
+                                            ,  alpha                = locAlpha(ilocSide)    &
+                                            ,  xi                   = xi(ilocSide)          &
+                                            ,  eta                  = eta(ilocSide)         &
+                                            ,  PartID               = PartID                &
+                                            ,  flip                 = flip                  &
+                                            ,  SideID               = SideID)
+    END SELECT
+
+#if CODE_ANALYZE
+!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
+      IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.myRank) THEN; IF (PartID.EQ.PARTOUT) THEN
+        WRITE(UNIT_stdOut,'(30("-"))')
+        WRITE(UNIT_stdOut,'(A)')           '     | Output after compute intersection (REFMAPPING, BCTracing): '
+        WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
+        WRITE(UNIT_stdOut,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
+        WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
+      END IF; END IF
+!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
+#endif /*CODE_ANALYZE*/
+
     ! double check
-    IF (doublecheck) THEN
+    ELSE
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
       IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.myRank) THEN; IF (PartID.EQ.PARTOUT) THEN
@@ -542,73 +608,7 @@ DO WHILE(DoTracing)
       END IF; END IF
 !-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
 #endif /*CODE_ANALYZE*/
-
-    ! not double check
-    ELSE
-      SELECT CASE(SideType(CNSideID))
-        CASE(PLANAR_RECT)
-          CALL ComputePlanarRectIntersection(  isHit                = isHit                 &
-                                            ,  PartTrajectory       = PartTrajectory        &
-                                            ,  lengthPartTrajectory = lengthPartTrajectory  &
-                                            ,  LastPartPos          = LastPartPos(:,PartID) &
-                                            ,  alpha                = locAlpha(ilocSide)    &
-                                            ,  xi                   = xi(ilocSide)          &
-                                            ,  eta                  = eta(ilocSide)         &
-#if CODE_ANALYZE
-                                            ,   PartID               = PartID                &
-#endif /*CODE_ANALYZE*/
-                                            ,  flip                 = flip                  &
-                                            ,  SideID               = SideID)
-        CASE(BILINEAR,PLANAR_NONRECT)
-          CALL ComputeBiLinearIntersection(    isHit                = isHit                 &
-                                            ,  PartTrajectory       = PartTrajectory        &
-                                            ,  lengthPartTrajectory = lengthPartTrajectory  &
-                                            ,  PartState            = PartState(1:3,PartID) &
-                                            ,  LastPartPos          = LastPartPos(:,PartID) &
-                                            ,  alpha                = locAlpha(ilocSide)    &
-                                            ,  xitild               = xi(ilocSide)          &
-                                            ,  etatild              = eta(ilocSide)         &
-                                            ,  PartID               = PartID                &
-                                            ,  flip                 = flip                  &
-                                            ,  SideID               = SideID                &
-                                            ,  alpha2               = alphaOld)
-        CASE(PLANAR_CURVED)
-          CALL ComputePlanarCurvedIntersection(isHit                = isHit                 &
-                                            ,  PartTrajectory       = PartTrajectory        &
-                                            ,  lengthPartTrajectory = lengthPartTrajectory  &
-                                            ,  LastPartPos          = LastPartPos(:,PartID) &
-                                            ,  alpha                = locAlpha(ilocSide)    &
-                                            ,  xi                   = xi(ilocSide)          &
-                                            ,  eta                  = eta(ilocSide)         &
-                                            ,  PartID               = PartID                &
-                                            ,  flip                 = flip                  &
-                                            ,  SideID               = SideID)
-        CASE(CURVED)
-          CALL ComputeCurvedIntersection(      isHit                = isHit                 &
-                                            ,  PartTrajectory       = PartTrajectory        &
-                                            ,  lengthPartTrajectory = lengthPartTrajectory  &
-                                            ,  PartState            = PartState(1:3,PartID) &
-                                            ,  LastPartPos          = LastPartPos(:,PartID) &
-                                            ,  alpha                = locAlpha(ilocSide)    &
-                                            ,  xi                   = xi(ilocSide)          &
-                                            ,  eta                  = eta(ilocSide)         &
-                                            ,  PartID               = PartID                &
-                                            ,  flip                 = flip                  &
-                                            ,  SideID               = SideID)
-    END SELECT
-
-#if CODE_ANALYZE
-!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
-      IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.myRank) THEN; IF (PartID.EQ.PARTOUT) THEN
-        WRITE(UNIT_stdOut,'(30("-"))')
-        WRITE(UNIT_stdOut,'(A)')           '     | Output after compute intersection (REFMAPPING, BCTracing): '
-        WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',isHit
-        WRITE(UNIT_stdOut,'(2(A,G0))')     '     | Alpha: ',locAlpha(ilocSide)   ,' | LengthPartTrajectory: ', lengthPartTrajectory
-        WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi(ilocSide),eta(ilocSide)
-      END IF; END IF
-!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
-#endif /*CODE_ANALYZE*/
-    END IF
+    END IF ! double check
 
     IF (locAlpha(ilocSide).GT.-1.0) nInter = nInter+1
   END DO ! ilocSide
@@ -650,7 +650,7 @@ DO WHILE(DoTracing)
           ! check if a periodic boundary was crossed during boundary interaction
           CNOldElemID = GetCNElemID(OldElemID)
 
-          IF(GEO%nPeriodicVectors.GT.0)THEN
+          IF(GEO%nPeriodicVectors.GT.0) THEN
             lengthPartTrajectory0 = MAXVAL(SideBCMetrics(BCSIDE_DISTANCE,                         &
                                            ElemToBCSides(ELEM_FIRST_BCSIDE,CNOldElemID) + 1:      &
                                            ElemToBCSides(ELEM_FIRST_BCSIDE,CNOldElemID) + ElemToBCSides(ELEM_NBR_BCSIDES,CNOldElemID)))
@@ -689,8 +689,8 @@ DO WHILE(DoTracing)
       ! Stop tracing if already double checked
       ELSE
         DoTracing = .FALSE.
-      END IF
-    END IF
+      END IF ! .NOT.doubleCheck
+    END IF ! .NOT.reflected
   END IF ! nInter>0
 END DO
 
@@ -699,7 +699,7 @@ END SUBROUTINE ParticleBCTracking
 
 SUBROUTINE PeriodicMovement(PartID,isMovedOut)
 !----------------------------------------------------------------------------------------------------------------------------------!
-! move particle in the periodic direction, if particle is outside of the box
+! Routine if particle domain is rectangular. Periodic displacement can be determined by the bounding box
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -720,30 +720,27 @@ LOGICAL,INTENT(OUT),OPTIONAL   :: isMovedOut
 INTEGER                         :: iPV,iDir
 REAL                            :: MoveVector(1:3),GEOLims(2)
 LOGICAL                         :: isMoved
-CHARACTER(LEN=1)                :: DirChar
+CHARACTER(LEN=1),DIMENSION(3)   :: DirChar = (/CHARACTER(LEN=1) :: 'x', 'y', 'z'/)
 !===================================================================================================================================
 
 isMoved = .FALSE.
 
-! Routine if particle domain is rectangular. Periodic displacement can be determined by the bounding box
-IF(FastPeriodic)THEN
+! FastPeriodic allows multiple periodic displacements in one step
+IF (FastPeriodic) THEN
   DO iDir = 1,3
     IF (.NOT.GEO%directions(iDir)) CYCLE
 
     SELECT CASE(iDir)
       CASE(1)
         GEOLims = (/GEO%xminglob,GEO%xmaxglob/)
-        DirChar = 'x'
       CASE(2)
         GEOLims = (/GEO%yminglob,GEO%ymaxglob/)
-        DirChar = 'y'
       CASE(3)
         GEOLims = (/GEO%zminglob,GEO%zmaxglob/)
-        DirChar = 'z'
     END SELECT
 
     ! Check against upper limit
-    IF(PartState(iDir,PartID).GT.GEOLims(2)) THEN
+    IF (PartState(iDir,PartID).GT.GEOLims(2)) THEN
       DO iPV = 1,GEO%nPeriodicVectors
         IF(GEO%DirPeriodicVectors(iPV).EQ.iDir) EXIT
       END DO
@@ -755,7 +752,7 @@ IF(FastPeriodic)THEN
     END IF
 
     ! Check against lower limit
-    IF(PartState(iDir,PartID).LT.GEOLims(1)) THEN
+    IF (PartState(iDir,PartID).LT.GEOLims(1)) THEN
       DO iPV = 1,GEO%nPeriodicVectors
         IF(GEO%DirPeriodicVectors(iPV).EQ.iDir) EXIT
       END DO
@@ -767,17 +764,17 @@ IF(FastPeriodic)THEN
     END IF
 
     ! Check if particle is inside
-    IF(PartState(iDir,PartID).GT.GEOLims(2)) THEN
+    IF (PartState(iDir,PartID).GT.GEOLims(2)) THEN
       IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') 'PartPos', PartState(:,PartID)
-      CALL Abort(__STAMP__,'Particle outside '//DirChar//'+, PartID',PartID)
+      CALL Abort(__STAMP__,'Particle outside '//DirChar(iDir)//'+, PartID',PartID)
     END IF
-    IF(PartState(iDir,PartID).LT.GEOLims(1)) THEN
+    IF (PartState(iDir,PartID).LT.GEOLims(1)) THEN
       IPWRITE(UNIT_stdOut,'(I0,A,3F12.6)') 'PartPos', PartState(:,PartID)
-      CALL Abort(__STAMP__,'Particle outside '//DirChar//'-, PartID',PartID)
+      CALL Abort(__STAMP__,'Particle outside '//DirChar(iDir)//'-, PartID',PartID)
     END IF
   END DO
 
-! No fast periodic displacement
+! No fast periodic displacement, particles are only allowed to move one periodic vector at a time
 ELSE
   DO iDir = 1,3
     IF (.NOT.GEO%directions(iDir)) CYCLE
@@ -865,8 +862,8 @@ tmpLastPartPos(1:3)     = LastPartPos(1:3,PartID)
 tmpVec                  = PartTrajectory
 LastPartPos(1:3,PartID) = ElemBaryNGeo(:,GetCNElemID(ElemID))
 
-PartTrajectory       = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
-lengthPartTrajectory = VECNORM(PartTrajectory(1:3))
+PartTrajectory          = PartState(1:3,PartID) - LastPartPos(1:3,PartID)
+lengthPartTrajectory    = VECNORM(PartTrajectory(1:3))
 IF (lengthPartTrajectory.GT.0) PartTrajectory = PartTrajectory/lengthPartTrajectory
 
 locAlpha  = -1.0
@@ -874,7 +871,7 @@ nInter    = 0
 dolocSide = .TRUE.
 
 ! Loop over all sides
-DO iLocSide=firstSide,LastSide
+DO iLocSide = firstSide,LastSide
   ! track particle vector until the final particle position is achieved
   SideID   = INT(SideBCMetrics(BCSIDE_SIDEID,ilocSide))
   CNSideID = GetCNSideID(SideID)
@@ -963,11 +960,10 @@ IF (nInter.EQ.0) THEN
   CALL LocateParticleInElement(PartID,doHalo=.TRUE.)
 
   ! particle successfully located
-  IF (PDM%ParticleInside(PartID)) THEN
-    RETURN
-  ELSE
-    CALL Abort(__STAMP__,'FallBackFaceIntersection failed for particle!')
-  END IF
+  IF (PDM%ParticleInside(PartID)) RETURN
+
+  ! Abort if particle is not inside
+  CALL Abort(__STAMP__,'FallBackFaceIntersection failed for particle!')
 
 ! One or more intersection
 ELSE

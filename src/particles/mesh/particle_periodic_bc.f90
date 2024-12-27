@@ -105,17 +105,21 @@ IF ((GEO%nPeriodicVectors.GT.3).OR.(GEO%nPeriodicVectors.LT.0)) &
   CALL Abort(__STAMP__,'nPeriodicVectors must be >= 0 and <= 3!',GEO%nPeriodicVectors,999.)
 
 GEO%directions = .FALSE.
-IF (GEO%nPeriodicVectors.EQ.0) RETURN
+IF (GEO%nPeriodicVectors.EQ.0) THEN
+  CartesianPeriodic = .FALSE.
+  FastPeriodic      = .FALSE.
+  RETURN
+END IF
 
 SDEALLOCATE(GEO%DirPeriodicVectors)
 ALLOCATE(GEO%DirPeriodicVectors(1:GEO%nPeriodicVectors))
 
 CartesianPeriodic = GETLOGICAL('Part-CartesianPeriodic')
-IF (CartesianPeriodic) FastPeriodic = GETLOGICAL('Part-FastPeriodic')
-
-! CartesianPeriodic and FastPeriodic allow only periodic vectors. Permit some tolerance since vectors are determined based on the
-! mesh node coordinates
 IF (CartesianPeriodic) THEN
+  FastPeriodic = GETLOGICAL('Part-FastPeriodic')
+
+  ! CartesianPeriodic and FastPeriodic allow only periodic vectors.
+  ! > Permit some tolerance since vectors are determined based on the mesh node coordinates
   DO iPV = 1,GEO%nPeriodicVectors
     ! Periodic vector in x-direction
     IF (GEO%PeriodicVectors(1,iPV).NE.0) THEN
@@ -163,7 +167,11 @@ IF (CartesianPeriodic) THEN
     END IF
   END DO
 
-  CALL PrintOption('CartesianPeriodic active in directions (x,y,z)','INFO',LogArrayOpt=GEO%directions)
+  IF (FastPeriodic) THEN
+    CALL PrintOption('FastPeriodic active in directions (x,y,z)'     ,'INFO',LogArrayOpt=GEO%directions)
+  ELSE
+    CALL PrintOption('CartesianPeriodic active in directions (x,y,z)','INFO',LogArrayOpt=GEO%directions)
+  END IF
 END IF
 
 ! check if periodic vector is multiple of FIBGM-deltas

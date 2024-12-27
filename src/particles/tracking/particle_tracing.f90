@@ -235,69 +235,8 @@ DO iPart = 1,PDM%ParticleVecLength
       ! do not reset markTol after first intersection of for doublecheck.
       ! This prevents particles to get lost unnoticed in case any intersection has marked tolerance.
       ! markTol =.FALSE.
-
-      IF (PartDoubleCheck) THEN
-! -- 3. special check if some double check has to be performed (only necessary for bilinear sides)
-#if CODE_ANALYZE
-!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
-        IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN; IF (iPart.EQ.PARTOUT) THEN
-          WRITE(UNIT_stdOut,'(A)')    '     | Calculation of double check: '
-        END IF; END IF
-!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
-#endif /*CODE_ANALYZE*/
-        currentIntersect => lastIntersect%prev
-        IF (currentIntersect%IntersectCase.EQ.1) THEN
-          iLocSide = currentIntersect%Side
-          SideID   = GetGlobalNonUniqueSideID(ElemID,iLocSide)
-          CNSideID = GetCNSideID(SideID)
-          flip     = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
-
-          CALL ComputeBiLinearIntersection(foundHit               &
-                                          ,PartTrajectory         &
-                                          ,lengthPartTrajectory   &
-                                          ,PartState(  1:3,iPart) &
-                                          ,LastPartPos(1:3,iPart) &
-                                          ,locAlpha               &
-                                          ,xi                     &
-                                          ,eta                    &
-                                          ,iPart                  &
-                                          ,flip                   &
-                                          ,SideID                 &
-                                          ,alpha2=currentIntersect%alpha)
-          currentIntersect%alpha         = HUGE(1.)
-          currentIntersect%IntersectCase = 0
-          IF(foundHit) THEN
-            CALL AssignListPosition(currentIntersect,locAlpha,iLocSide,1,xi_IN=xi,eta_IN=eta)
-            IF((ABS(xi).GE.0.99).OR.(ABS(eta).GE.0.99)) markTol=.TRUE.
-          END IF
-        END IF
-#if CODE_ANALYZE
-!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
-        IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN; IF (iPart.EQ.PARTOUT) THEN
-          WRITE(UNIT_stdOut,'(30("-"))')
-          WRITE(UNIT_stdOut,'(A)')             '     | Output after compute intersection (tracing double check): '
-          IF (currentIntersect%IntersectCase.EQ.1) THEN
-            WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
-            WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi,eta
-            WRITE(UNIT_stdOut,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
-          END IF
-          WRITE(UNIT_stdOut,'(2(A,G0))')       '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ', lengthPartTrajectory
-        END IF; END IF
-!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
-#endif /*CODE_ANALYZE*/
-        ! if double check found no intersection reset entry in list and adjust last entry pointer
-        IF (.NOT.foundHit) THEN
-          currentIntersect%alpha = HUGE(1.)
-          currentIntersect%intersectCase = 0
-          IF (ASSOCIATED(currentIntersect%prev) .AND. .NOT.ASSOCIATED(currentIntersect%prev,firstIntersect)) THEN
-            lastIntersect => currentIntersect
-            lastIntersect%prev => currentIntersect%prev
-          END IF
-        END IF
-
-      ! NOT PartDoubleCheck
-      ELSE
-! -- 4. Check if particle intersected a side and also which side
+      IF (.NOT.PartDoubleCheck) THEN
+! -- 3. Check if particle intersected a side and also which side
 !       For each side only one intersection is chosen, but particle might intersect more than one side. Assign pointer list
 #if CODE_ANALYZE
 !---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
@@ -406,7 +345,68 @@ DO iPart = 1,PDM%ParticleVecLength
             IF ((ABS(xi).GE.0.99).OR.(ABS(eta).GE.0.99)) markTol=.TRUE.
           END IF
         END DO ! ilocSide
-      END IF
+      ! PartDoubleCheck
+      ELSE
+! -- 4. special check if some double check has to be performed (only necessary for bilinear sides)
+#if CODE_ANALYZE
+!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
+        IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN; IF (iPart.EQ.PARTOUT) THEN
+          WRITE(UNIT_stdOut,'(A)')    '     | Calculation of double check: '
+        END IF; END IF
+!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
+#endif /*CODE_ANALYZE*/
+        currentIntersect => lastIntersect%prev
+        IF (currentIntersect%IntersectCase.EQ.1) THEN
+          iLocSide = currentIntersect%Side
+          SideID   = GetGlobalNonUniqueSideID(ElemID,iLocSide)
+          CNSideID = GetCNSideID(SideID)
+          flip     = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
+
+          CALL ComputeBiLinearIntersection(foundHit               &
+                                          ,PartTrajectory         &
+                                          ,lengthPartTrajectory   &
+                                          ,PartState(  1:3,iPart) &
+                                          ,LastPartPos(1:3,iPart) &
+                                          ,locAlpha               &
+                                          ,xi                     &
+                                          ,eta                    &
+                                          ,iPart                  &
+                                          ,flip                   &
+                                          ,SideID                 &
+                                          ,alpha2=currentIntersect%alpha)
+          currentIntersect%alpha         = HUGE(1.)
+          currentIntersect%IntersectCase = 0
+          IF(foundHit) THEN
+            CALL AssignListPosition(currentIntersect,locAlpha,iLocSide,1,xi_IN=xi,eta_IN=eta)
+            IF((ABS(xi).GE.0.99).OR.(ABS(eta).GE.0.99)) markTol=.TRUE.
+          END IF
+        END IF
+#if CODE_ANALYZE
+!---------------------------------------------CODE_ANALYZE--------------------------------------------------------------------------
+        IF (PARTOUT.GT.0 .AND. MPIRANKOUT.EQ.MyRank) THEN; IF (iPart.EQ.PARTOUT) THEN
+          WRITE(UNIT_stdOut,'(30("-"))')
+          WRITE(UNIT_stdOut,'(A)')             '     | Output after compute intersection (tracing double check): '
+          IF (currentIntersect%IntersectCase.EQ.1) THEN
+            WRITE(UNIT_stdOut,'(2(A,I0),A,L)') '     | SideType: ',SideType(CNSideID),' | SideID: ',SideID,' | Hit: ',foundHit
+            WRITE(UNIT_stdOut,'(A,2(1X,G0))')  '     | Intersection xi/eta: ',xi,eta
+            WRITE(UNIT_stdOut,'((A,G0))')      '     | RelAlpha: ',locAlpha/lengthpartTrajectory
+          END IF
+          WRITE(UNIT_stdOut,'(2(A,G0))')       '     | Alpha: ',locAlpha,' | LengthPartTrajectory: ', lengthPartTrajectory
+        END IF; END IF
+!-------------------------------------------END-CODE_ANALYZE------------------------------------------------------------------------
+#endif /*CODE_ANALYZE*/
+        ! if double check found no intersection reset entry in list and adjust last entry pointer
+        IF (.NOT.foundHit) THEN
+          currentIntersect%alpha = HUGE(1.)
+          currentIntersect%intersectCase = 0
+          IF (ASSOCIATED(currentIntersect%prev) .AND. .NOT.ASSOCIATED(currentIntersect%prev,firstIntersect)) THEN
+            lastIntersect => currentIntersect
+            lastIntersect%prev => currentIntersect%prev
+          END IF
+        END IF
+
+      ! NOT PartDoubleCheck
+      END IF ! PartDoubleCheck
 
 ! -- 5. Loop over all intersections in pointer list and check intersection type: inner side, BC and calculate interaction
 #if CODE_ANALYZE

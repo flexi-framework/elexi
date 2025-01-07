@@ -29,11 +29,7 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE GetBoundaryInteraction
-  MODULE PROCEDURE GetBoundaryInteraction
-END INTERFACE
-
-PUBLIC :: GetBoundaryInteraction
+PUBLIC:: GetBoundaryInteraction
 !===================================================================================================================================
 
 CONTAINS
@@ -956,7 +952,7 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)               :: nin
 INTEGER,INTENT(IN)               :: nout
-REAL(4),INTENT(IN)               :: xin(nin)
+REAL(SP),INTENT(IN)              :: xin(nin)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------

@@ -23,19 +23,10 @@ MODULE MOD_CalcTimeStep
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitCalctimestep
-  MODULE PROCEDURE InitCalctimestep
-END INTERFACE
 
-INTERFACE CALCTIMESTEP
-  MODULE PROCEDURE CALCTIMESTEP
-END INTERFACE
-
-INTERFACE FinalizeCalctimestep
-  MODULE PROCEDURE FinalizeCalctimestep
-END INTERFACE
-
-PUBLIC :: InitCalctimestep,CALCTIMESTEP,FinalizeCalctimestep
+PUBLIC:: InitCalctimestep
+PUBLIC:: CALCTIMESTEP
+PUBLIC:: FinalizeCalctimestep
 !==================================================================================================================================
 
 REAL,ALLOCATABLE :: MetricsAdv(:,:,:,:,:,:)  !< support variable: NORM2(Metricsfgh)/J
@@ -99,7 +90,7 @@ DO FVE=0,FV_SIZE
 END DO
 #endif /*PARABOLIC*/
 
-END SUBROUTINE
+END SUBROUTINE InitCalctimestep
 
 
 !==================================================================================================================================
@@ -113,7 +104,7 @@ USE MOD_DG_Vars      ,ONLY:U
 USE MOD_EOS_Vars     ,ONLY:Kappa,KappaM1,R
 USE MOD_IO_HDF5      ,ONLY:AddToElemData,ElementOut
 USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems,ElemNaN
-USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem
+USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem,firstRun
 #ifndef GNU
 USE, INTRINSIC :: IEEE_ARITHMETIC,ONLY:IEEE_IS_NAN
 #endif
@@ -152,7 +143,6 @@ REAL                         :: muSGSmax
 REAL                         :: Max_Lambda_v(3),mu,prim(PP_nVarPrim)
 #endif /*PARABOLIC*/
 INTEGER                      :: FVE
-LOGICAL                      :: firstRun
 !==================================================================================================================================
 errType=0
 

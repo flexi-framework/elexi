@@ -22,41 +22,14 @@ MODULE MOD_Particle_Boundary_Sampling
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE DefineParametersParticleBoundarySampling
-  MODULE PROCEDURE DefineParametersParticleBoundarySampling
-END INTERFACE
 
-INTERFACE InitParticleBoundarySampling
-  MODULE PROCEDURE InitParticleBoundarySampling
-END INTERFACE
-
-INTERFACE RestartParticleBoundarySampling
-  MODULE PROCEDURE RestartParticleBoundarySampling
-END INTERFACE
-
-INTERFACE RecordParticleBoundarySampling
-  MODULE PROCEDURE RecordParticleBoundarySampling
-END INTERFACE
-
-INTERFACE RecordParticleBoundaryImpact
-  MODULE PROCEDURE RecordParticleBoundaryImpact
-END INTERFACE
-
-INTERFACE FinalizeParticleBoundarySampling
-  MODULE PROCEDURE FinalizeParticleBoundarySampling
-END INTERFACE
-
-INTERFACE WriteSurfSample
-  MODULE PROCEDURE WriteSurfSample
-END INTERFACE
-
-PUBLIC :: DefineParametersParticleBoundarySampling
-PUBLIC :: InitParticleBoundarySampling
-PUBLIC :: RestartParticleBoundarySampling
-PUBLIC :: RecordParticleBoundarySampling
-PUBLIC :: RecordParticleBoundaryImpact
-PUBLIC :: FinalizeParticleBoundarySampling
-PUBLIC :: WriteSurfSample
+PUBLIC:: DefineParametersParticleBoundarySampling
+PUBLIC:: InitParticleBoundarySampling
+PUBLIC:: RestartParticleBoundarySampling
+PUBLIC:: RecordParticleBoundarySampling
+PUBLIC:: RecordParticleBoundaryImpact
+PUBLIC:: FinalizeParticleBoundarySampling
+PUBLIC:: WriteSurfSample
 !===================================================================================================================================
 
 CONTAINS

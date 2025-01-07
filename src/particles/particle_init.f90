@@ -24,35 +24,22 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersParticles
-  MODULE PROCEDURE DefineParametersParticles
-END INTERFACE
-
-INTERFACE InitParticleGlobals
-  MODULE PROCEDURE InitParticleGlobals
-END INTERFACE InitParticleGlobals
-
-INTERFACE InitParticles
-  MODULE PROCEDURE InitParticles
-END INTERFACE
-
-INTERFACE FinalizeParticles
-  MODULE PROCEDURE FinalizeParticles
-END INTERFACE
-
 INTERFACE PortabilityGetPID
   FUNCTION GetPID_C() BIND (C, name='getpid')
     !GETPID() is an intrinstic compiler function in gnu. This routine ensures the portability with other compilers.
     USE ISO_C_BINDING,         ONLY: PID_T => C_INT
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
     IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     INTEGER(KIND=PID_T)        :: GetPID_C
   END FUNCTION GetPID_C
 END INTERFACE
 
-PUBLIC :: DefineParametersParticles
-PUBLIC :: InitParticleGlobals
-PUBLIC :: InitParticles
-PUBLIC :: FinalizeParticles
+PUBLIC:: DefineParametersParticles
+PUBLIC:: InitParticleGlobals
+PUBLIC:: InitParticles
+PUBLIC:: FinalizeParticles
 !==================================================================================================================================
 
 CONTAINS

@@ -24,16 +24,8 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE BaseFlowRestart
-  MODULE PROCEDURE BaseFlowRestart
-END INTERFACE
-
-INTERFACE SpongeRestart
-  MODULE PROCEDURE SpongeRestart
-END INTERFACE
-
-PUBLIC :: BaseFlowRestart
-PUBLIC :: SpongeRestart
+PUBLIC:: BaseFlowRestart
+PUBLIC:: SpongeRestart
 !===================================================================================================================================
 
 CONTAINS

@@ -22,18 +22,28 @@ MODULE MOD_IO_HDF5
 USE HDF5
 USE MOD_Globals,ONLY: iError
 IMPLICIT NONE
+! PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 ABSTRACT INTERFACE
   SUBROUTINE EvalElemInt(ElemData)
-  USE MOD_Mesh_Vars,ONLY:nElems
-  REAL,INTENT(OUT) :: ElemData(nElems)
-  END SUBROUTINE
+    ! MODULES
+    USE MOD_Mesh_Vars,ONLY:nElems
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
+    REAL,INTENT(OUT) :: ElemData(nElems)
+  END SUBROUTINE EvalElemInt
 END INTERFACE
 
 ABSTRACT INTERFACE
   SUBROUTINE EvalFieldInt(FieldData)
-  REAL,INTENT(OUT) :: FieldData(:,:,:,:,:)
-  END SUBROUTINE
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
+    REAL,INTENT(OUT) :: FieldData(:,:,:,:,:)
+  END SUBROUTINE EvalFieldInt
 END INTERFACE
 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -66,7 +76,7 @@ TYPE tElementOut
   INTEGER,POINTER                       :: IntScalar    => NULL()
   PROCEDURE(EvalElemInt),POINTER,NOPASS :: eval         => NULL()
   TYPE(tElementOut),POINTER             :: next         => NULL()     !< next list item
-END TYPE
+END TYPE tElementOut
 
 !> Type containing pointers to nodal data to be written to HDF5 in a per node fashion.
 !> Alternatively a function pointer can be specified providing the desired data.
@@ -80,71 +90,29 @@ TYPE tFieldOut
   LOGICAL                                :: doSeparateOutput               !< If set, array will be written as seperate dataset,
                                                                            !< regardless of N
   TYPE(tFieldOut),POINTER                :: next                 => NULL() !< next list item
-END TYPE
+END TYPE tFieldOut
 
 TYPE(tElementOut),POINTER    :: ElementOut   => NULL() !< linked list of output pointers
 TYPE(tFieldOut),POINTER      :: FieldOut     => NULL() !< linked list of output pointers
+!----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitIOHDF5
-  MODULE PROCEDURE InitIOHDF5
-END INTERFACE
-
-INTERFACE InitMPIInfo
-  MODULE PROCEDURE InitMPIInfo
-END INTERFACE
-
-INTERFACE OpenDataFile
-  MODULE PROCEDURE OpenDataFile
-END INTERFACE
-
-INTERFACE CloseDataFile
-  MODULE PROCEDURE CloseDataFile
-END INTERFACE
-
-INTERFACE AddToElemData
-  MODULE PROCEDURE AddToElemData
-END INTERFACE
-
-INTERFACE AddToFieldData
-  MODULE PROCEDURE AddToFieldData
-END INTERFACE
-
-INTERFACE RemoveFromElemData
-  MODULE PROCEDURE RemoveFromElemData
-END INTERFACE
-
-INTERFACE RemoveFromFieldData
-  MODULE PROCEDURE RemoveFromFieldData
-END INTERFACE
-
-INTERFACE FinalizeElemData
-  MODULE PROCEDURE FinalizeElemData
-END INTERFACE
-
-INTERFACE FinalizeFieldData
-  MODULE PROCEDURE FinalizeFieldData
-END INTERFACE
-
-INTERFACE GetDatasetNamesInGroup
-  MODULE PROCEDURE GetDatasetNamesInGroup
-END INTERFACE
-
-PUBLIC :: DefineParametersIO_HDF5
-PUBLIC :: InitIOHDF5
-PUBLIC :: InitMPIInfo
-PUBLIC :: OpenDataFile
-PUBLIC :: CloseDataFile
-PUBLIC :: AddToElemData
-PUBLIC :: AddToFieldData
-PUBLIC :: RemoveFromElemData
-PUBLIC :: RemoveFromFieldData
-PUBLIC :: FinalizeElemData
-PUBLIC :: FinalizeFieldData
-PUBLIC :: GetDatasetNamesInGroup
+PUBLIC:: DefineParametersIO_HDF5
+PUBLIC:: InitIOHDF5
+PUBLIC:: InitMPIInfo
+PUBLIC:: OpenDataFile
+PUBLIC:: CloseDataFile
+PUBLIC:: AddToElemData
+PUBLIC:: AddToFieldData
+PUBLIC:: RemoveFromElemData
+PUBLIC:: RemoveFromFieldData
+PUBLIC:: FinalizeElemData
+PUBLIC:: FinalizeFieldData
+PUBLIC:: GetDatasetNamesInGroup
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Define parameters
@@ -628,8 +596,8 @@ SUBROUTINE GetDatasetNamesInGroup(group,names)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-CHARACTER(LEN=*)               :: group    !< name of group
-CHARACTER(LEN=255),ALLOCATABLE :: names(:) !< names of datasets
+CHARACTER(LEN=*),INTENT(IN)                  :: group    !< name of group
+CHARACTER(LEN=255),ALLOCATABLE,INTENT(INOUT) :: names(:) !< names of datasets
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: nMembers,i,type

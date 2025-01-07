@@ -23,21 +23,9 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersParticleSurfaceFlux
-  MODULE PROCEDURE DefineParametersParticleSurfaceFlux
-END INTERFACE
-
-INTERFACE InitializeParticleSurfaceflux
-  MODULE PROCEDURE InitializeParticleSurfaceflux
-END INTERFACE
-
-INTERFACE ParticleSurfaceflux
-  MODULE PROCEDURE ParticleSurfaceflux
-END INTERFACE
-
-PUBLIC :: DefineParametersParticleSurfaceFlux
-PUBLIC :: InitializeParticleSurfaceflux
-PUBLIC :: ParticleSurfaceflux
+PUBLIC:: DefineParametersParticleSurfaceFlux
+PUBLIC:: InitializeParticleSurfaceflux
+PUBLIC:: ParticleSurfaceflux
 !===================================================================================================================================
 
 CONTAINS

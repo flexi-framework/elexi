@@ -23,18 +23,6 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 #if USE_MPI
-INTERFACE DefineParametersMPIShared
-  MODULE PROCEDURE DefineParametersMPIShared
-END INTERFACE
-
-INTERFACE InitMPIShared
-  MODULE PROCEDURE InitMPIShared
-END INTERFACE
-
-INTERFACE FinalizeMPIShared
-  MODULE PROCEDURE FinalizeMPIShared
-END INTERFACE
-
 #if DEBUG_MEMORY
 INTERFACE Allocate_Shared_DEBUG
 #else
@@ -54,29 +42,17 @@ INTERFACE Allocate_Shared
   MODULE PROCEDURE Allocate_Shared_Real_6
 END INTERFACE
 
-!INTERFACE UpdateDGShared
-!  MODULE PROCEDURE UpdateDGShared
-!END INTERFACE
-
-INTERFACE BARRIER_AND_SYNC
-  MODULE PROCEDURE BARRIER_AND_SYNC
-END INTERFACE
-
-INTERFACE MPI_SIZE
-  MODULE PROCEDURE MPI_SIZE
-END INTERFACE
-
-PUBLIC :: DefineParametersMPIShared
-PUBLIC :: InitMPIShared
-PUBLIC :: FinalizeMPIShared
+PUBLIC:: DefineParametersMPIShared
+PUBLIC:: InitMPIShared
+PUBLIC:: FinalizeMPIShared
 #if DEBUG_MEMORY
-PUBLIC::Allocate_Shared_DEBUG
+PUBLIC:: Allocate_Shared_DEBUG
 #else
-PUBLIC::Allocate_Shared
+PUBLIC:: Allocate_Shared
 #endif /*DEBUG_MEMORY*/
-!PUBLIC :: UpdateDGShared
-PUBLIC :: BARRIER_AND_SYNC
-PUBLIC :: MPI_SIZE
+! PUBLIC:: UpdateDGShared
+PUBLIC:: BARRIER_AND_SYNC
+PUBLIC:: MPI_SIZE
 !==================================================================================================================================
 
 CONTAINS
@@ -120,8 +96,8 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: sharedGroup = MPI_GROUP_NULL
-INTEGER                         :: worldGroup  = MPI_GROUP_NULL
+INTEGER                         :: sharedGroup
+INTEGER                         :: worldGroup
 INTEGER                         :: i
 INTEGER                         :: color
 !==================================================================================================================================
@@ -189,6 +165,8 @@ DO i=0,nProcessors-1
 END DO
 
 ! Get handles for each group
+sharedGroup = MPI_GROUP_NULL
+worldGroup  = MPI_GROUP_NULL
 CALL MPI_COMM_GROUP(MPI_COMM_FLEXI , worldGroup,IERROR)
 CALL MPI_COMM_GROUP(MPI_COMM_SHARED,sharedGroup,IERROR)
 
@@ -1213,15 +1191,15 @@ USE MOD_Memory                       ,ONLY: ProcessMemUsage
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER(KIND=8),INTENT(IN) :: nVal
-INTEGER,INTENT(IN)         :: VarSize
+INTEGER(KIND=DP),INTENT(IN)    :: nVal
+INTEGER,INTENT(IN)             :: VarSize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER(KIND=MPI_ADDRESS_KIND) :: MPI_SIZE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                      :: memory(3)
-INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+INTEGER(KIND=DP),PARAMETER                :: kByte = 1024
 !===================================================================================================================================
 
 IF (INT(nVal*INT(VarSize,KIND=8),KIND=8).LT.INT(HUGE(INT(1,KIND=MPI_ADDRESS_KIND)),KIND=8)) THEN

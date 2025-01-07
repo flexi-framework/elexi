@@ -23,19 +23,10 @@ MODULE MOD_RPSet
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE DefineParametersRPSet
-  MODULE PROCEDURE DefineParametersRPSet
-END INTERFACE
 
-INTERFACE InitRPSet
-  MODULE PROCEDURE InitRPSet
-END INTERFACE
-
-INTERFACE CheckRecordPoints
-  MODULE PROCEDURE CheckRecordPoints
-END INTERFACE
-
-PUBLIC :: DefineParametersRPSet,InitRPSet,CheckRecordPoints
+PUBLIC:: DefineParametersRPSet
+PUBLIC:: InitRPSet
+PUBLIC:: CheckRecordPoints
 !===================================================================================================================================
 
 CONTAINS

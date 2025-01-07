@@ -26,11 +26,7 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE ParticleRestart
-  MODULE PROCEDURE ParticleRestart
-END INTERFACE
-
-PUBLIC :: ParticleRestart
+PUBLIC:: ParticleRestart
 !==================================================================================================================================
 
 CONTAINS

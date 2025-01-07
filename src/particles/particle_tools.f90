@@ -23,41 +23,13 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE UpdateNextFreePosition
-  MODULE PROCEDURE UpdateNextFreePosition
-END INTERFACE
-
-INTERFACE GetNextFreePosition
-  MODULE PROCEDURE GetNextFreePosition
-END INTERFACE
-
-INTERFACE DiceUnitVector
-  MODULE PROCEDURE DiceUnitVector
-END INTERFACE
-
-! INTERFACE StoreLostParticleProperties
-!   MODULE PROCEDURE StoreLostParticleProperties
-! END INTERFACE
-
-INTERFACE GetOffsetAndGlobalNumberOfParts
-  MODULE PROCEDURE GetOffsetAndGlobalNumberOfParts
-END INTERFACE
-
-INTERFACE IncreaseMaxParticleNumber
-  MODULE PROCEDURE IncreaseMaxParticleNumber
-END INTERFACE
-
-INTERFACE ReduceMaxParticleNumber
-  MODULE PROCEDURE ReduceMaxParticleNumber
-END INTERFACE
-
-PUBLIC :: UpdateNextFreePosition
-PUBLIC :: GetNextFreePosition
-PUBLIC :: DiceUnitVector
-! PUBLIC :: StoreLostParticleProperties
-PUBLIC :: GetOffsetAndGlobalNumberOfParts
-PUBLIC :: IncreaseMaxParticleNumber
-PUBLIC :: ReduceMaxParticleNumber
+PUBLIC:: UpdateNextFreePosition
+PUBLIC:: GetNextFreePosition
+PUBLIC:: DiceUnitVector
+! PUBLIC:: StoreLostParticleProperties
+PUBLIC:: GetOffsetAndGlobalNumberOfParts
+PUBLIC:: IncreaseMaxParticleNumber
+PUBLIC:: ReduceMaxParticleNumber
 !===================================================================================================================================
 
 CONTAINS
@@ -386,8 +358,8 @@ INTEGER(KIND=IK),INTENT(OUT) :: globnPart(6)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
-INTEGER(KIND=8)              :: globnPart8                         ! always integer KIND=8
-INTEGER(KIND=8)              :: locnPart8,locnPart8Recv            ! always integer KIND=8
+INTEGER(KIND=DP)             :: globnPart8                         ! always integer KIND=DP
+INTEGER(KIND=DP)             :: locnPart8,locnPart8Recv            ! always integer KIND=DP
 INTEGER(KIND=IK)             :: SimNumSpecMin,SimNumSpecMax
 #endif
 !===================================================================================================================================

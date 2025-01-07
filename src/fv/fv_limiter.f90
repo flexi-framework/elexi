@@ -31,28 +31,25 @@ INTEGER,PARAMETER :: FV_LIMITERTYPE_VANALBADA = 3
 INTEGER,PARAMETER :: FV_LIMITERTYPE_GMINMOD   = 4
 INTEGER,PARAMETER :: FV_LIMITERTYPE_OSPRE     = 5
 INTEGER,PARAMETER :: FV_LIMITERTYPE_CENTRAL   = 9
-
-INTERFACE DefineParametersFV_Limiter
-  MODULE PROCEDURE DefineParametersFV_Limiter
-END INTERFACE
-
-INTERFACE InitFV_Limiter
-  MODULE PROCEDURE InitFV_Limiter
-END INTERFACE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 ABSTRACT INTERFACE
   PPURE SUBROUTINE LimiterInt(nVar, sL, sR, s)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     INTEGER,INTENT(IN) :: nVar
     REAL,INTENT(IN)    :: sL(nVar),sR(nVar)
     REAL,INTENT(OUT)   :: s(nVar)
-  END SUBROUTINE
+  END SUBROUTINE LimiterInt
 END INTERFACE
 
 PROCEDURE(LimiterInt),POINTER :: FV_Limiter !< limiting function (see: fv_limiter.f90)
 
-PUBLIC::DefineParametersFV_Limiter
-PUBLIC::InitFV_Limiter
-PUBLIC::FV_Limiter
+PUBLIC:: DefineParametersFV_Limiter
+PUBLIC:: InitFV_Limiter
+PUBLIC:: FV_Limiter
 !==================================================================================================================================
 
 #endif /* FV_RECONSTRUCT */
@@ -83,6 +80,7 @@ CALL addStrListEntry('FV_LimiterType','central',  FV_LIMITERTYPE_CENTRAL)
 CALL prms%CreateRealOption('swebyb', "beta parameter for Sweby limiter")
 END SUBROUTINE DefineParametersFV_Limiter
 
+
 !==================================================================================================================================
 !> Initialize pointer to chosen limiter type and readin of required parameter
 !==================================================================================================================================
@@ -90,6 +88,7 @@ SUBROUTINE InitFV_Limiter()
 USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_FV_Vars     ,ONLY: LimiterType,FV_sweby_beta
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -124,11 +123,13 @@ CASE DEFAULT
 END SELECT
 END SUBROUTINE InitFV_Limiter
 
+
 !==================================================================================================================================
 !> Limiter sets slope to zero.
 !==================================================================================================================================
 PPURE SUBROUTINE NullLimiter(nVar, sL, sR, s)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -145,11 +146,13 @@ NO_OP(sL)
 NO_OP(sR)
 END SUBROUTINE NullLimiter
 
+
 !==================================================================================================================================
 !> MinMod slope limiter.
 !==================================================================================================================================
 PPURE SUBROUTINE MinMod(nVar, sL, sR, s)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -168,12 +171,14 @@ s = MERGE(s,0., sL*sR .GT. 0.)
 !end if
 END SUBROUTINE MinMod
 
+
 !==================================================================================================================================
 !> Sweby slope limiter.
 !==================================================================================================================================
 PPURE SUBROUTINE Sweby(nVar, sL, sR, s)
 ! MODULES
 USE MOD_FV_Vars ,ONLY: FV_sweby_beta
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -190,11 +195,13 @@ CALL MinMod(nVar,sL,sR*FV_sweby_beta,sb)
 s = SIGN(MAX(ABS(sa),ABS(sb)),sL)
 END SUBROUTINE Sweby
 
+
 !==================================================================================================================================
 !> van Albada slope limiter.
 !==================================================================================================================================
 PPURE SUBROUTINE VanAlbada(nVar, sL, sR, s)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -210,11 +217,13 @@ s = (sL*sR*(sL+sR))/MAX(sL**2+sR**2,1e-13)
 s = MERGE(s,0., sL*sR .GT. 0.)
 END SUBROUTINE VanAlbada
 
+
 !==================================================================================================================================
 !> GMinmod slope limiter.
 !==================================================================================================================================
 PURE SUBROUTINE GMinMod(nVar, sL, sR,s)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -233,11 +242,13 @@ REAL :: s1(PP_nVarPrim),s2(PP_nVarPrim)
              s2*max(0.0d0, min(beta*sL*s2, sR*s2)))
 END SUBROUTINE GMinMod
 
+
 !==================================================================================================================================
 !> OSPRE slope limiter.
 !==================================================================================================================================
 PURE SUBROUTINE Ospre(nVar, sL, sR,s)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -253,11 +264,13 @@ REAL :: d(PP_nVarPrim)
   s = (d/(d**2 + 1.0d-28))*1.5d0*sL*sR*(sL + sR)
 END SUBROUTINE Ospre
 
+
 !==================================================================================================================================
 !> central limiter s = (sL + sR)/2  (ATTENTION: unstable and not TVD)
 !==================================================================================================================================
 PPURE SUBROUTINE CentralLimiter(nVar, sL, sR, s)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

@@ -26,42 +26,17 @@ MODULE MOD_FV_Blending
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 #if FV_ENABLED == 2
-INTERFACE FV_ExtendAlpha
-  MODULE PROCEDURE FV_ExtendAlpha
-END INTERFACE
-
-INTERFACE FV_ComputeExtendedAlpha
-  MODULE PROCEDURE FV_ComputeExtendedAlpha
-END INTERFACE
-
-INTERFACE FV_ProlongFValphaToFace
-  MODULE PROCEDURE FV_ProlongFValphaToFace
-END INTERFACE
-#endif
-
+PUBLIC:: FV_ExtendAlpha
+#endif /*FV_ENABLED == 2*/
 #if ((FV_ENABLED >= 2) && (PP_NodeType == 1))
-INTERFACE FV_CommAlpha
-  MODULE PROCEDURE FV_CommAlpha
-END INTERFACE
-#endif
-
+PUBLIC:: FV_CommAlpha
+#endif /*FV_ENABLED >= 2 && PP_NodeType == 1*/
 #if FV_ENABLED == 2 || FV_ENABLED == 3
-INTERFACE FV_Info
-  MODULE PROCEDURE FV_Info
-END INTERFACE
-#endif
-
-#if FV_ENABLED == 2
-PUBLIC::FV_ExtendAlpha
-#endif
-#if ((FV_ENABLED >= 2) && (PP_NodeType == 1))
-PUBLIC::FV_CommAlpha
-#endif
-#if FV_ENABLED == 2 || FV_ENABLED == 3
-PUBLIC::FV_Info
-#endif
+PUBLIC:: FV_Info
+#endif /*FV_ENABLED == 2 || FV_ENABLED == 3*/
 !==================================================================================================================================
 
 CONTAINS
@@ -176,6 +151,7 @@ SUBROUTINE FV_ComputeExtendedAlpha(FV_alpha_master,FV_alpha_slave,FV_alpha_curre
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars ,ONLY: SideToElem,nSides,nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -265,7 +241,7 @@ USE MOD_Analyze_Vars ,ONLY: FV_totalAlpha
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
+INTEGER(KIND=DP),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                       :: FV_alpha_range(3)

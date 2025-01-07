@@ -57,22 +57,9 @@ INTEGER,ALLOCATABLE  :: NodeMap(:)
 INTEGER              :: nNodeIDs
 #endif
 
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-INTERFACE ReadMesh
-  MODULE PROCEDURE ReadMesh
-END INTERFACE
-
-INTERFACE BuildPartition
-  MODULE PROCEDURE BuildPartition
-END INTERFACE
-
-INTERFACE ReadIJKSorting
-  MODULE PROCEDURE ReadIJKSorting
-END INTERFACE
-
-PUBLIC::ReadMesh
-PUBLIC::BuildPartition
-PUBLIC::ReadIJKSorting
+PUBLIC:: ReadMesh
+PUBLIC:: BuildPartition
+PUBLIC:: ReadIJKSorting
 !==================================================================================================================================
 
 CONTAINS
@@ -1027,6 +1014,7 @@ ELSE
 END IF
 END FUNCTION ELEMIPROC
 #endif /*USE_MPI*/
+
 
 !===================================================================================================================================
 !> Read arrays nElems_IJK (global number of elements in i,j,k direction) and Elem_IJK (mapping from global element to i,j,k index)

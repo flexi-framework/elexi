@@ -24,16 +24,8 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE PerformTracking
-  MODULE PROCEDURE PerformTracking
-END INTERFACE
-
-INTERFACE ParticleInsideCheck
-  MODULE PROCEDURE ParticleInsideCheck
-END INTERFACE
-
-PUBLIC::PerformTracking
-PUBLIC::ParticleInsideCheck
+PUBLIC:: PerformTracking
+PUBLIC:: ParticleInsideCheck
 !===================================================================================================================================
 
 CONTAINS

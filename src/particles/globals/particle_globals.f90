@@ -34,64 +34,21 @@ INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(18)
 #else
 INTEGER, PARAMETER :: IK = SELECTED_INT_KIND(8)
 #endif
-
-! INTEGER(KIND=IK)    :: nGlobalNbrOfParticles(6) !< 1-3: min,max,total number of simulation particles over all processors
 !=================================================================================================================================
 
-INTERFACE CROSSNORM
-  MODULE PROCEDURE CROSSNORM
-END INTERFACE CROSSNORM
-
-INTERFACE OrthoNormVec
-  MODULE PROCEDURE OrthoNormVec
-END INTERFACE OrthoNormVec
-
-INTERFACE UnitVector
-  MODULE PROCEDURE UnitVector
-END INTERFACE UnitVector
-
-INTERFACE FindLinIndependentVectors
-  MODULE PROCEDURE FindLinIndependentVectors
-END INTERFACE FindLinIndependentVectors
-
-INTERFACE Find2DNormIndependentVectors
-  MODULE PROCEDURE Find2DNormIndependentVectors
-END INTERFACE Find2DNormIndependentVectors
-
-INTERFACE GETFREEUNIT
-  MODULE PROCEDURE GETFREEUNIT
-END INTERFACE GETFREEUNIT
-
-INTERFACE RandNormal
-  MODULE PROCEDURE RandNormal
-END INTERFACE
-
-INTERFACE StringBeginsWith
-  MODULE PROCEDURE StringBeginsWith
-END INTERFACE
-
-INTERFACE ElementOnProc
-  MODULE PROCEDURE ElementOnProc
-END INTERFACE
-
-INTERFACE ElementOnNode
-  MODULE PROCEDURE ElementOnNode
-END INTERFACE
-
-PUBLIC :: CROSSNORM
-PUBLIC :: VECNORM
-PUBLIC :: UnitVector
-PUBLIC :: OrthoNormVec
-PUBLIC :: FindLinIndependentVectors
-PUBLIC :: Find2DNormIndependentVectors
-PUBLIC :: RandNormal
-PUBLIC :: StringBeginsWith
-PUBLIC :: ElementOnProc
-PUBLIC :: ElementOnNode
+PUBLIC:: CROSSNORM
+PUBLIC:: VECNORM
+PUBLIC:: UnitVector
+PUBLIC:: OrthoNormVec
+PUBLIC:: FindLinIndependentVectors
+PUBLIC:: Find2DNormIndependentVectors
+PUBLIC:: RandNormal
+PUBLIC:: StringBeginsWith
+PUBLIC:: ElementOnProc
+PUBLIC:: ElementOnNode
 !===================================================================================================================================
 
 CONTAINS
-
 
 PURE FUNCTION CROSSNORM(v1,v2)
 !===================================================================================================================================
@@ -99,7 +56,6 @@ PURE FUNCTION CROSSNORM(v1,v2)
 ! and normalizes the vector
 !===================================================================================================================================
 ! MODULES
-
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

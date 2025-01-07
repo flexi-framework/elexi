@@ -23,15 +23,7 @@ IMPLICIT NONE
 PRIVATE
 
 #if PARTICLES_COUPLING == 4
-! INTERFACE ComputeHardSphereCollision
-!   MODULE PROCEDURE ComputeHardSphereCollision
-! END INTERFACE
-
-INTERFACE ComputeParticleCollisions
-  MODULE PROCEDURE ComputeParticleCollisions
-END INTERFACE
-
-PUBLIC :: ComputeParticleCollisions
+PUBLIC:: ComputeParticleCollisions
 !===================================================================================================================================
 
 CONTAINS

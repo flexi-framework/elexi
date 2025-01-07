@@ -23,32 +23,12 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitParticleAnalyze
-  MODULE PROCEDURE InitParticleAnalyze
-END INTERFACE
-
-INTERFACE ParticleAnalyze
-  MODULE PROCEDURE ParticleAnalyze
-END INTERFACE
-
-INTERFACE ParticleInformation
-  MODULE PROCEDURE ParticleInformation
-END INTERFACE
-
-INTERFACE FinalizeParticleAnalyze
-  MODULE PROCEDURE FinalizeParticleAnalyze
-END INTERFACE
-
-INTERFACE CalcKineticEnergy
-  MODULE PROCEDURE CalcKineticEnergy
-END INTERFACE
-
-PUBLIC :: InitParticleAnalyze
-PUBLIC :: ParticleAnalyze
-PUBLIC :: ParticleInformation
-PUBLIC :: FinalizeParticleAnalyze
-PUBLIC :: DefineParametersParticleAnalyze
-PUBLIC :: CalcKineticEnergy
+PUBLIC:: InitParticleAnalyze
+PUBLIC:: ParticleAnalyze
+PUBLIC:: ParticleInformation
+PUBLIC:: FinalizeParticleAnalyze
+PUBLIC:: DefineParametersParticleAnalyze
+PUBLIC:: CalcKineticEnergy
 !==================================================================================================================================
 
 CONTAINS

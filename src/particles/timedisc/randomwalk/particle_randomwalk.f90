@@ -28,21 +28,9 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 #if USE_RW
-INTERFACE ParticleInitRandomWalk
-  MODULE PROCEDURE ParticleInitRandomWalk
-END INTERFACE
-
-INTERFACE ParticleRandomWalk
-  MODULE PROCEDURE ParticleRandomWalk
-END INTERFACE
-
-INTERFACE ParticleFinalizeRandomWalk
-  MODULE PROCEDURE ParticleFinalizeRandomWalk
-END INTERFACE
-
-PUBLIC::ParticleInitRandomWalk
-PUBLIC::ParticleRandomWalk
-PUBLIC::ParticleFinalizeRandomWalk
+PUBLIC:: ParticleInitRandomWalk
+PUBLIC:: ParticleRandomWalk
+PUBLIC:: ParticleFinalizeRandomWalk
 !===================================================================================================================================
 
 CONTAINS

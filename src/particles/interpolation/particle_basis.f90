@@ -22,36 +22,12 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE BuildBezierVdm
-   MODULE PROCEDURE BuildBezierVdm
-END INTERFACE
-
-INTERFACE BuildBezierDMat
-   MODULE PROCEDURE BuildBezierDMat
-END INTERFACE
-
-INTERFACE GetInverse
-   MODULE PROCEDURE GetInverse
-END INTERFACE GetInverse
-
-INTERFACE DeCasteljauInterpolation
-   MODULE PROCEDURE DeCasteljauInterpolation
-END INTERFACE DeCasteljauInterpolation
-
-INTERFACE BernSteinPolynomial
-   MODULE PROCEDURE BernSteinPolynomial
-END INTERFACE BernSteinPolynomial
-
-INTERFACE ComputeBernSteinCoeff
-   MODULE PROCEDURE ComputeBernSteinCoeff
-END INTERFACE
-
-PUBLIC :: BuildBezierVdm
-PUBLIC :: BuildBezierDMat
-PUBLIC :: DeCasteljauInterpolation
-PUBLIC :: BernSteinPolynomial
-PUBLIC :: GetInverse
-PUBLIC :: ComputeBernSteinCoeff
+PUBLIC:: BuildBezierVdm
+PUBLIC:: BuildBezierDMat
+PUBLIC:: DeCasteljauInterpolation
+PUBLIC:: BernSteinPolynomial
+PUBLIC:: GetInverse
+PUBLIC:: ComputeBernSteinCoeff
 !==================================================================================================================================
 
 CONTAINS
@@ -369,6 +345,7 @@ FUNCTION CHOOSE(N_in,k)
 ! The binomial coefficient ( n  k ) is often read as "n choose k".
 !===================================================================================================================================
 ! MODULES
+USE MOD_Globals
 USE MOD_PreProc
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -377,7 +354,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: N_in,k
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-INTEGER(KIND=8)            :: CHOOSE
+INTEGER(KIND=DP)   :: CHOOSE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -400,6 +377,7 @@ FUNCTION CHOOSE_large(N_in,k)
 ! The binomial coefficient ( n  k ) is often read as "n choose k".
 !===================================================================================================================================
 ! MODULES
+USE MOD_Globals
 USE MOD_PreProc
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -408,7 +386,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: N_in,k
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL(KIND=8)       :: CHOOSE_large
+REAL(KIND=DP)      :: CHOOSE_large
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -443,10 +421,10 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: N_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-INTEGER(KIND=8)    :: FACTORIAL
+INTEGER(KIND=DP)   :: FACTORIAL
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=8)    :: I
+INTEGER(KIND=DP)   :: I
 !===================================================================================================================================
 IF (N_in.LT.0) &
   CALL Abort(__STAMP__,'FACTORIAL of a negative integer number not allowed! ',999,REAL(N_in))
@@ -480,10 +458,10 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: N_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL(KIND=8)    :: FACTORIAL_REAL
+REAL(KIND=DP)      :: FACTORIAL_REAL
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER         :: I
+INTEGER            :: I
 !===================================================================================================================================
 
 IF (N_in.LT.0) &

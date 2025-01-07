@@ -25,16 +25,8 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 #if USE_MPI
-INTERFACE IdentifyPartExchangeProcs
-  MODULE PROCEDURE IdentifyPartExchangeProcs
-END INTERFACE
-
-INTERFACE FinalizePartExchangeProcs
-  MODULE PROCEDURE FinalizePartExchangeProcs
-END INTERFACE
-
-PUBLIC :: IdentifyPartExchangeProcs
-PUBLIC :: FinalizePartExchangeProcs
+PUBLIC:: IdentifyPartExchangeProcs
+PUBLIC:: FinalizePartExchangeProcs
 !===================================================================================================================================
 
 CONTAINS
@@ -384,10 +376,10 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
   HaloProc = ElemInfo_Shared(ELEM_RANK,ElemID)
 
   ! Skip elements on same rank
-  IF (HaloProc.EQ.myRank) CYCLE
+  IF (HaloProc.EQ.myRank) CYCLE ElemLoop
 
   ! Skip tracing mortar elements
-  IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).EQ.4) CYCLE
+  IF (ElemInfo_Shared(ELEM_HALOFLAG,ElemID).EQ.4) CYCLE ElemLoop
 
   BoundsOfElemCenter(1:3) = (/SUM(      BoundsOfElem_Shared(1:2,1,ElemID)), &
                               SUM(      BoundsOfElem_Shared(1:2,2,ElemID)), &
@@ -505,7 +497,7 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
       IF (.NOT.ProcInRange) THEN
         ! Proc definitely not in range
         GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = -2
-        CYCLE
+        CYCLE ElemLoop
       ELSE
         ! Proc possible in range
         GlobalProcToExchangeProc(EXCHANGE_PROC_TYPE,HaloProc) = 0
@@ -513,7 +505,7 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
 
     ! Proc definitely not in range or already flagged
     CASE(-2,1,2)
-      CYCLE
+      CYCLE ElemLoop
   END SELECT
 
   DO iSide = 1, nExchangeSides
@@ -683,7 +675,7 @@ DO iProc = 0,nProcessors_Global-1
   ! Use a named loop so the entire element can be cycled
 ExchangeLoop: DO iElem = offsetElemMPI(iProc)+1,offsetElemMPI(iProc+1)
     ! Ignore elements outside nComputeNodeTotalElems
-    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).LT.0) CYCLE
+    IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).LT.0) CYCLE ExchangeLoop
 
     DO iLocSide = 1,6
       SideID   = GetGlobalNonUniqueSideID(iElem,iLocSide)

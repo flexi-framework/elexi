@@ -23,30 +23,13 @@ MODULE MOD_FV_Metrics
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitFV_Metrics
-  MODULE PROCEDURE InitFV_Metrics
-END INTERFACE
-
-INTERFACE FV_CalcMetrics
-  MODULE PROCEDURE FV_CalcMetrics
-END INTERFACE
-
-INTERFACE FinalizeFV_Metrics
-  MODULE PROCEDURE FinalizeFV_Metrics
-END INTERFACE
-
+PUBLIC:: InitFV_Metrics
+PUBLIC:: FV_CalcMetrics
+PUBLIC:: FinalizeFV_Metrics
 #if USE_PARTICLES && FV_RECONSTRUCT
-INTERFACE Integrate_Path1D
-  MODULE PROCEDURE Integrate_Path1D
-END INTERFACE
-#endif
-
-PUBLIC::InitFV_Metrics
-PUBLIC::FV_CalcMetrics
-PUBLIC::FinalizeFV_Metrics
-#if USE_PARTICLES && FV_RECONSTRUCT
-PUBLIC::Integrate_Path1D
+PUBLIC:: Integrate_Path1D
 #endif
 !==================================================================================================================================
 
@@ -61,6 +44,7 @@ SUBROUTINE InitFV_Metrics()
 USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,lastMPISide_MINE
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -233,6 +217,7 @@ USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE
 #endif /*USE_MPI*/
 USE MOD_2D
 USE MOD_FillMortar1        ,ONLY: U_Mortar1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -1031,6 +1016,8 @@ SUBROUTINE Integrate_Path(Nloc2,Nloc,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Length)
 ! MODULES
 USE MOD_Basis       ,ONLY: InitializeVandermonde
 USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc2                                     !< degree of path polynomial
@@ -1113,6 +1100,8 @@ SUBROUTINE Integrate_Path_BC_eta(Nloc2,Nloc,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Le
 ! MODULES
 USE MOD_Basis       ,ONLY: InitializeVandermonde
 USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc2                                   ! < degree of path polynomial
@@ -1146,10 +1135,16 @@ END DO; END DO! p,q=0,Nloc
 FV_Length=FV_Length*0.5*(xN-x0) ! *0.5 since reference element has width=2
 END SUBROUTINE Integrate_Path_BC_eta
 
+
+!==================================================================================================================================
+!> Computes the distance between two points along a path given in 1D reference coordinates
+!==================================================================================================================================
 SUBROUTINE Integrate_Path_BC_zeta(Nloc2,Nloc,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Length)
 ! MODULES
 USE MOD_Basis       ,ONLY: InitializeVandermonde
 USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc2                                   ! < degree of path polynomial
@@ -1185,6 +1180,7 @@ END SUBROUTINE Integrate_Path_BC_zeta
 #endif /*VOLINT_VISC*/
 #endif /*FV_RECONSTRUCT*/
 
+
 !==================================================================================================================================
 !> Finalizes global variables of the module.
 !> Deallocate allocatable arrays, nullify pointers, set *InitIsDone = .FALSE.
@@ -1192,6 +1188,7 @@ END SUBROUTINE Integrate_Path_BC_zeta
 SUBROUTINE FinalizeFV_Metrics()
 ! MODULES
 USE MOD_FV_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 #if FV_RECONSTRUCT
@@ -1268,7 +1265,5 @@ SDEALLOCATE(FV_Metrics_hTilde_sJ_zeta)
 SDEALLOCATE(FV_Elems_master)
 END SUBROUTINE FinalizeFV_Metrics
 
-
 END MODULE MOD_FV_Metrics
 #endif /* FV_ENABLED */
-

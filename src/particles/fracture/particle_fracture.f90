@@ -28,16 +28,8 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE ParticleInsertingSingle
-  MODULE PROCEDURE ParticleInsertingSingle
-END INTERFACE
-
-INTERFACE DiffuseReflectionFracture
-  MODULE PROCEDURE DiffuseReflectionFracture
-END INTERFACE
-
-PUBLIC :: ParticleInsertingSingle
-PUBLIC :: DiffuseReflectionFracture
+PUBLIC:: ParticleInsertingSingle
+PUBLIC:: DiffuseReflectionFracture
 !===================================================================================================================================
 
 CONTAINS

@@ -23,73 +23,19 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitParticleSurfaces
-  MODULE PROCEDURE InitParticleSurfaces
-END INTERFACE
-
-INTERFACE FinalizeParticleSurfaces
-  MODULE PROCEDURE FinalizeParticleSurfaces
-END INTERFACE
-
-INTERFACE CalcNormAndTangTriangle
-  MODULE PROCEDURE CalcNormAndTangTriangle
-END INTERFACE
-
-INTERFACE CalcNormAndTangBilinear
-  MODULE PROCEDURE CalcNormAndTangBilinear
-END INTERFACE
-
-INTERFACE CalcNormAndTangBezier
-  MODULE PROCEDURE CalcNormAndTangBezier
-END INTERFACE
-
-INTERFACE GetSideSlabNormalsAndIntervals
-  MODULE PROCEDURE GetSideSlabNormalsAndIntervals
-END INTERFACE
-
-INTERFACE GetSideBoundingBox
-  MODULE PROCEDURE GetSideBoundingBox
-END INTERFACE
-
-INTERFACE GetBezierSampledAreas
-  MODULE PROCEDURE GetBezierSampledAreas
-END INTERFACE
-
-INTERFACE RotateMasterToSlave
-  MODULE PROCEDURE RotateMasterToSlave
-END INTERFACE
-
-INTERFACE ElevateBezierPolynomial
-  MODULE PROCEDURE ElevateBezierPolynomial
-END INTERFACE
-
-INTERFACE EvaluateBezierPolynomialAndGradient
-  MODULE PROCEDURE EvaluateBezierPolynomialAndGradient
-END INTERFACE
-
-INTERFACE GetBezierControlPoints3DElevated
-  MODULE PROCEDURE GetBezierControlPoints3DElevated
-END INTERFACE
-
+PUBLIC:: InitParticleSurfaces
+PUBLIC:: FinalizeParticleSurfaces
+PUBLIC:: GetBezierControlPoints3DElevated
+PUBLIC:: GetSideSlabNormalsAndIntervals
+PUBLIC:: GetSideBoundingBox
+PUBLIC:: GetBezierSampledAreas
+PUBLIC:: EvaluateBezierPolynomialAndGradient
+PUBLIC:: CalcNormAndTangBilinear
+PUBLIC:: CalcNormAndTangBezier
+PUBLIC:: CalcNormAndTangTriangle
+PUBLIC:: RotateMasterToSlave
 #if CODE_ANALYZE
-INTERFACE OutputBezierControlPoints
-  MODULE PROCEDURE OutputBezierControlPoints
-END INTERFACE
-#endif /*CODE_ANALYZE*/
-
-PUBLIC :: InitParticleSurfaces
-PUBLIC :: FinalizeParticleSurfaces
-PUBLIC :: GetBezierControlPoints3DElevated
-PUBLIC :: GetSideSlabNormalsAndIntervals
-PUBLIC :: GetSideBoundingBox
-PUBLIC :: GetBezierSampledAreas
-PUBLIC :: EvaluateBezierPolynomialAndGradient
-PUBLIC :: CalcNormAndTangBilinear
-PUBLIC :: CalcNormAndTangBezier
-PUBLIC :: CalcNormAndTangTriangle
-PUBLIC :: RotateMasterToSlave
-#if CODE_ANALYZE
-PUBLIC :: OutputBezierControlPoints
+PUBLIC:: OutputBezierControlPoints
 #endif /*CODE_ANALYZE*/
 !===================================================================================================================================
 

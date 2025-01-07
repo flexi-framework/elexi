@@ -23,32 +23,11 @@ IMPLICIT NONE
 PRIVATE
 
 #if USE_MPI
-INTERFACE InitEmissionComm
-  MODULE PROCEDURE InitEmissionComm
-END INTERFACE
-
-!INTERFACE InitEmissionParticlesToProcs
-!  MODULE PROCEDURE InitEmissionParticlesToProcs
-!END INTERFACE
-
-INTERFACE SendEmissionParticlesToProcs
-  MODULE PROCEDURE SendEmissionParticlesToProcs
-END INTERFACE
-
-!INTERFACE FinalizeEmissionParticlesToProcs
-!  MODULE PROCEDURE FinalizeEmissionParticlesToProcs
-!END INTERFACE
-
-INTERFACE FinalizeEmissionComm
-  MODULE PROCEDURE FinalizeEmissionComm
-END INTERFACE
-
-
-!PUBLIC :: InitEmissionParticlesToProcs
-PUBLIC :: InitEmissionComm
-PUBLIC :: SendEmissionParticlesToProcs
-!PUBLIC :: FinalizeEmissionParticlesToProcs
-PUBLIC :: FinalizeEmissionComm
+! PUBLIC:: InitEmissionParticlesToProcs
+PUBLIC:: InitEmissionComm
+PUBLIC:: SendEmissionParticlesToProcs
+! PUBLIC:: FinalizeEmissionParticlesToProcs
+PUBLIC:: FinalizeEmissionComm
 !===================================================================================================================================
 CONTAINS
 

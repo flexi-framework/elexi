@@ -25,17 +25,8 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
 #if PARTICLES_COUPLING >= 2
-
-INTERFACE DefineParametersDepositionMethod
-  MODULE PROCEDURE DefineParametersDepositionMethod
-END INTERFACE
-
-INTERFACE InitDepositionMethod
-  MODULE PROCEDURE InitDepositionMethod
-END INTERFACE
-
-PUBLIC :: DefineParametersDepositionMethod
-PUBLIC :: InitDepositionMethod
+PUBLIC:: DefineParametersDepositionMethod
+PUBLIC:: InitDepositionMethod
 !==================================================================================================================================
 
 CONTAINS

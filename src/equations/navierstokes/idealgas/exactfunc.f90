@@ -23,30 +23,11 @@ MODULE MOD_Exactfunc
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersExactFunc
-  MODULE PROCEDURE DefineParametersExactFunc
-END INTERFACE
-
-INTERFACE InitExactFunc
-  MODULE PROCEDURE InitExactFunc
-END INTERFACE
-
-INTERFACE ExactFunc
-  MODULE PROCEDURE ExactFunc
-END INTERFACE
-
-INTERFACE CalcSource
-  MODULE PROCEDURE CalcSource
-END INTERFACE
-
-
-PUBLIC::DefineParametersExactFunc
-PUBLIC::InitExactFunc
-PUBLIC::ExactFunc
-PUBLIC::CalcSource
+PUBLIC:: DefineParametersExactFunc
+PUBLIC:: InitExactFunc
+PUBLIC:: ExactFunc
+PUBLIC:: CalcSource
 !==================================================================================================================================
 
 CONTAINS
@@ -126,6 +107,7 @@ CALL prms%CreateRealArrayOption(    'x_in',                    "Blasius boundary
 
 END SUBROUTINE DefineParametersExactFunc
 
+
 !==================================================================================================================================
 !> Get some parameters needed for exact function
 !==================================================================================================================================
@@ -137,7 +119,7 @@ USE MOD_ReadInTools
 USE MOD_ExactFunc_Vars
 USE MOD_Equation_Vars      ,ONLY: IniExactFunc,IniRefState
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -226,6 +208,7 @@ LBWRITE(UNIT_stdOut,'(A)')' INIT EXACT FUNCTION DONE!'
 LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitExactFunc
 
+
 !==================================================================================================================================
 !> Specifies all the initial conditions. The state in conservative variables is returned.
 !> t is the actual time
@@ -250,6 +233,7 @@ USE MOD_EOS            ,ONLY: PrimToCons,ConsToPrim
 USE MOD_Eos_Vars       ,ONLY: mu0
 USE MOD_Exactfunc_Vars ,ONLY: delta99_in,x_in
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -959,8 +943,8 @@ IF(fullBoundaryOrder)THEN ! add resu_t, resu_tt if time dependant
   END SELECT
 END IF
 
-
 END SUBROUTINE ExactFunc
+
 
 !==================================================================================================================================
 !> Compute source terms for some specific testcases and adds it to DG time derivative
@@ -981,6 +965,7 @@ USE MOD_EOS_Vars         ,ONLY: mu0,Pr
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
 USE MOD_FV_Vars          ,ONLY: FV_Vdm,FV_Elems
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

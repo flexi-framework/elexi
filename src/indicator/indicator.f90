@@ -36,45 +36,12 @@ PRIVATE
 
 LOGICAL :: doIndicatorBaseFlow = .FALSE. !< switch whether to compute indicator
 
-INTERFACE DefineParametersIndicator
-  MODULE PROCEDURE DefineParametersIndicator
-END INTERFACE
-
-INTERFACE InitIndicator
-  MODULE PROCEDURE InitIndicator
-END INTERFACE
-
-INTERFACE CalcIndicator
-  MODULE PROCEDURE CalcIndicator
-END INTERFACE
-
-INTERFACE IndPersson
-  MODULE PROCEDURE IndPersson
-END INTERFACE
-
-#if EQNSYSNR == 2 /* NAVIER-STOKES */
-#if PARABOLIC
-INTERFACE DucrosIndicator
-  MODULE PROCEDURE DucrosIndicator
-END INTERFACE
-#endif /* PARABOLIC */
-
-INTERFACE JamesonIndicator
-  MODULE PROCEDURE JamesonIndicator
-END INTERFACE
-#endif /* EQNSYSNR == 2 */
-
-
-INTERFACE FinalizeIndicator
-  MODULE PROCEDURE FinalizeIndicator
-END INTERFACE
-
-PUBLIC::doIndicatorBaseFlow
-PUBLIC::DefineParametersIndicator
-PUBLIC::InitIndicator
-PUBLIC::CalcIndicator
-PUBLIC::IndPersson
-PUBLIC::FinalizeIndicator
+PUBLIC:: doIndicatorBaseFlow
+PUBLIC:: DefineParametersIndicator
+PUBLIC:: InitIndicator
+PUBLIC:: CalcIndicator
+PUBLIC:: IndPersson
+PUBLIC:: FinalizeIndicator
 !==================================================================================================================================
 
 CONTAINS
@@ -85,6 +52,7 @@ CONTAINS
 SUBROUTINE DefineParametersIndicator()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Indicator")
@@ -140,7 +108,9 @@ IMPLICIT NONE
 INTEGER                                  :: nModes_In
 INTEGER                                  :: iBC,nFVBoundaryType
 !==================================================================================================================================
-IF(IndicatorInitIsDone) CALL CollectiveStop(__STAMP__,"InitIndicator not ready to be called or already called.")
+IF(IndicatorInitIsDone) &
+  CALL CollectiveStop(__STAMP__, "InitIndicator not ready to be called or already called.")
+
 LBWRITE(UNIT_stdOut,'(132("-"))')
 LBWRITE(UNIT_stdOut,'(A)') ' INIT INDICATOR...'
 
@@ -422,6 +392,7 @@ USE MOD_Interpolation_Vars, ONLY:sVdm_Leg
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 USE MOD_EOS_Vars
 #endif /* NAVIER-STOKES */
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -749,11 +720,13 @@ END FUNCTION JamesonIndicator
 !> Suggested by Persson et al.
 !==================================================================================================================================
 FUNCTION IndPerssonBlend(U) RESULT(IndValue)
+! MODULES
 USE MOD_PreProc
 USE MOD_Indicator_Vars,     ONLY: nModes
 USE MOD_Interpolation_Vars, ONLY: sVdm_Leg
 USE MOD_EOS_Vars
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

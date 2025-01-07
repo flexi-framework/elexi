@@ -24,52 +24,16 @@ PRIVATE
 ! Variables
 INTEGER,ALLOCATABLE       :: SideInfo_Shared_tmp(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! Interfaces
-INTERFACE ReadMeshBasics
-  MODULE PROCEDURE ReadMeshBasics
-END INTERFACE
 
-INTERFACE ReadMeshElems
-  MODULE PROCEDURE ReadMeshElems
-END INTERFACE
-
-INTERFACE ReadMeshSides
-  MODULE PROCEDURE ReadMeshSides
-END INTERFACE
-
-INTERFACE ReadMeshSideNeighbors
-  MODULE PROCEDURE ReadMeshSideNeighbors
-END INTERFACE
-
-INTERFACE ReadMeshNodes
-  MODULE PROCEDURE ReadMeshNodes
-END INTERFACE
-
-INTERFACE ReadMeshTrees
-  MODULE PROCEDURE ReadMeshTrees
-END INTERFACE
-
-INTERFACE StartCommunicateMeshReadin
-  MODULE PROCEDURE StartCommunicateMeshReadin
-END INTERFACE
-
-INTERFACE FinishCommunicateMeshReadin
-  MODULE PROCEDURE FinishCommunicateMeshReadin
-END INTERFACE
-
-INTERFACE FinalizeMeshShared
-  MODULE PROCEDURE FinalizeMeshShared
-END INTERFACE
-
-PUBLIC :: ReadMeshBasics
-PUBLIC :: ReadMeshElems
-PUBLIC :: ReadMeshSides
-PUBLIC :: ReadMeshSideNeighbors
-PUBLIC :: ReadMeshNodes
-PUBLIC :: ReadMeshTrees
-PUBLIC :: StartCommunicateMeshReadin
-PUBLIC :: FinishCommunicateMeshReadin
-PUBLIC :: FinalizeMeshShared
+PUBLIC:: ReadMeshBasics
+PUBLIC:: ReadMeshElems
+PUBLIC:: ReadMeshSides
+PUBLIC:: ReadMeshSideNeighbors
+PUBLIC:: ReadMeshNodes
+PUBLIC:: ReadMeshTrees
+PUBLIC:: StartCommunicateMeshReadin
+PUBLIC:: FinishCommunicateMeshReadin
+PUBLIC:: FinalizeMeshShared
 !===================================================================================================================================
 
 CONTAINS

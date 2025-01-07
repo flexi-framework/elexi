@@ -22,11 +22,8 @@ MODULE MOD_Particle_Readin
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE ParticleReadin
-  MODULE PROCEDURE ParticleReadin
-END INTERFACE
 
-PUBLIC :: ParticleReadin
+PUBLIC:: ParticleReadin
 !===================================================================================================================================
 
 CONTAINS

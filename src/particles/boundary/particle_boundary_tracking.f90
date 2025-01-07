@@ -23,26 +23,10 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersParticleBoundaryTracking
-  MODULE PROCEDURE DefineParametersParticleBoundaryTracking
-END INTERFACE
-
-INTERFACE InitParticleBoundaryTracking
-  MODULE PROCEDURE InitParticleBoundaryTracking
-END INTERFACE
-
-INTERFACE StoreBoundaryParticleProperties
-  MODULE PROCEDURE StoreBoundaryParticleProperties
-END INTERFACE
-
-INTERFACE FinalizeParticleBoundaryTracking
-  MODULE PROCEDURE FinalizeParticleBoundaryTracking
-END INTERFACE
-
-PUBLIC :: DefineParametersParticleBoundaryTracking
-PUBLIC :: InitParticleBoundaryTracking
-PUBLIC :: StoreBoundaryParticleProperties
-PUBLIC :: FinalizeParticleBoundaryTracking
+PUBLIC:: DefineParametersParticleBoundaryTracking
+PUBLIC:: InitParticleBoundaryTracking
+PUBLIC:: StoreBoundaryParticleProperties
+PUBLIC:: FinalizeParticleBoundaryTracking
 !==================================================================================================================================
 
 CONTAINS

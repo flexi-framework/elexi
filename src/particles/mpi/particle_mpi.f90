@@ -24,46 +24,14 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 #if USE_MPI
-INTERFACE DefineParticleMPI
-  MODULE PROCEDURE DefineParticleMPI
-END INTERFACE
-
-INTERFACE InitParticleMPI
-  MODULE PROCEDURE InitParticleMPI
-END INTERFACE
-
-INTERFACE InitParticleCommSize
-  MODULE PROCEDURE InitParticleCommSize
-END INTERFACE
-
-INTERFACE IRecvNbOfParticles
-  MODULE PROCEDURE IRecvNbOfParticles
-END INTERFACE
-
-INTERFACE SendNbOfParticles
-  MODULE PROCEDURE SendNbOfParticles
-END INTERFACE
-
-INTERFACE FinalizeParticleMPI
-  MODULE PROCEDURE FinalizeParticleMPI
-END INTERFACE
-
-INTERFACE MPIParticleSend
-  MODULE PROCEDURE MPIParticleSend
-END INTERFACE
-
-INTERFACE MPIParticleRecv
-  MODULE PROCEDURE MPIParticleRecv
-END INTERFACE
-
-PUBLIC :: DefineParticleMPI
-PUBLIC :: InitParticleMPI
-PUBLIC :: InitParticleCommSize
-PUBLIC :: SendNbOfParticles
-PUBLIC :: IRecvNbOfParticles
-PUBLIC :: MPIParticleSend
-PUBLIC :: MPIParticleRecv
-PUBLIC :: FinalizeParticleMPI
+PUBLIC:: DefineParticleMPI
+PUBLIC:: InitParticleMPI
+PUBLIC:: InitParticleCommSize
+PUBLIC:: SendNbOfParticles
+PUBLIC:: IRecvNbOfParticles
+PUBLIC:: MPIParticleSend
+PUBLIC:: MPIParticleRecv
+PUBLIC:: FinalizeParticleMPI
 #endif /*USE_MPI*/
 !===================================================================================================================================
 

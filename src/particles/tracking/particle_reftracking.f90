@@ -24,11 +24,7 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE ParticleRefTracking
-  MODULE PROCEDURE ParticleRefTracking
-END INTERFACE
-
-PUBLIC::ParticleRefTracking
+PUBLIC:: ParticleRefTracking
 !===================================================================================================================================
 
 CONTAINS

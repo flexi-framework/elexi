@@ -15,38 +15,20 @@
 #include "eos.h"
 #include "particle.h"
 
-MODULE MOD_Particle_Pos_and_Velo
 !===================================================================================================================================
 ! module for particle emission
 !===================================================================================================================================
+MODULE MOD_Particle_Pos_and_Velo
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE SetParticlePosition
-  MODULE PROCEDURE SetParticlePosition
-END INTERFACE
-
-INTERFACE SetParticleVelocity
-  MODULE PROCEDURE SetParticleVelocity
-END INTERFACE
-
+PUBLIC:: SetParticleVelocity
+PUBLIC:: SetParticlePosition
 #if USE_PARTTEMP
-INTERFACE SetParticleTemperature
-  MODULE PROCEDURE SetParticleTemperature
-END INTERFACE
-#endif
-
-PUBLIC         :: SetParticleVelocity
-PUBLIC         :: SetParticlePosition
-#if USE_PARTTEMP
-PUBLIC         :: SetParticleTemperature
-#endif
+PUBLIC:: SetParticleTemperature
+#endif /*USE_PARTTEMP*/
 !===================================================================================================================================
 
 CONTAINS

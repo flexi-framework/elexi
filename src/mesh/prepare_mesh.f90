@@ -20,26 +20,15 @@
 !==================================================================================================================================
 MODULE MOD_Prepare_Mesh
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE setLocalSideIDs
-  MODULE PROCEDURE setLocalSideIDs
-END INTERFACE
-
-INTERFACE fillMeshInfo
-  MODULE PROCEDURE fillMeshInfo
-END INTERFACE
-
-PUBLIC::setLocalSideIDs,fillMeshInfo
-
+PUBLIC:: setLocalSideIDs
+PUBLIC:: fillMeshInfo
 #if USE_MPI
-INTERFACE exchangeFlip
-  MODULE PROCEDURE exchangeFlip
-END INTERFACE
-
-PUBLIC::exchangeFlip
+PUBLIC:: exchangeFlip
 #endif
 !==================================================================================================================================
 
@@ -69,8 +58,9 @@ USE MOD_Mesh_Vars,  ONLY: nMortarSides,nMortarInnerSides,nMortarMPISides
 USE MOD_ReadInTools,ONLY: GETLOGICAL
 USE MOD_MPI_Vars
 #endif
-! IMPLICIT VARIABLE HANLDING
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

@@ -23,32 +23,16 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE ALMOSTZERO
-  MODULE PROCEDURE ALMOSTZERO
-END INTERFACE ALMOSTZERO
-
-INTERFACE ALMOSTEQUAL
-  MODULE PROCEDURE ALMOSTEQUAL
-END INTERFACE ALMOSTEQUAL
-
-INTERFACE LESSEQUALTOLERANCE
-  MODULE PROCEDURE LESSEQUALTOLERANCE
-END INTERFACE
-
-! INTERFACE BubbleSortID
-!   MODULE PROCEDURE BubbleSortID
-! END INTERFACE BubbleSortID
-
 INTERFACE InsertionSort
   MODULE PROCEDURE InsertionSortInt
   MODULE PROCEDURE InsertionSortReal
 END INTERFACE InsertionSort
 
-PUBLIC :: ALMOSTZERO
-PUBLIC :: ALMOSTEQUAL
-PUBLIC :: LESSEQUALTOLERANCE
-! PUBLIC :: BubbleSortID
-PUBLIC :: InsertionSort
+PUBLIC:: ALMOSTZERO
+PUBLIC:: ALMOSTEQUAL
+PUBLIC:: LESSEQUALTOLERANCE
+! PUBLIC:: BubbleSortID
+PUBLIC:: InsertionSort
 !==================================================================================================================================
 
 CONTAINS

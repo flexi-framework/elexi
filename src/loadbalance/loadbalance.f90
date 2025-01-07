@@ -26,46 +26,16 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersLoadBalance
-  MODULE PROCEDURE DefineParametersLoadBalance
-END INTERFACE
-
+PUBLIC:: DefineParametersLoadBalance
 #if USE_MPI
-INTERFACE InitLoadBalance
-  MODULE PROCEDURE InitLoadBalance
-END INTERFACE
-
-INTERFACE FinalizeLoadBalance
-  MODULE PROCEDURE FinalizeLoadBalance
-END INTERFACE
-
+PUBLIC:: InitLoadBalance
+PUBLIC:: FinalizeLoadBalance
 #if USE_LOADBALANCE
 #if USE_PARTICLES
-INTERFACE InitLoadBalanceTracking
-  MODULE PROCEDURE InitLoadBalanceTracking
-END INTERFACE
+PUBLIC:: InitLoadBalanceTracking
 #endif /*USE_PARTICLES*/
-
-INTERFACE ComputeElemLoad
-  MODULE PROCEDURE ComputeElemLoad
-END INTERFACE
-
-INTERFACE PrintImbalance
-  MODULE PROCEDURE PrintImbalance
-END INTERFACE
-#endif /*USE_LOADBALANCE*/
-#endif /*USE_MPI*/
-
-PUBLIC :: DefineParametersLoadBalance
-#if USE_MPI
-PUBLIC :: InitLoadBalance
-PUBLIC :: FinalizeLoadBalance
-#if USE_LOADBALANCE
-#if USE_PARTICLES
-PUBLIC :: InitLoadBalanceTracking
-#endif /*USE_PARTICLES*/
-PUBLIC :: ComputeElemLoad
-PUBLIC :: PrintImbalance
+PUBLIC:: ComputeElemLoad
+PUBLIC:: PrintImbalance
 #endif /*USE_LOADBALANCE*/
 #endif /*USE_MPI*/
 !===================================================================================================================================

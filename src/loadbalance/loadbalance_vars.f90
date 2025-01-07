@@ -17,6 +17,12 @@
 !===================================================================================================================================
 MODULE MOD_LoadBalance_Vars
 ! MODULES
+! USE MOD_Globals
+USE ISO_C_BINDING ! < Directly include to avoid circular dependency
+USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: HP => INT16,  & ! half precision (only defined for integer)
+                                         SP => REAL32, & ! single precision
+                                         DP => REAL64, & ! double precision
+                                         QP => REAL128   ! quadruple precision
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
@@ -114,19 +120,19 @@ REAL                                :: ElemTimeFV                               
 #if USE_PARTICLES
 REAL                                :: ElemTimePartTot                          ! Total time spent for particle routines (all procs)
 REAL                                :: ElemTimePart                             ! Time spent for particle routines
-INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerElem(:)
-INTEGER(KIND=4),ALLOCATABLE         :: nTracksPerElem(:)
-INTEGER(KIND=4),ALLOCATABLE         :: nSurfacefluxPerElem(:)
-INTEGER(KIND=4),ALLOCATABLE         :: nPartsPerBCElem(:)
+INTEGER(KIND=SP),ALLOCATABLE        :: nPartsPerElem(:)
+INTEGER(KIND=SP),ALLOCATABLE        :: nTracksPerElem(:)
+INTEGER(KIND=SP),ALLOCATABLE        :: nSurfacefluxPerElem(:)
+INTEGER(KIND=SP),ALLOCATABLE        :: nPartsPerBCElem(:)
 #if PARTICLES_COUPLING >= 2
 REAL                                :: ElemTimePartDepoTot                      ! Total time spent for particle deposition (all procs)
 REAL                                :: ElemTimePartDepo                         ! Time spent for particle deposition
-INTEGER(KIND=4),ALLOCATABLE         :: nDeposPerElem(:)
+INTEGER(KIND=SP),ALLOCATABLE        :: nDeposPerElem(:)
 #endif /*PARTICLES_COUPLING*/
 #if PARTICLES_COUPLING == 4
 REAL                                :: ElemTimePartCollTot                      ! Total time spent for particle collision (all procs)
 REAL                                :: ElemTimePartColl                         ! Time spent for particle collision
-INTEGER(KIND=4),ALLOCATABLE         :: nCollsPerElem(:)
+INTEGER(KIND=SP),ALLOCATABLE        :: nCollsPerElem(:)
 #endif /*PARTICLES_COUPLING*/
 #endif /*USE_PARTICLES*/
 

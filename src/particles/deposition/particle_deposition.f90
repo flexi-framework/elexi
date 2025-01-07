@@ -25,16 +25,8 @@ PRIVATE
 
 #if PARTICLES_COUPLING >= 2
 
-INTERFACE InitializeDeposition
-  MODULE PROCEDURE InitializeDeposition
-END INTERFACE
-
-INTERFACE FinalizeDeposition
-  MODULE PROCEDURE FinalizeDeposition
-END INTERFACE
-
-PUBLIC :: InitializeDeposition
-PUBLIC :: FinalizeDeposition
+PUBLIC:: InitializeDeposition
+PUBLIC:: FinalizeDeposition
 !==================================================================================================================================
 
 CONTAINS

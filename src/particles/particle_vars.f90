@@ -17,6 +17,8 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Vars
 ! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -39,7 +41,7 @@ REAL    , ALLOCATABLE         :: PartPosRef(:,:)                             ! (
 INTEGER , ALLOCATABLE         :: PartReflCount(:)                            ! Counter of number of reflections
 REAL    , ALLOCATABLE         :: LastPartPos(:,:)                            ! (1:3,1:NParts) with 2nd index: x,y,z
 INTEGER , ALLOCATABLE         :: PartSpecies(:)                              ! (1:NParts)
-INTEGER(KIND=8), ALLOCATABLE  :: PartIndex(:)                                ! (1:NParts)
+INTEGER(KIND=DP), ALLOCATABLE :: PartIndex(:)                                ! (1:NParts)
 REAL    , ALLOCATABLE         :: Pt(:,:)                                     ! Derivative of PartState (vx,xy,vz) only
 REAL    , ALLOCATABLE         :: Pt_temp(:,:)                                ! LSERK4 additional derivative of PartState
                                                                              ! (1:6,1:NParts) with 2nd index: x,y,z,vx,vy,vz
@@ -102,7 +104,7 @@ TYPE tExcludeRegion
                                                                              ! (set 0 for flat circle),
                                                                              ! negative value = opposite direction
   REAL                                   :: ExcludeBV_lenghts(2)             ! lenghts of BV1/2 (to be calculated)
-END TYPE
+END TYPE tExcludeRegion
 
 TYPE tInit                                                                   ! Particle Data for each init emission for each species
   !Specific Emission/Init values
@@ -142,9 +144,9 @@ TYPE tInit                                                                   ! P
                                                                              !               2 = emission rate 1/iteration
   REAL                                   :: ParticleEmission                 ! Emission in [1/s] or [1/Iteration]
   REAL                                   :: ParticleEmissionTime             ! Scale emission time for emission type 1
-  INTEGER(KIND=8)                        :: InsertedParticle                 ! Number of all already inserted Particles
-  INTEGER(KIND=8)                        :: InsertedParticleSurplus          ! accumulated "negative" number of inserted Particles
-  INTEGER(KIND=4)                        :: InsertedParticleMisMatch=0       ! error in number of inserted particles of last step
+  INTEGER(KIND=DP)                       :: InsertedParticle                 ! Number of all already inserted Particles
+  INTEGER(KIND=DP)                       :: InsertedParticleSurplus          ! accumulated "negative" number of inserted Particles
+  INTEGER(KIND=SP)                       :: InsertedParticleMisMatch=0       ! error in number of inserted particles of last step
   INTEGER                                :: NumberOfExcludeRegions           ! Number of different regions to be excluded
   TYPE(tExcludeRegion), ALLOCATABLE      :: ExcludeRegion(:)
 #if USE_MPI
@@ -166,10 +168,9 @@ TYPE tSurfFluxSubSideData
   REAL                                   :: nVFR                             ! normal volume flow rate through subside
   REAL                                   :: Dmax                             ! maximum Jacobian determinant of subside for opt. ARM
   REAL,ALLOCATABLE                       :: BezierControlPoints2D(:,:,:)     ! BCP of SubSide projected to VeloVecIC
-                                                                             ! (1:2,0:NGeo,0:NGeo)
 END TYPE tSurfFluxSubSideData
 
-TYPE typeSurfaceflux
+TYPE tSurfaceFlux
   INTEGER                                :: BC                               ! PartBound to be emitted from
   CHARACTER(30)                          :: velocityDistribution             ! specifying keyword for velocity distribution
   REAL                                   :: VeloIC                           ! velocity for inital Data
@@ -181,10 +182,10 @@ TYPE typeSurfaceflux
   INTEGER                                :: ARM_DmaxSampleN                  ! number of sample intervals in xi/eta for Dmax-calc.
   REAL                                   :: VFR_total                        ! Total Volumetric flow rate through surface
   REAL                                   :: VFR_total_allProcsTotal          !     -''-, total
-  INTEGER(KIND=8)                        :: InsertedParticle                 ! Number of all already inserted Particles
-  INTEGER(KIND=8)                        :: InsertedParticleSurplus          ! accumulated "negative" number of inserted Particles
-  INTEGER(KIND=8)                        :: tmpInsertedParticle              ! tmp Number of all already inserted Particles
-  INTEGER(KIND=8)                        :: tmpInsertedParticleSurplus       ! tmp accumulated "negative" number of inserted Particles
+  INTEGER(KIND=DP)                       :: InsertedParticle                 ! Number of all already inserted Particles
+  INTEGER(KIND=DP)                       :: InsertedParticleSurplus          ! accumulated "negative" number of inserted Particles
+  INTEGER(KIND=DP)                       :: tmpInsertedParticle              ! tmp Number of all already inserted Particles
+  INTEGER(KIND=DP)                       :: tmpInsertedParticleSurplus       ! tmp accumulated "negative" number of inserted Particles
   TYPE(tSurfFluxSubSideData),ALLOCATABLE :: SurfFluxSubSideData(:,:,:)       ! SF-specific Data of Sides (1:N,1:N,1:SideNumber)
   LOGICAL                                :: CircularInflow                   ! Circular region, which can be used to define small
                                                                              ! geometry features on large boundaries
@@ -198,18 +199,22 @@ TYPE typeSurfaceflux
   REAL                                   :: SampledMassflow                  ! Actual mass flow rate through a surface flux boundary
   REAL, ALLOCATABLE                      :: nVFRSub(:,:)                     ! normal volume flow rate through subsubside
   REAL                                   :: DGMeanPrimState(1:PP_nVarPrim)   ! mean DG flux through boundary
-END TYPE
+END TYPE tSurfaceFlux
 
 ABSTRACT INTERFACE
   FUNCTION DragFactorInt(Rep,SphericityIC,Mp) RESULT(f)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     REAL,INTENT(IN) :: Rep,SphericityIC,Mp
     REAL            :: f
-  END FUNCTION
+  END FUNCTION DragFactorInt
 END INTERFACE
 
 TYPE type_F
   PROCEDURE(DragFactorInt),POINTER,NOPASS:: op
-END TYPE
+END TYPE type_F
 
 TYPE tSpecies                                                                ! Particle Data for each Species
   ! General Species Values
@@ -225,7 +230,7 @@ TYPE tSpecies                                                                ! P
 #endif /*USE_PARTTEMP*/
   INTEGER                                :: NumberOfInits                    ! Number of different initial particle placements
   ! SurfaceFlux
-  TYPE(typeSurfaceflux),ALLOCATABLE      :: SurfaceFlux(:)                   ! Particle Data for each SurfaceFlux emission
+  TYPE(tSurfaceFlux),ALLOCATABLE      :: SurfaceFlux(:)                   ! Particle Data for each SurfaceFlux emission
   INTEGER                                :: nSurfacefluxBCs                  ! Number of SF emissions
   INTEGER                                :: StartnumberOfInits               ! 0 if old emit defined (array is copied into 0. entry)
   REAL                                   :: LowVeloThreshold                 ! Threshold value for removal of low velocity particles
@@ -251,7 +256,7 @@ TYPE tSpecies                                                                ! P
   LOGICAL                                :: CalcVirtualMass                  ! Calculate the virtual mass force
   LOGICAL                                :: CalcBassetForce                  ! Calculate the Basset force
 #endif /* USE_EXTEND_RHS */
-END TYPE
+END TYPE tSpecies
 
 INTEGER                                  :: nSpecies                         ! number of species
 TYPE(tSpecies), ALLOCATABLE              :: Species(:)        !   => NULL()  ! Species Data Vector
@@ -272,7 +277,7 @@ TYPE tParticleElementMapping
                                                                              ! pEnd(1:PEM%nElem)
   INTEGER                , ALLOCATABLE   :: pNext(:)          !   =>NULL()   ! Next Particle in same Element (Linked List)
                                                                              ! pStart(1:PEM%maxParticleNumber)
-END TYPE
+END TYPE tParticleElementMapping
 
 TYPE(tParticleElementMapping)            :: PEM
 
@@ -289,7 +294,7 @@ TYPE tParticleDataManagement
                                                                              ! List of free Positon
   LOGICAL ,ALLOCATABLE                   :: ParticleInside(:)    ! =>NULL()  ! Particle_inside(1:Particle_Number)
   LOGICAL ,ALLOCATABLE                   :: IsNewPart(:)                     ! Reconstruct RK-scheme in next stage
-END TYPE
+END TYPE tParticleDataManagement
 
 TYPE (tParticleDataManagement)           :: PDM
 

@@ -21,30 +21,13 @@ MODULE MOD_Particle_Collision
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-
 #if PARTICLES_COUPLING == 4
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersCollision
-  MODULE PROCEDURE DefineParametersCollision
-END INTERFACE
-
-INTERFACE InitializeCollision
-  MODULE PROCEDURE InitializeCollision
-END INTERFACE
-
-INTERFACE UpdateParticleShared
-  MODULE PROCEDURE UpdateParticleShared
-END INTERFACE
-
-INTERFACE FinalizeCollision
-  MODULE PROCEDURE FinalizeCollision
-END INTERFACE
-
-PUBLIC :: DefineParametersCollision
-PUBLIC :: InitializeCollision
-PUBLIC :: UpdateParticleShared
-PUBLIC :: FinalizeCollision
+PUBLIC:: DefineParametersCollision
+PUBLIC:: InitializeCollision
+PUBLIC:: UpdateParticleShared
+PUBLIC:: FinalizeCollision
 !==================================================================================================================================
 
 CONTAINS
@@ -305,7 +288,7 @@ DO iElem = firstElem,lastElem
               CNNeighElemID = GetCNElemID(NeighElemID)
 
               ! check if tested element NeighElemID was previously tested/found
-              IF (ANY(currentNeighElem(:,CNNeighElemID),1)) CYCLE
+              IF (ANY(currentNeighElem(:,CNNeighElemID),1)) CYCLE ElemLoop
               currentNeighElem(1,CNNeighElemID) = .TRUE.
 
               ! ignore myself
@@ -459,7 +442,7 @@ DO iElem = firstElem,lastElem
               CNNeighElemID = GetCNElemID(NeighElemID)
 
               ! check if tested element NeighElemID was previously tested/found
-              IF (ANY(currentNeighElem(:,CNNeighElemID),1)) CYCLE
+              IF (ANY(currentNeighElem(:,CNNeighElemID),1)) CYCLE ElemLoop2
               currentNeighElem(1,CNNeighElemID) = .TRUE.
 
               ! ignore myself

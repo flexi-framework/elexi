@@ -23,31 +23,11 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 #if USE_LOADBALANCE
-INTERFACE LBStartTime
-  MODULE PROCEDURE LBStartTime
-END INTERFACE
-
-INTERFACE LBSplitTime
-  MODULE PROCEDURE LBSplitTime
-END INTERFACE
-
-INTERFACE LBPauseTime
-  MODULE PROCEDURE LBPauseTime
-END INTERFACE
-
-INTERFACE LBElemSplitTime
-  MODULE PROCEDURE LBElemSplitTime
-END INTERFACE
-
-INTERFACE LBElemPauseTime
-  MODULE PROCEDURE LBElemPauseTime
-END INTERFACE
-
-PUBLIC::LBStartTime
-PUBLIC::LBSplitTime
-PUBLIC::LBPauseTime
-PUBLIC::LBElemSplitTime
-PUBLIC::LBElemPauseTime
+PUBLIC:: LBStartTime
+PUBLIC:: LBSplitTime
+PUBLIC:: LBPauseTime
+PUBLIC:: LBElemSplitTime
+PUBLIC:: LBElemPauseTime
 !===================================================================================================================================
 
 CONTAINS

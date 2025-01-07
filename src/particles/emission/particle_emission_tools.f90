@@ -23,45 +23,23 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-! no interface allowed (do not remove this comment)
-!INTERFACE IntegerDivide
-  !MODULE PROCEDURE IntegerDivide
-!END INTERFACE
-
-INTERFACE InsideExcludeRegionCheck
-  MODULE PROCEDURE InsideExcludeRegionCheck
-END INTERFACE
-
-INTERFACE SetParticleMass
-  MODULE PROCEDURE SetParticleMass
-END INTERFACE
-
-INTERFACE SetCellLocalParticlePosition
-  MODULE PROCEDURE SetCellLocalParticlePosition
-END INTERFACE
-
-INTERFACE SamplePoissonDistri
-  MODULE PROCEDURE SamplePoissonDistri
-END INTERFACE
-
-!===================================================================================================================================
-PUBLIC :: IntegerDivide
-PUBLIC :: InsideExcludeRegionCheck
-PUBLIC :: SetParticleMass
-PUBLIC :: SetCellLocalParticlePosition
-PUBLIC :: SetParticlePositionPoint
-PUBLIC :: SetParticlePositionEquidistLine
-PUBLIC :: SetParticlePositionLine
-PUBLIC :: SetParticlePositionPlane
-PUBLIC :: SetParticlePositionDisk
-PUBLIC :: SetParticlePositionCross
-PUBLIC :: SetParticlePositionCircle
-PUBLIC :: SetParticlePositionCuboidCylinder
-PUBLIC :: SetParticlePositionSphere
-!PUBLIC :: SetParticlePositionSinDeviation
-PUBLIC :: SetParticlePositionGaussian
-PUBLIC :: SetParticlePositionFromFile
-PUBLIC :: SamplePoissonDistri
+PUBLIC:: IntegerDivide
+PUBLIC:: InsideExcludeRegionCheck
+PUBLIC:: SetParticleMass
+PUBLIC:: SetCellLocalParticlePosition
+PUBLIC:: SetParticlePositionPoint
+PUBLIC:: SetParticlePositionEquidistLine
+PUBLIC:: SetParticlePositionLine
+PUBLIC:: SetParticlePositionPlane
+PUBLIC:: SetParticlePositionDisk
+PUBLIC:: SetParticlePositionCross
+PUBLIC:: SetParticlePositionCircle
+PUBLIC:: SetParticlePositionCuboidCylinder
+PUBLIC:: SetParticlePositionSphere
+! PUBLIC:: SetParticlePositionSinDeviation
+PUBLIC:: SetParticlePositionGaussian
+PUBLIC:: SetParticlePositionFromFile
+PUBLIC:: SamplePoissonDistri
 !===================================================================================================================================
 CONTAINS
 

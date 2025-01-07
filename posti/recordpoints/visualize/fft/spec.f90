@@ -24,18 +24,9 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitSpec
-  MODULE PROCEDURE InitSpec
-END INTERFACE
-
-INTERFACE Spec
-  MODULE PROCEDURE Spec
-END INTERFACE
-
-INTERFACE FinalizeSpec
-  MODULE PROCEDURE FinalizeSpec
-END INTERFACE
-PUBLIC :: InitSpec,Spec,FinalizeSpec
+PUBLIC:: InitSpec
+PUBLIC:: Spec
+PUBLIC:: FinalizeSpec
 !===================================================================================================================================
 
 CONTAINS
@@ -51,6 +42,7 @@ USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out
 USE MOD_RPInterpolation_Vars ,ONLY: dt_out,TEnd
 USE MOD_ParametersVisu       ,ONLY: nBlocks,samplingFreq,BlockSize,fourthDeriv
 USE MOD_Spec_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -106,6 +98,7 @@ WRITE(UNIT_stdOut,'(A)')' DONE.'
 WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitSpec
 
+
 !===================================================================================================================================
 !> Main routine used in spectral analysis. Will perform the fast Fourier transform using the FFTW library in blocks that will then
 !> be averaged.
@@ -124,6 +117,7 @@ USE MOD_ParametersVisu       ,ONLY: doPSD,doFFT,nVarVisu,nBlocks,cutoffFreq,doHa
 USE MOD_ParametersVisu       ,ONLY: u_infPhys,chordPhys
 USE FFTW3
 USE MOD_Spec_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -132,7 +126,7 @@ IMPLICIT NONE
 INTEGER                         :: iSample,iVar,iRP,iStart,iEnd
 REAL                            :: df
 COMPLEX,ALLOCATABLE             :: in(:),out(:)
-INTEGER(KIND=8)                 :: plan
+INTEGER(KIND=DP)                :: plan
 REAL                            :: EndTime
 REAL                            :: Time_Block
 REAL,ALLOCATABLE                :: RPData_tmp(:)
@@ -299,6 +293,7 @@ CALL DFFTW_DESTROY_PLAN(plan)
 WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE Spec
 
+
 !===================================================================================================================================
 !> Apply a window function for spectra. Uses the window function named after Julius von Hann, often referred to as Henning function.
 !> Normalized such that SUM(windowCoeff)=1. For power spectra SUM(windowCoeff)²=1.
@@ -308,6 +303,7 @@ END SUBROUTINE Spec
 SUBROUTINE Hanning(nSamples,RPData)
 ! MODULES
 USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -329,6 +325,7 @@ END DO
 RPData(:)=RPData(:)/SQRT(windowNorm/nSamples)
 END SUBROUTINE Hanning
 
+
 !===================================================================================================================================
 !> Compute the fourth derivative w.r.t time of the RP signal using a central difference of second order accuray.
 !===================================================================================================================================
@@ -336,6 +333,7 @@ SUBROUTINE Deriv(RPData)
 ! MODULES
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out
 USE MOD_RPInterpolation_Vars ,ONLY: dt_out
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -359,6 +357,7 @@ END DO
 RPData=RPData_out
 END SUBROUTINE Deriv
 
+
 !===================================================================================================================================
 !> Deallocate global variables
 !===================================================================================================================================
@@ -366,6 +365,7 @@ SUBROUTINE FinalizeSpec()
 ! MODULES
 USE MOD_Globals
 USE MOD_Spec_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

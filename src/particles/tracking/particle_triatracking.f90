@@ -24,11 +24,7 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE ParticleTriaTracking
-  MODULE PROCEDURE ParticleTriaTracking
-END INTERFACE
-
-PUBLIC::ParticleTriaTracking
+PUBLIC:: ParticleTriaTracking
 !===================================================================================================================================
 
 CONTAINS
@@ -74,7 +70,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,PARAMETER                   :: eps = 0, xi = -1., eta = -1.
-REAL                             :: alpha = -1.
+REAL                             :: alpha
 INTEGER                          :: iPart,NblocSideID,NbElemID,ind,nbSideID,nMortarElems,BCType
 INTEGER                          :: ElemID,CNElemID,flip,OldElemID,nlocSides
 INTEGER                          :: LocalSide

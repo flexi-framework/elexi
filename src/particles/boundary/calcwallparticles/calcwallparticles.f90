@@ -23,11 +23,7 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE CalcWallParticles
-  MODULE PROCEDURE CalcWallParticles
-END INTERFACE
-
-PUBLIC :: CalcWallParticles
+PUBLIC:: CalcWallParticles
 !==================================================================================================================================
 
 CONTAINS

@@ -34,23 +34,15 @@ LOGICAL :: MemoryStatFileExists = .FALSE.
 
 !=================================================================================================================================
 
-INTERFACE ProcessMemUsage
-  ! SUBROUTINE processmemusage(memUsed,memAvail,memTotal) BIND(C, name='processmemusage')
-  !   USE ISO_C_BINDING,   ONLY : c_double
-  !   real(c_double) :: memUsed
-  !   real(c_double) :: memAvail
-  !   real(c_double) :: memTotal
-  ! END SUBROUTINE processmemusage
-  MODULE PROCEDURE ProcessMemUsage
-END INTERFACE
-
-INTERFACE GetMemUsage
-  MODULE PROCEDURE GetMemUsage
-END INTERFACE
-
-INTERFACE VerifyMemUsage
-  MODULE PROCEDURE VerifyMemUsage
-END INTERFACE
+! INTERFACE ProcessMemUsage
+!   ! SUBROUTINE processmemusage(memUsed,memAvail,memTotal) BIND(C, name='processmemusage')
+!   !   USE ISO_C_BINDING,   ONLY : c_double
+!   !   real(c_double) :: memUsed
+!   !   real(c_double) :: memAvail
+!   !   real(c_double) :: memTotal
+!   ! END SUBROUTINE processmemusage
+!   MODULE PROCEDURE ProcessMemUsage
+! END INTERFACE
 
 INTERFACE Allocate_Safe
   MODULE PROCEDURE Allocate_Safe_Logical_1
@@ -61,10 +53,10 @@ INTERFACE Allocate_Safe
   MODULE PROCEDURE Allocate_Safe_Real_3
 END INTERFACE Allocate_Safe
 
-PUBLIC :: ProcessMemUsage
-PUBLIC :: GetMemUsage
-PUBLIC :: VerifyMemUsage
-PUBLIC :: Allocate_Safe
+PUBLIC:: ProcessMemUsage
+PUBLIC:: GetMemUsage
+PUBLIC:: VerifyMemUsage
+PUBLIC:: Allocate_Safe
 !===================================================================================================================================
 
 CONTAINS
@@ -86,7 +78,7 @@ IMPLICIT NONE
 REAL,INTENT(OUT)                          :: memory(3)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-! INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+! INTEGER(KIND=DP),PARAMETER                :: kByte = 1024
 REAL                                      :: memSize
 INTEGER                                   :: stat,memstat,ioUnit
 INTEGER                                   :: memCount
@@ -179,7 +171,7 @@ REAL,INTENT(OUT)                          :: memory(3)
 CHARACTER(LEN=*),INTENT(IN)               :: caller
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+INTEGER(KIND=DP),PARAMETER                :: kByte = 1024
 REAL                                      :: buffers,cached,memSize
 INTEGER                                   :: stat,memstat,ioUnit
 INTEGER                                   :: memCount
@@ -314,21 +306,21 @@ USE MOD_MPI_Shared_Vars ,ONLY: nComputeNodeProcessors
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER(KIND=8)                           :: ArraySize
+INTEGER(KIND=DP),INTENT(IN)               :: ArraySize
 LOGICAL                                   :: VerifyMemUsage
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                      :: memory(3)
-INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+INTEGER(KIND=DP),PARAMETER                :: kByte = 1024
 #if !USE_MPI
-INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+INTEGER(KIND=DP),PARAMETER                :: nComputeNodeProcessors = 1
 #endif /*!USE_MPI*/
 !==================================================================================================================================
 
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
-ASSOCIATE(nProc => INT(nComputeNodeProcessors,KIND=8))
+ASSOCIATE(nProc => INT(nComputeNodeProcessors,KIND=DP))
 
 ! Compare requested size against available memory
 IF (ArraySize*nProc .LT. memory(2)*kByte) THEN
@@ -363,9 +355,9 @@ INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocat
 ! LOCAL VARIABLES
 INTEGER                                   :: ALLOCSTAT                !> Allocation status
 REAL                                      :: memory(3)
-INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+INTEGER(KIND=DP),PARAMETER                :: kByte = 1024
 #if !USE_MPI
-INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+INTEGER(KIND=DP),PARAMETER                :: nComputeNodeProcessors = 1
 #endif /*!USE_MPI*/
 !==================================================================================================================================
 
@@ -375,9 +367,9 @@ IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
-ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
-          VarSize  => INT(KIND(Array),KIND=8),          &
-          nProc    => INT(nComputeNodeProcessors,KIND=8))
+ASSOCIATE(nVal     => INT(nVal       ,KIND=DP),          &
+          VarSize  => INT(KIND(Array),KIND=DP),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=DP))
 
 ! Compare requested size against available memory
 IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
@@ -413,9 +405,9 @@ INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocat
 ! LOCAL VARIABLES
 INTEGER                                   :: ALLOCSTAT                !> Allocation status
 REAL                                      :: memory(3)
-INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+INTEGER(KIND=DP),PARAMETER                :: kByte = 1024
 #if !USE_MPI
-INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+INTEGER(KIND=DP),PARAMETER                :: nComputeNodeProcessors = 1
 #endif /*!USE_MPI*/
 !==================================================================================================================================
 
@@ -425,9 +417,9 @@ IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
-ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
-          VarSize  => INT(KIND(Array),KIND=8),          &
-          nProc    => INT(nComputeNodeProcessors,KIND=8))
+ASSOCIATE(nVal     => INT(nVal       ,KIND=DP),          &
+          VarSize  => INT(KIND(Array),KIND=DP),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=DP))
 
 ! Compare requested size against available memory
 IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
@@ -463,9 +455,9 @@ INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocat
 ! LOCAL VARIABLES
 INTEGER                                   :: ALLOCSTAT                !> Allocation status
 REAL                                      :: memory(3)
-INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+INTEGER(KIND=DP),PARAMETER                :: kByte = 1024
 #if !USE_MPI
-INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+INTEGER(KIND=DP),PARAMETER                :: nComputeNodeProcessors = 1
 #endif /*!USE_MPI*/
 !==================================================================================================================================
 
@@ -475,9 +467,9 @@ IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
-ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
-          VarSize  => INT(KIND(Array),KIND=8),          &
-          nProc    => INT(nComputeNodeProcessors,KIND=8))
+ASSOCIATE(nVal     => INT(nVal       ,KIND=DP),          &
+          VarSize  => INT(KIND(Array),KIND=DP),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=DP))
 
 ! Compare requested size against available memory
 IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
@@ -513,9 +505,9 @@ INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocat
 ! LOCAL VARIABLES
 INTEGER                                   :: ALLOCSTAT                !> Allocation status
 REAL                                      :: memory(3)
-INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+INTEGER(KIND=DP),PARAMETER                :: kByte = 1024
 #if !USE_MPI
-INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+INTEGER(KIND=DP),PARAMETER                :: nComputeNodeProcessors = 1
 #endif /*!USE_MPI*/
 !==================================================================================================================================
 
@@ -525,9 +517,9 @@ IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
-ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
-          VarSize  => INT(KIND(Array),KIND=8),          &
-          nProc    => INT(nComputeNodeProcessors,KIND=8))
+ASSOCIATE(nVal     => INT(nVal       ,KIND=DP),          &
+          VarSize  => INT(KIND(Array),KIND=DP),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=DP))
 
 ! Compare requested size against available memory
 IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
@@ -563,9 +555,9 @@ INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocat
 ! LOCAL VARIABLES
 INTEGER                                   :: ALLOCSTAT                !> Allocation status
 REAL                                      :: memory(3)
-INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+INTEGER(KIND=DP),PARAMETER                :: kByte = 1024
 #if !USE_MPI
-INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+INTEGER(KIND=DP),PARAMETER                :: nComputeNodeProcessors = 1
 #endif /*!USE_MPI*/
 !==================================================================================================================================
 
@@ -575,9 +567,9 @@ IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
-ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
-          VarSize  => INT(KIND(Array),KIND=8),          &
-          nProc    => INT(nComputeNodeProcessors,KIND=8))
+ASSOCIATE(nVal     => INT(nVal       ,KIND=DP),          &
+          VarSize  => INT(KIND(Array),KIND=DP),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=DP))
 
 ! Compare requested size against available memory
 IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN
@@ -613,9 +605,9 @@ INTEGER,OPTIONAL,INTENT(OUT)              :: STAT                     !> Allocat
 ! LOCAL VARIABLES
 INTEGER                                   :: ALLOCSTAT                !> Allocation status
 REAL                                      :: memory(3)
-INTEGER(KIND=8),PARAMETER                 :: kByte = 1024
+INTEGER(KIND=DP),PARAMETER                :: kByte = 1024
 #if !USE_MPI
-INTEGER(KIND=8),PARAMETER                 :: nComputeNodeProcessors = 1
+INTEGER(KIND=DP),PARAMETER                :: nComputeNodeProcessors = 1
 #endif /*!USE_MPI*/
 !==================================================================================================================================
 
@@ -625,9 +617,9 @@ IF (ALLOCATED(ARRAY)) CALL Abort(__STAMP__,'Trying to allocate already allocated
 ! Find memory usage and requirements
 CALL ProcessMemUsage(memory) ! memUsed,memAvail,memTotal in kB
 
-ASSOCIATE(nVal     => INT(nVal       ,KIND=8),          &
-          VarSize  => INT(KIND(Array),KIND=8),          &
-          nProc    => INT(nComputeNodeProcessors,KIND=8))
+ASSOCIATE(nVal     => INT(nVal       ,KIND=DP),          &
+          VarSize  => INT(KIND(Array),KIND=DP),          &
+          nProc    => INT(nComputeNodeProcessors,KIND=DP))
 
 ! Compare requested size against available memory
 IF (PRODUCT(nVal)*VarSize*nProc .LT. memory(2)*kByte) THEN

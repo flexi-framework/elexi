@@ -25,29 +25,15 @@ MODULE MOD_TimeAverage
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-
-INTEGER                        :: nMaxVarAvg,nMaxVarFluc
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
+INTEGER:: nMaxVarAvg,nMaxVarFluc
 
-INTERFACE InitCalcTimeAverage
-  MODULE PROCEDURE InitCalcTimeAverage
-END INTERFACE
-
-INTERFACE FinalizeTimeAverage
-  MODULE PROCEDURE FinalizeTimeAverage
-END INTERFACE
-
-INTERFACE CalcTimeAverage
-  MODULE PROCEDURE CalcTimeAverage
-END INTERFACE
-
-PUBLIC::InitCalcTimeAverage, FinalizeTimeAverage, CalcTimeAverage
+PUBLIC:: InitCalcTimeAverage
+PUBLIC:: CalcTimeAverage
+PUBLIC:: FinalizeTimeAverage
 !==================================================================================================================================
+
 CONTAINS
-
-
 
 !==================================================================================================================================
 !> Initializes the time averaging variables and builds map from fluctuation quantities to required time averaged variables
@@ -310,8 +296,7 @@ DO i=1,nVarList
     RETURN
   END IF
 END DO
-END FUNCTION
-
+END FUNCTION GETMAPBYNAME
 
 
 !==================================================================================================================================
@@ -524,7 +509,6 @@ IF(Finalize)THEN
 END IF
 
 END SUBROUTINE CalcTimeAverage
-
 
 
 !==================================================================================================================================

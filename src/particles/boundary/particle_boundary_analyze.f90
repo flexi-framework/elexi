@@ -22,16 +22,8 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE CalcSurfaceValues
-  MODULE PROCEDURE CalcSurfaceValues
-END INTERFACE
-
-INTERFACE WriteBoundaryParticleToHDF5
-  MODULE PROCEDURE WriteBoundaryParticleToHDF5
-END INTERFACE
-
-PUBLIC :: CalcSurfaceValues
-PUBLIC :: WriteBoundaryParticleToHDF5
+PUBLIC:: CalcSurfaceValues
+PUBLIC:: WriteBoundaryParticleToHDF5
 !===================================================================================================================================
 
 CONTAINS

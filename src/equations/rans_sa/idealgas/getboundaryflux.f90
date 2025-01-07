@@ -41,49 +41,20 @@ MODULE MOD_GetBoundaryFlux
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitBC
-  MODULE PROCEDURE InitBC
-END INTERFACE
-
-INTERFACE GetBoundaryFlux
-  MODULE PROCEDURE GetBoundaryFlux
-END INTERFACE
-
-INTERFACE GetBoundaryState
-  MODULE PROCEDURE GetBoundaryState
-END INTERFACE
-
-INTERFACE FinalizeBC
-  MODULE PROCEDURE FinalizeBC
-END INTERFACE
-
+PUBLIC:: InitBC
+PUBLIC:: GetBoundaryFlux
+PUBLIC:: GetBoundaryState
+PUBLIC:: FinalizeBC
 #if FV_ENABLED && FV_RECONSTRUCT
-INTERFACE GetBoundaryFVgradient
-  MODULE PROCEDURE GetBoundaryFVgradient
-END INTERFACE
-#endif
-
+PUBLIC:: GetBoundaryFVgradient
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
 #if PARABOLIC
-INTERFACE Lifting_GetBoundaryFlux
-  MODULE PROCEDURE Lifting_GetBoundaryFlux
-END INTERFACE
-PUBLIC :: Lifting_GetBoundaryFlux
+PUBLIC:: Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
-
-PUBLIC :: InitBC
-PUBLIC :: GetBoundaryFlux
-PUBLIC :: FinalizeBC
-PUBLIC :: GetBoundaryState
-#if FV_ENABLED && FV_RECONSTRUCT
-PUBLIC :: GetBoundaryFVgradient
-#endif
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Initialize boundary conditions. Read parameters and sort boundary conditions by types.
@@ -254,7 +225,6 @@ END SUBROUTINE InitBC
 !> Computes the boundary state for the different boundary conditions.
 !==================================================================================================================================
 SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP)
-!----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
@@ -879,9 +849,9 @@ END SUBROUTINE GetBoundaryFVgradient
 !==================================================================================================================================
 SUBROUTINE Lifting_GetBoundaryFlux(SideID,t,UPrim_master,Flux,NormVec,TangVec1,TangVec2,Face_xGP,SurfElem)
 ! MODULES
-USE MOD_Globals       ,ONLY: Abort
+USE MOD_Globals      ,ONLY: Abort
 USE MOD_PreProc
-USE MOD_DG_Vars       ,ONLY: UPrim_Boundary
+USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Testcase     ,ONLY: Lifting_GetBoundaryFluxTestcase
@@ -968,7 +938,7 @@ USE MOD_Interpolation_Vars,ONLY:L_minus,L_plus
 USE MOD_ChangeBasisByDim  ,ONLY:ChangeBasisVolume
 USE MOD_EOS               ,ONLY:ConsToPrim
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN) :: FileName       !< name of file BC data is read from
@@ -1049,14 +1019,13 @@ CALL DisplayMessageAndTime(EndT-StartT, 'Read BC state from file "'//TRIM(FileNa
 
 END SUBROUTINE ReadBCFlow
 
-
-
 !==================================================================================================================================
 !> Finalize arrays used for boundary conditions.
 !==================================================================================================================================
 SUBROUTINE FinalizeBC()
 ! MODULES
 USE MOD_Equation_Vars,ONLY: BCData,BCDataPrim,nBCByType,BCSideID
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

@@ -24,13 +24,7 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE ParticleTracing
-  MODULE PROCEDURE ParticleTracing
-END INTERFACE
-
-PUBLIC::ParticleTracing
-
-TYPE :: tIntersectLink
+TYPE:: tIntersectLink
   REAL                          :: alpha  = HUGE(1.)
   REAL                          :: alpha2 = HUGE(1.)
   REAL                          :: xi     = -1
@@ -40,6 +34,8 @@ TYPE :: tIntersectLink
   TYPE(tIntersectLink), POINTER :: prev => null()
   TYPE(tIntersectLink), POINTER :: next => null()
 END TYPE tIntersectLink
+
+PUBLIC::ParticleTracing
 !===================================================================================================================================
 
 CONTAINS

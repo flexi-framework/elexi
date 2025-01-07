@@ -14,31 +14,20 @@
 #include "flexi.h"
 #include "particle.h"
 
-MODULE MOD_Particle_MPI_Boundary_Sampling
 !===================================================================================================================================
 ! module for MPI communication of particle surface sampling
 !===================================================================================================================================
+MODULE MOD_Particle_MPI_Boundary_Sampling
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 #if USE_MPI
-INTERFACE InitSurfCommunication
-  MODULE PROCEDURE InitSurfCommunication
-END INTERFACE
 
-INTERFACE ExchangeSurfData
-  MODULE PROCEDURE ExchangeSurfData
-END INTERFACE
-
-INTERFACE FinalizeSurfCommunication
-  MODULE PROCEDURE FinalizeSurfCommunication
-END INTERFACE
-
-PUBLIC :: InitSurfCommunication
-PUBLIC :: ExchangeSurfData
-PUBLIC :: FinalizeSurfCommunication
+PUBLIC:: InitSurfCommunication
+PUBLIC:: ExchangeSurfData
+PUBLIC:: FinalizeSurfCommunication
 !===================================================================================================================================
 
 CONTAINS

@@ -46,49 +46,20 @@ MODULE MOD_GetBoundaryFlux
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitBC
-  MODULE PROCEDURE InitBC
-END INTERFACE
-
-INTERFACE GetBoundaryFlux
-  MODULE PROCEDURE GetBoundaryFlux
-END INTERFACE
-
-INTERFACE GetBoundaryState
-  MODULE PROCEDURE GetBoundaryState
-END INTERFACE
-
-INTERFACE FinalizeBC
-  MODULE PROCEDURE FinalizeBC
-END INTERFACE
-
+PUBLIC:: InitBC
+PUBLIC:: GetBoundaryFlux
+PUBLIC:: GetBoundaryState
 #if FV_ENABLED && FV_RECONSTRUCT
-INTERFACE GetBoundaryFVgradient
-  MODULE PROCEDURE GetBoundaryFVgradient
-END INTERFACE
-#endif
-
+PUBLIC:: GetBoundaryFVgradient
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
 #if PARABOLIC
-INTERFACE Lifting_GetBoundaryFlux
-  MODULE PROCEDURE Lifting_GetBoundaryFlux
-END INTERFACE
-PUBLIC :: Lifting_GetBoundaryFlux
+PUBLIC:: Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
-
-PUBLIC :: InitBC
-PUBLIC :: GetBoundaryFlux
-PUBLIC :: FinalizeBC
-PUBLIC :: GetBoundaryState
-#if FV_ENABLED && FV_RECONSTRUCT
-PUBLIC :: GetBoundaryFVgradient
-#endif
+PUBLIC:: FinalizeBC
 !==================================================================================================================================
 
 CONTAINS
-
 
 !==================================================================================================================================
 !> Initialize boundary conditions. Read parameters and sort boundary conditions by types.
@@ -1479,6 +1450,7 @@ END SUBROUTINE QuickSort
 SUBROUTINE FinalizeBC()
 ! MODULES
 USE MOD_Equation_Vars,ONLY: BCData,BCDataPrim,nBCByType,BCSideID
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

@@ -27,33 +27,13 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE CalcPartRHS
-  MODULE PROCEDURE CalcPartRHS
-END INTERFACE
-
+PUBLIC:: CalcPartRHS, InitRHS
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
-INTERFACE extRHS
-  MODULE PROCEDURE extRHS
-END INTERFACE
-#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
-
-#if PARTICLES_COUPLING >= 2
-INTERFACE CalcSourcePart
-  MODULE PROCEDURE CalcSourcePart
-END INTERFACE
-
-INTERFACE SourcePart
-  MODULE PROCEDURE SourcePart
-END INTERFACE
-#endif /*PARTICLES_COUPLING >= 2*/
-
-PUBLIC :: CalcPartRHS, InitRHS
-#if USE_EXTEND_RHS || USE_FAXEN_CORR
-PUBLIC :: extRHS
+PUBLIC:: extRHS
 #endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 #if PARTICLES_COUPLING >= 2
-PUBLIC :: CalcSourcePart
-PUBLIC :: SourcePart
+PUBLIC:: CalcSourcePart
+PUBLIC:: SourcePart
 #endif /*PARTICLES_COUPLING >= 2*/
 !==================================================================================================================================
 

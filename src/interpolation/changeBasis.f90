@@ -32,20 +32,10 @@ INTERFACE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D_singleVar
 END INTERFACE
 
-INTERFACE ChangeBasis3D_XYZ
-  MODULE PROCEDURE ChangeBasis3D_XYZ
-END INTERFACE
-
 INTERFACE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D_singleVar
 END INTERFACE
-
-#if (PP_dim == 2)
-INTERFACE ChangeBasis2D_XYZ
-  MODULE PROCEDURE ChangeBasis2D_XYZ
-END INTERFACE
-#endif /*PP_dim == 2*/
 
 #if FV_ENABLED
 INTERFACE ChangeBasis1D
@@ -64,6 +54,7 @@ PUBLIC :: ChangeBasis2D_XYZ
 PUBLIC :: ChangeBasis1D
 #endif /*FV_ENABLED*/
 !==================================================================================================================================
+
 CONTAINS
 
 #define _ADD_DIM
@@ -108,9 +99,10 @@ INTERFACE ChangeBasisSurf
 END INTERFACE
 #endif
 
-PUBLIC :: ChangeBasisVolume
-PUBLIC :: ChangeBasisSurf
+PUBLIC:: ChangeBasisVolume
+PUBLIC:: ChangeBasisSurf
 !==================================================================================================================================
+
 CONTAINS
 
 #if PP_dim == 2

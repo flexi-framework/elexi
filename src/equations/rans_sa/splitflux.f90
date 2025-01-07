@@ -30,18 +30,26 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ABSTRACT INTERFACE
   PPURE SUBROUTINE VolumeFlux(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U
     REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim
     REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M
     REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux
-  END SUBROUTINE
+  END SUBROUTINE VolumeFlux
 END INTERFACE
 
 ABSTRACT INTERFACE
   PPURE SUBROUTINE SurfaceFlux(U_LL,U_RR,F)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F
-  END SUBROUTINE
+  END SUBROUTINE SurfaceFlux
 END INTERFACE
 
 PROCEDURE(VolumeFlux),POINTER    :: SplitDGVolume_pointer    !< pointer defining the SpliDG formulation beeing used
@@ -54,13 +62,11 @@ INTEGER,PARAMETER      :: PRM_SPLITDG_KG          = 3
 INTEGER,PARAMETER      :: PRM_SPLITDG_PI          = 4
 INTEGER,PARAMETER      :: PRM_SPLITDG_CH          = 5
 
-INTERFACE InitSplitDG
-  MODULE PROCEDURE InitSplitDG
-END INTERFACE
-
-PUBLIC::InitSplitDG,DefineParametersSplitDG
-PUBLIC::SplitDGSurface_pointer,SplitDGVolume_pointer
-PUBLIC::GetLogMean
+PUBLIC:: DefineParametersSplitDG
+PUBLIC:: InitSplitDG
+PUBLIC:: SplitDGSurface_pointer
+PUBLIC:: SplitDGVolume_pointer
+PUBLIC:: GetLogMean
 !==================================================================================================================================
 
 CONTAINS

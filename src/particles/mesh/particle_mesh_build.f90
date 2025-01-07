@@ -23,90 +23,25 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE BuildBCElemDistance
-  MODULE PROCEDURE BuildBCElemDistance
-END INTERFACE
-
-INTERFACE BuildElementBasisAndRadius
-  MODULE PROCEDURE BuildElementBasisAndRadius
-END INTERFACE
-
-INTERFACE BuildElementOriginShared
-  MODULE PROCEDURE BuildElementOriginShared
-END INTERFACE
-
-INTERFACE BuildElementRadiusTria
-  MODULE PROCEDURE BuildElementRadiusTria
-END INTERFACE
-
-INTERFACE BuildElemTypeAndBasisTria
-  MODULE PROCEDURE BuildElemTypeAndBasisTria
-END INTERFACE
-
-INTERFACE BuildEpsOneCell
-  MODULE PROCEDURE BuildEpsOneCell
-END INTERFACE
-
-INTERFACE BuildLinearSideBaseVectors
-  MODULE PROCEDURE BuildLinearSideBaseVectors
-END INTERFACE
-
-INTERFACE BuildSideOriginAndRadius
-  MODULE PROCEDURE BuildSideOriginAndRadius
-END INTERFACE
-
-INTERFACE CalcBezierControlPoints
-  MODULE PROCEDURE CalcBezierControlPoints
-END INTERFACE
-
-INTERFACE CalcParticleMeshMetrics
-  MODULE PROCEDURE CalcParticleMeshMetrics
-END INTERFACE
-
-INTERFACE ComputePeriodicVec
-  MODULE PROCEDURE ComputePeriodicVec
-END INTERFACE
-
-INTERFACE GetMeshMinMax
-  MODULE PROCEDURE GetMeshMinMax
-END INTERFACE
-
-INTERFACE IdentifyElemAndSideType
-  MODULE PROCEDURE IdentifyElemAndSideType
-END INTERFACE
-
-INTERFACE InitElemVolumes
-  MODULE PROCEDURE InitElemVolumes
-END INTERFACE
-
-INTERFACE InitParticleGeometry
-  MODULE PROCEDURE InitParticleGeometry
-END INTERFACE
-
-INTERFACE MapRegionToElem
-  MODULE PROCEDURE MapRegionToElem
-END INTERFACE
-
-PUBLIC :: BuildBCElemDistance
-PUBLIC :: BuildElementBasisAndRadius
-PUBLIC :: BuildElementOriginShared
-PUBLIC :: BuildElementRadiusTria
-PUBLIC :: BuildElemTypeAndBasisTria
-PUBLIC :: BuildEpsOneCell
-PUBLIC :: BuildLinearSideBaseVectors
-PUBLIC :: BuildSideOriginAndRadius
-PUBLIC :: CalcBezierControlPoints
-PUBLIC :: CalcParticleMeshMetrics
-PUBLIC :: ComputePeriodicVec
-PUBLIC :: GetMeshMinMax
-PUBLIC :: IdentifyElemAndSideType
-PUBLIC :: InitElemVolumes
-PUBLIC :: InitParticleGeometry
-PUBLIC :: MapRegionToElem
+PUBLIC:: BuildBCElemDistance
+PUBLIC:: BuildElementBasisAndRadius
+PUBLIC:: BuildElementOriginShared
+PUBLIC:: BuildElementRadiusTria
+PUBLIC:: BuildElemTypeAndBasisTria
+PUBLIC:: BuildEpsOneCell
+PUBLIC:: BuildLinearSideBaseVectors
+PUBLIC:: BuildSideOriginAndRadius
+PUBLIC:: CalcBezierControlPoints
+PUBLIC:: CalcParticleMeshMetrics
+PUBLIC:: ComputePeriodicVec
+PUBLIC:: GetMeshMinMax
+PUBLIC:: IdentifyElemAndSideType
+PUBLIC:: InitElemVolumes
+PUBLIC:: InitParticleGeometry
+PUBLIC:: MapRegionToElem
 !===================================================================================================================================
 
 CONTAINS
-
 
 SUBROUTINE BuildElementRadiusTria()
 !================================================================================================================================
@@ -1964,7 +1899,7 @@ REAL,INTENT(IN)           :: Points1(1:3,1:N)
 REAL,INTENT(IN)           :: Points2(1:3,1:N)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! OUTPUT VARIABLES
-LOGICAL                   :: IsNotEqual
+LOGICAL,INTENT(OUT)       :: IsNotEqual
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: i
@@ -2279,10 +2214,10 @@ DO ElemID = firstElem,lastElem
   IF (ALL(PeriodicFound(:))) EXIT
 
 SideLoop: DO SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,ElemID)
-    IF (SideInfo_Shared(SIDE_BCID,SideID).EQ.0) CYCLE
+    IF (SideInfo_Shared(SIDE_BCID,SideID).EQ.0) CYCLE SideLoop
 
     ! Boundary is a periodic boundary
-    IF (PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,SideID)).NE.3) CYCLE
+    IF (PartBound%TargetBoundCond(SideInfo_Shared(SIDE_BCID,SideID)).NE.3) CYCLE SideLoop
 
     ! Check if side is master side
     BCALPHA = BoundaryType(SideInfo_Shared(SIDE_BCID,SideID),BC_ALPHA)
@@ -2291,7 +2226,7 @@ SideLoop: DO SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Share
       ! Map to periodic vector
       BCALPHA = GEO%PeriodicMapping(BCALPHA)
       ! Periodic vector already found
-      IF (PeriodicFound(BCALPHA)) CYCLE
+      IF (PeriodicFound(BCALPHA)) CYCLE SideLoop
 
       ! Periodic slave side has same ID, but negative sign
       flip          = MERGE(0,MOD(SideInfo_Shared(SIDE_FLIP,SideID),10),SideInfo_Shared(SIDE_ID,SideID).GT.0)
@@ -2307,7 +2242,7 @@ SideLoop: DO SideID = ElemInfo_Shared(ELEM_FIRSTSIDEIND,ElemID)+1,ElemInfo_Share
       Vec           = SlaveCoords-MasterCoords
 
       ! Might consider aborting here, malformed periodic sides
-      IF (VECNORM(Vec).EQ.0) CYCLE
+      IF (VECNORM(Vec).EQ.0) CYCLE SideLoop
 
       ! Check if the periodic vector is ALMOST aligned with a Cartesian direction
       DO iVec = 1,3
@@ -2619,8 +2554,8 @@ INTEGER                        :: p,q,pq(2)
 REAL                           :: tmp(3,0:NGeo,0:NGeo)
 REAL                           :: tmp2(3,0:NGeo,0:NGeo)
 ! Memory
-INTEGER(KIND=8),PARAMETER      :: kByte = 1024
-INTEGER(KIND=8),PARAMETER      :: gByte = 1073741824
+INTEGER(KIND=DP),PARAMETER     :: kByte = 1024
+INTEGER(KIND=DP),PARAMETER     :: gByte = 1073741824
 REAL                           :: memory(3)
 ! Timers
 REAL                           :: StartT,EndT,WallTime

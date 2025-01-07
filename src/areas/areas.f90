@@ -21,22 +21,11 @@ MODULE MOD_Areas
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-SAVE
-!----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitArea
-  MODULE PROCEDURE InitArea
-END INTERFACE
-
-INTERFACE FinalizeArea
-  MODULE PROCEDURE FinalizeArea
-END INTERFACE
-
-PUBLIC :: InitArea
-PUBLIC :: FinalizeArea
-PUBLIC :: PointInPoly
+PUBLIC:: InitArea
+PUBLIC:: FinalizeArea
+PUBLIC:: PointInPoly
 !==================================================================================================================================
 
 CONTAINS

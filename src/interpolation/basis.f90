@@ -19,77 +19,24 @@
 !==================================================================================================================================
 MODULE MOD_Basis
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE BuildLegendreVdm
-   MODULE PROCEDURE BuildLegendreVdm
-END INTERFACE
 
-INTERFACE InitializeVandermonde
-   MODULE PROCEDURE InitializeVandermonde
-END INTERFACE
-
-INTERFACE ChebyshevGaussNodesAndWeights
-   MODULE PROCEDURE ChebyshevGaussNodesAndWeights
-END INTERFACE
-
-INTERFACE ChebyGaussLobNodesAndWeights
-   MODULE PROCEDURE ChebyGaussLobNodesAndWeights
-END INTERFACE
-
-INTERFACE ClenshawCurtisNodesAndWeights
-   MODULE PROCEDURE ClenshawCurtisNodesAndWeights
-END INTERFACE
-
-INTERFACE LegendreGaussNodesAndWeights
-   MODULE PROCEDURE LegendreGaussNodesAndWeights
-END INTERFACE
-
-INTERFACE LegGaussLobNodesAndWeights
-   MODULE PROCEDURE LegGaussLobNodesAndWeights
-END INTERFACE
-
-INTERFACE LegGaussRadauNodesAndWeights
-   MODULE PROCEDURE LegGaussRadauNodesAndWeights
-END INTERFACE
-
-INTERFACE LegendrePolynomialAndDerivative
-   MODULE PROCEDURE LegendrePolynomialAndDerivative
-END INTERFACE
-
-INTERFACE PolynomialDerivativeMatrix
-   MODULE PROCEDURE PolynomialDerivativeMatrix
-END INTERFACE
-
-INTERFACE BarycentricWeights
-   MODULE PROCEDURE BarycentricWeights
-END INTERFACE
-
-INTERFACE LagrangeInterpolationPolys
-   MODULE PROCEDURE LagrangeInterpolationPolys
-END INTERFACE
-
-INTERFACE PolynomialMassMatrix
-   MODULE PROCEDURE PolynomialMassMatrix
-END INTERFACE
-
-PUBLIC::BuildLegendreVdm
-PUBLIC::InitializeVandermonde
-PUBLIC::LegGaussLobNodesAndWeights
-PUBLIC::LegGaussRadauNodesAndWeights
-PUBLIC::LegendreGaussNodesAndWeights
-PUBLIC::ChebyshevGaussNodesAndWeights
-PUBLIC::ChebyGaussLobNodesAndWeights
-PUBLIC::ClenshawCurtisNodesAndWeights
-PUBLIC::LegendrePolynomialAndDerivative
-PUBLIC::PolynomialDerivativeMatrix
-PUBLIC::BarycentricWeights
-PUBLIC::LagrangeInterpolationPolys
-PUBLIC::PolynomialMassMatrix
+PUBLIC:: BuildLegendreVdm
+PUBLIC:: InitializeVandermonde
+PUBLIC:: LegGaussLobNodesAndWeights
+PUBLIC:: LegGaussRadauNodesAndWeights
+PUBLIC:: LegendreGaussNodesAndWeights
+PUBLIC:: ChebyshevGaussNodesAndWeights
+PUBLIC:: ChebyGaussLobNodesAndWeights
+PUBLIC:: ClenshawCurtisNodesAndWeights
+PUBLIC:: LegendrePolynomialAndDerivative
+PUBLIC:: PolynomialDerivativeMatrix
+PUBLIC:: BarycentricWeights
+PUBLIC:: LagrangeInterpolationPolys
+PUBLIC:: PolynomialMassMatrix
 !==================================================================================================================================
 
 CONTAINS
@@ -163,7 +110,6 @@ IF(dummy.GT.10.*PP_RealTolerance) CALL Abort(__STAMP__,&
 
 END SUBROUTINE buildLegendreVdm
 
-
 !===================================================================================================================================
 !> Build a 1D Vandermonde matrix using the Lagrange basis functions of degree
 !> N_In, evaluated at the interpolation points xi_Out
@@ -189,7 +135,6 @@ DO iXi=0,N_Out
 END DO
 
 END SUBROUTINE InitializeVandermonde
-
 
 !===================================================================================================================================
 !> Evaluate the Legendre polynomial L_N and its derivative at position x[-1,1]
@@ -270,7 +215,6 @@ IF(PRESENT(wGP))THEN
 END IF
 
 END SUBROUTINE ChebyshevGaussNodesAndWeights
-
 
 !==================================================================================================================================
 !> Compute Chebychev-Gauss-Lobatto nodes and integration weights (algorithm 27, Kopriva book)
@@ -508,7 +452,6 @@ END IF ! (mod(N_in,2) .EQ. 0)
 
 END SUBROUTINE LegendreGaussNodesAndWeights
 
-
 !==================================================================================================================================
 !> Evaluate the polynomial q=L_{N_in+1}-L_{N_in} and its derivative at position x in [-1,1]
 !> Recursive algorithm using the N_in-1 N_in-2 Legendre polynomials. Adapted from (Algorithm 24, Kopriva book)
@@ -588,7 +531,6 @@ q    = REAL(2*N_in+1)/REAL(N_in+1)*(x*L -L_Nm2) !L_{N_in+1}-L_{N_in-1} !L_Nm2 is
 qder = REAL(2*N_in+1)*L                         !Lder_{N_in+1}-Lder_{N_in-1} = (2N+1)*L
 
 END SUBROUTINE qAndLEvaluation
-
 
 !==================================================================================================================================
 !> Starting with initial guess by Parter Relation, a Newton method is used to find the roots

@@ -22,11 +22,7 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitPeriodicBC
-  MODULE PROCEDURE InitPeriodicBC
-END INTERFACE
-
-PUBLIC :: InitPeriodicBC
+PUBLIC:: InitPeriodicBC
 !===================================================================================================================================
 
 CONTAINS

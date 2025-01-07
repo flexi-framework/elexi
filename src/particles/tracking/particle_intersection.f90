@@ -23,44 +23,14 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE IntersectionWithWall
-  MODULE PROCEDURE IntersectionWithWall
-END INTERFACE
-
-INTERFACE ComputePlanarCurvedIntersection
-  MODULE PROCEDURE ComputePlanarCurvedIntersection
-END INTERFACE
-
-INTERFACE ComputePlanarRectIntersection
-  MODULE PROCEDURE ComputePlanarRectIntersection
-END INTERFACE
-
-INTERFACE ComputePlanarNonRectIntersection
-  MODULE PROCEDURE ComputePlanarNonRectIntersection
-END INTERFACE
-
-INTERFACE ComputeBilinearIntersection
-  MODULE PROCEDURE ComputeBilinearIntersection
-END INTERFACE
-
-INTERFACE ComputeCurvedIntersection
-  MODULE PROCEDURE ComputeCurvedIntersection
-END INTERFACE
-
+PUBLIC:: IntersectionWithWall
+PUBLIC:: ComputePlanarRectIntersection
+PUBLIC:: ComputePlanarNonRectIntersection
+PUBLIC:: ComputePlanarCurvedIntersection
+PUBLIC:: ComputeBilinearIntersection
+PUBLIC:: ComputeCurvedIntersection
 #if CODE_ANALYZE
-INTERFACE OutputTrajectory
-  MODULE PROCEDURE OutputTrajectory
-END INTERFACE
-#endif /*CODE_ANALYZE*/
-
-PUBLIC :: IntersectionWithWall
-PUBLIC :: ComputePlanarRectIntersection
-PUBLIC :: ComputePlanarNonRectIntersection
-PUBLIC :: ComputePlanarCurvedIntersection
-PUBLIC :: ComputeBilinearIntersection
-PUBLIC :: ComputeCurvedIntersection
-#if CODE_ANALYZE
-PUBLIC :: OutputTrajectory
+PUBLIC:: OutputTrajectory
 #endif /*CODE_ANALYZE*/
 !===================================================================================================================================
 
@@ -584,7 +554,7 @@ REAL                              :: XiNewton(2)
 REAL                              :: coeffA,locSideDistance
 ! fallback algorithm
 LOGICAL                           :: failed
-INTEGER(KIND=2)                   :: ClipMode
+INTEGER(KIND=HP)                  :: ClipMode
 REAL                              :: LineNormVec(1:2,1:2)
 INTEGER                           :: iClipIter,nXiClip,nEtaClip
 REAL                              :: PartFaceAngle
@@ -1157,7 +1127,7 @@ INTEGER                           :: iClipIter,nXiClip,nEtaClip
 REAL                              :: BezierControlPoints2D_tmp(2,0:NGeo,0:NGeo)
 #endif /*CODE_ANALYZE*/
 INTEGER,ALLOCATABLE,DIMENSION(:)  :: locID,realInterID
-INTEGER(KIND=2)                   :: ClipMode
+INTEGER(KIND=HP)                  :: ClipMode
 REAL                              :: LineNormVec(1:2,1:2)
 INTEGER                           :: realnInter,isInter
 REAL                              :: XiNewton(2)

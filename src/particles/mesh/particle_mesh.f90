@@ -23,31 +23,11 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersParticleMesh
-    MODULE PROCEDURE DefineParametersParticleMesh
-END INTERFACE
-
-INTERFACE InitParticleMeshBasis
-    MODULE PROCEDURE InitParticleMeshBasis
-END INTERFACE
-
-INTERFACE InitParticleMesh
-  MODULE PROCEDURE InitParticleMesh
-END INTERFACE
-
-INTERFACE FinalizeParticleMeshBasis
-    MODULE PROCEDURE FinalizeParticleMeshBasis
-END INTERFACE
-
-INTERFACE FinalizeParticleMesh
-  MODULE PROCEDURE FinalizeParticleMesh
-END INTERFACE
-
-PUBLIC :: DefineParametersParticleMesh
-PUBLIC :: InitParticleMeshBasis
-PUBLIC :: InitParticleMesh
-PUBLIC :: FinalizeParticleMeshBasis
-PUBLIC :: FinalizeParticleMesh
+PUBLIC:: DefineParametersParticleMesh
+PUBLIC:: InitParticleMeshBasis
+PUBLIC:: InitParticleMesh
+PUBLIC:: FinalizeParticleMeshBasis
+PUBLIC:: FinalizeParticleMesh
 !===================================================================================================================================
 
 CONTAINS

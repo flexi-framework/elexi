@@ -25,27 +25,13 @@ USE MOD_HDF5_Output
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! Do not define an interface for this, cast information directly into subroutine
-! INTERFACE DistributedWriteArray
-!  MODULE PROCEDURE DistributedWriteArray
-! END INTERFACE
 
-INTERFACE WriteParticle
-  MODULE PROCEDURE WriteParticle
-END INTERFACE
-
-! #if USE_LOADBALANCE
-! INTERFACE WriteElemDataToSeparateContainer
-!  MODULE PROCEDURE WriteElemDataToSeparateContainer
-! END INTERFACE
-! #endif /*USE_LOADBALANCE*/
-
-PUBLIC :: WriteParticle
+PUBLIC:: WriteParticle
 #if USE_MPI
-PUBLIC :: DistributedWriteArray
+PUBLIC:: DistributedWriteArray
 #endif
 #if USE_LOADBALANCE
-! PUBLIC :: WriteElemDataToSeparateContainer
+! PUBLIC:: WriteElemDataToSeparateContainer
 #endif
 !==================================================================================================================================
 

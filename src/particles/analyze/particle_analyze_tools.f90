@@ -14,7 +14,6 @@
 #include "flexi.h"
 #include "particle.h"
 
-
 !===================================================================================================================================
 !> Contains helper routines for statistical analysis of particle behavior
 !===================================================================================================================================
@@ -24,26 +23,10 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE CalcEkinPart
-  MODULE PROCEDURE CalcEkinPart
-END INTERFACE
-
-INTERFACE TrackingParticlePath
-  MODULE PROCEDURE TrackingParticlePath
-END INTERFACE
-
-INTERFACE ParticleRecordPath
-  MODULE PROCEDURE ParticleRecordPath
-END INTERFACE
-
-INTERFACE ParticleRecord
-  MODULE PROCEDURE ParticleRecord
-END INTERFACE
-
-PUBLIC :: CalcEkinPart
-PUBLIC :: ParticleRecordPath
-PUBLIC :: ParticleRecord
-PUBLIC :: TrackingParticlePath
+PUBLIC:: CalcEkinPart
+PUBLIC:: ParticleRecordPath
+PUBLIC:: ParticleRecord
+PUBLIC:: TrackingParticlePath
 !===================================================================================================================================
 
 CONTAINS

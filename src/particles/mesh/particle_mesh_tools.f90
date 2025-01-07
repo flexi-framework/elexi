@@ -25,89 +25,65 @@ PRIVATE
 
 ABSTRACT INTERFACE
   PURE INTEGER FUNCTION GetGlobalElemIDInterface(iElem)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     INTEGER,INTENT(IN) :: iElem
-  END FUNCTION
+  END FUNCTION GetGlobalElemIDInterface
 END INTERFACE
 
 PROCEDURE(GetGlobalElemIDInterface),POINTER :: GetGlobalElemID    !< pointer defining the mapping: compute-node element ID -> global element ID
 
 ABSTRACT INTERFACE
   PURE INTEGER FUNCTION GetCNElemIDInterface(iElem)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     INTEGER,INTENT(IN) :: iElem
-  END FUNCTION
+  END FUNCTION GetCNElemIDInterface
 END INTERFACE
 
 PROCEDURE(GetCNElemIDInterface),POINTER     :: GetCNElemID        !< pointer defining the mapping: global element ID -> compute-node element ID
 
 ABSTRACT INTERFACE
   PURE INTEGER FUNCTION GetGlobalSideIDInterface(iSide)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     INTEGER,INTENT(IN) :: iSide
-  END FUNCTION
+  END FUNCTION GetGlobalSideIDInterface
 END INTERFACE
 
 PROCEDURE(GetGlobalSideIDInterface),POINTER :: GetGlobalSideID    !< pointer defining the mapping: compute-node element ID -> global element ID
 
 ABSTRACT INTERFACE
   PURE INTEGER FUNCTION GetCNSideIDInterface(iSide)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     INTEGER,INTENT(IN) :: iSide
-  END FUNCTION
+  END FUNCTION GetCNSideIDInterface
 END INTERFACE
 
 PROCEDURE(GetCNSideIDInterface),POINTER     :: GetCNSideID        !< pointer defining the mapping: global element ID -> compute-node element ID
 
 ! Initialization routines
-INTERFACE InitGetGlobalElemID
-  MODULE PROCEDURE InitGetGlobalElemID
-END INTERFACE
-
-INTERFACE InitGetCNElemID
-  MODULE PROCEDURE InitGetCNElemID
-END INTERFACE
-
-INTERFACE InitGetGlobalSideID
-  MODULE PROCEDURE InitGetGlobalSideID
-END INTERFACE
-
-INTERFACE InitGetCNSideID
-  MODULE PROCEDURE InitGetCNSideID
-END INTERFACE
-
-INTERFACE GetGlobalElemID
-  PROCEDURE GetGlobalElemID
-END INTERFACE
-
-INTERFACE GetCNElemID
-  PROCEDURE GetCNElemID
-END INTERFACE
-
-INTERFACE GetGlobalSideID
-  PROCEDURE GetGlobalSideID
-END INTERFACE
-
-INTERFACE GetCNSideID
-  PROCEDURE GetCNSideID
-END INTERFACE
-
-INTERFACE GetGlobalNonUniqueSideID
-  MODULE PROCEDURE GetGlobalNonUniqueSideID
-END INTERFACE
-
-INTERFACE GetSideBoundingBoxTria
-  MODULE PROCEDURE GetSideBoundingBoxTria
-END INTERFACE
-
-PUBLIC :: InitGetGlobalElemID
-PUBLIC :: InitGetCNElemID
-PUBLIC :: InitGetGlobalSideID
-PUBLIC :: InitGetCNSideID
-PUBLIC :: GetGlobalElemID
-PUBLIC :: GetCNElemID
-PUBLIC :: GetGlobalSideID
-PUBLIC :: GetCNSideID
-PUBLIC :: GetGlobalNonUniqueSideID
-PUBLIC :: GetSideBoundingBoxTria
-PUBLIC :: GetCornerNodes
-PUBLIC :: GetCornerNodeMapCGNS
+PUBLIC:: InitGetGlobalElemID
+PUBLIC:: InitGetCNElemID
+PUBLIC:: InitGetGlobalSideID
+PUBLIC:: InitGetCNSideID
+PUBLIC:: GetGlobalElemID
+PUBLIC:: GetCNElemID
+PUBLIC:: GetGlobalSideID
+PUBLIC:: GetCNSideID
+PUBLIC:: GetGlobalNonUniqueSideID
+PUBLIC:: GetSideBoundingBoxTria
+PUBLIC:: GetCornerNodes
+PUBLIC:: GetCornerNodeMapCGNS
 !===================================================================================================================================
 
 CONTAINS

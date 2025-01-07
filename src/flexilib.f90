@@ -16,20 +16,14 @@
 #include "commit.h"
 
 MODULE MOD_Flexi
-
+! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
+!-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitFlexi
-   MODULE PROCEDURE InitFlexi
-END INTERFACE
-
-INTERFACE FinalizeFlexi
-   MODULE PROCEDURE FinalizeFlexi
-END INTERFACE
-
-PUBLIC::InitFlexi,FinalizeFlexi
+PUBLIC:: InitFlexi
+PUBLIC:: FinalizeFlexi
 
 CONTAINS
 
@@ -101,14 +95,14 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: nArgs_In
-CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(*)
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(:)
 #if USE_MPI
 INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                 :: userblockFound
-CHARACTER(LEN=255)      :: RestartFile_loc = ''
+CHARACTER(LEN=255)      :: RestartFile_loc
 !==================================================================================================================================
 CALL SetStackSizeUnlimited()
 
@@ -135,7 +129,8 @@ IF (nArgs.GT.2) THEN
   '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
 END IF
 
-ParameterFile = Args(1)
+ParameterFile   = Args(1)
+RestartFile_loc = ''
 IF (nArgs.GT.1) THEN
   RestartFile_loc = Args(2)
 #if USE_LOADBALANCE

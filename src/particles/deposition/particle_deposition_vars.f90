@@ -14,7 +14,6 @@
 #include "flexi.h"
 #include "particle.h"
 
-
 !===================================================================================================================================
 ! Module containing the different deposition methods (NGP, linear (inter-cell) weighting, shape function
 !===================================================================================================================================
@@ -26,15 +25,15 @@ SAVE
 
 #if PARTICLES_COUPLING >= 2
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-!----------------------------------------------------------------------------------------------------------------------------------
-PUBLIC :: DepositionMethod
+PUBLIC:: DepositionMethod
 !----------------------------------------------------------------------------------------------------------------------------------
 
 ABSTRACT INTERFACE
   SUBROUTINE DepositionMethodInterface()
-  END SUBROUTINE
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+  END SUBROUTINE DepositionMethodInterface
 END INTERFACE
 
 PROCEDURE(DepositionMethodInterface),POINTER :: DepositionMethod             !< Pointer defining the deposition method

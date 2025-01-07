@@ -23,48 +23,16 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE GetPositionInRefElem
-  MODULE PROCEDURE GetPositionInRefElem
-END INTERFACE
-
-INTERFACE TensorProductInterpolation
-  MODULE PROCEDURE TensorProductInterpolation
-END INTERFACE
-
-INTERFACE EvaluateFieldAtPhysPos
-  MODULE PROCEDURE EvaluateFieldAtPhysPos
-END INTERFACE
-
-INTERFACE EvaluateFieldAtRefPos
-  MODULE PROCEDURE EvaluateFieldAtRefPos
-END INTERFACE
-
+PUBLIC:: GetPositionInRefElem
+PUBLIC:: TensorProductInterpolation
+PUBLIC:: EvaluateFieldAtPhysPos
+PUBLIC:: EvaluateFieldAtRefPos
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
-INTERFACE EvaluateFieldAndGradAtPhysPos
-  MODULE PROCEDURE EvaluateFieldAndGradAtPhysPos
-END INTERFACE
-
-INTERFACE EvaluateFieldAndGradAtRefPos
-  MODULE PROCEDURE EvaluateFieldAndGradAtRefPos
-END INTERFACE
-#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
-
-#if FV_ENABLED
-INTERFACE EvaluateField_FV
-  MODULE PROCEDURE EvaluateField_FV
-END INTERFACE
-#endif /* FV_ENABLED */
-
-PUBLIC :: GetPositionInRefElem
-PUBLIC :: TensorProductInterpolation
-PUBLIC :: EvaluateFieldAtPhysPos
-PUBLIC :: EvaluateFieldAtRefPos
-#if USE_EXTEND_RHS || USE_FAXEN_CORR
-PUBLIC :: EvaluateFieldAndGradAtPhysPos
-PUBLIC :: EvaluateFieldAndGradAtRefPos
+PUBLIC:: EvaluateFieldAndGradAtPhysPos
+PUBLIC:: EvaluateFieldAndGradAtRefPos
 #endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 #if FV_ENABLED
-PUBLIC :: EvaluateField_FV
+PUBLIC:: EvaluateField_FV
 #endif /* FV_ENABLED */
 !===================================================================================================================================
 

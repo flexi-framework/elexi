@@ -23,25 +23,13 @@ MODULE MOD_AnalyzeEquation
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitAnalyzeEquation
-  MODULE PROCEDURE InitAnalyzeEquation
-END INTERFACE
 
-INTERFACE AnalyzeEquation
-  MODULE PROCEDURE AnalyzeEquation
-END INTERFACE
-
-INTERFACE FinalizeAnalyzeEquation
-  MODULE PROCEDURE FinalizeAnalyzeEquation
-END INTERFACE
-
-
-PUBLIC:: AnalyzeEquation, InitAnalyzeEquation, FinalizeAnalyzeEquation
+PUBLIC:: DefineParametersAnalyzeEquation
+PUBLIC:: AnalyzeEquation
+PUBLIC:: InitAnalyzeEquation
+PUBLIC:: FinalizeAnalyzeEquation
 !==================================================================================================================================
 
-PUBLIC::DefineParametersAnalyzeEquation
 CONTAINS
 
 !==================================================================================================================================
@@ -354,6 +342,7 @@ END IF
 #endif
 
 END SUBROUTINE AnalyzeEquation
+
 
 !==================================================================================================================================
 !> Calculates residuals over whole domain
@@ -714,6 +703,7 @@ END SUBROUTINE CalcMeanFlux
 SUBROUTINE FinalizeAnalyzeEquation()
 ! MODULES
 USE MOD_AnalyzeEquation_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

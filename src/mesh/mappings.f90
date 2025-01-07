@@ -22,58 +22,18 @@ MODULE MOD_Mappings
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES (PUBLIC)
-!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE BuildMappings
-  MODULE PROCEDURE BuildMappings
-END INTERFACE
 
-INTERFACE Flip_S2M
-  MODULE PROCEDURE Flip_S2M
-END INTERFACE
-
-INTERFACE Flip_M2S
-  MODULE PROCEDURE Flip_M2S
-END INTERFACE
-
-INTERFACE SideToVol
-  MODULE PROCEDURE SideToVol
-END INTERFACE
-
-INTERFACE SideToVol2
-  MODULE PROCEDURE SideToVol2
-END INTERFACE
-
-INTERFACE VolToSide
-  MODULE PROCEDURE VolToSide
-END INTERFACE
-
-!INTERFACE ElemToNbElem
-!  MODULE PROCEDURE ElemToNbElem
-!END INTERFACE
-
-INTERFACE FinalizeMappings
-  MODULE PROCEDURE FinalizeMappings
-END INTERFACE
-
+PUBLIC:: BuildMappings
+PUBLIC:: Flip_S2M
+PUBLIC:: Flip_M2S
+PUBLIC:: SideToVol
+PUBLIC:: SideToVol2
+PUBLIC:: VolToSide
+! PUBLIC:: ElemToNbElem
+PUBLIC:: FinalizeMappings
 #if USE_PARTICLES
-INTERFACE CGNS_SideToVol2
-  MODULE PROCEDURE CGNS_SideToVol2
-END INTERFACE
-#endif
-
-PUBLIC::BuildMappings
-PUBLIC::Flip_S2M
-PUBLIC::Flip_M2S
-PUBLIC::SideToVol
-PUBLIC::SideToVol2
-PUBLIC::VolToSide
-!PUBLIC::ElemToNbElem
-PUBLIC::FinalizeMappings
-
-#if USE_PARTICLES
-PUBLIC::CGNS_SideToVol2
+PUBLIC:: CGNS_SideToVol2
 #endif
 !==================================================================================================================================
 
@@ -339,6 +299,7 @@ END FUNCTION CGNS_VolToSide
 !==================================================================================================================================
 FUNCTION CGNS_SideToVol(Nloc, l, p, q, locSideID, dim)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

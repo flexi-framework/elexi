@@ -21,11 +21,9 @@
 !==================================================================================================================================
 MODULE MOD_Sponge
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
-SAVE
-!----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 
 INTEGER,PARAMETER :: SPONGEBASEFLOW_CONSTANT  = 1
@@ -33,22 +31,10 @@ INTEGER,PARAMETER :: SPONGEBASEFLOW_EXACTFUNC = 2
 INTEGER,PARAMETER :: SPONGEBASEFLOW_FILE      = 3
 INTEGER,PARAMETER :: SPONGEBASEFLOW_PRUETT    = 4
 
-INTERFACE InitSponge
-  MODULE PROCEDURE InitSponge
-END INTERFACE
-
-INTERFACE Sponge
-  MODULE PROCEDURE Sponge
-END INTERFACE
-
-INTERFACE FinalizeSponge
-  MODULE PROCEDURE FinalizeSponge
-END INTERFACE
-
-PUBLIC::DefineParametersSponge
-PUBLIC::InitSponge
-PUBLIC::Sponge
-PUBLIC::FinalizeSponge
+PUBLIC:: DefineParametersSponge
+PUBLIC:: InitSponge
+PUBLIC:: Sponge
+PUBLIC:: FinalizeSponge
 !==================================================================================================================================
 
 CONTAINS

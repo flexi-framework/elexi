@@ -25,48 +25,40 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE Particle_InitTimeDisc
-  MODULE PROCEDURE Particle_InitTimeDisc
-END INTERFACE
-
-INTERFACE ParticleTimeRHS
-  MODULE PROCEDURE ParticleTimeRHS
-END INTERFACE
-
 ! > Dummy interface for time step function pointer
 ABSTRACT INTERFACE
   SUBROUTINE ParticleTimeStepPointer(t,dt)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     REAL,INTENT(IN)          :: t
     REAL,INTENT(IN)          :: dt
-  END SUBROUTINE
+  END SUBROUTINE ParticleTimeStepPointer
 END INTERFACE
 
 ! > Dummy interface for time step function pointer
 ABSTRACT INTERFACE
   SUBROUTINE ParticleTimeStepRKPointer(t,dt,CurrentStage)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
     REAL,INTENT(IN)    :: t
     REAL,INTENT(IN)    :: dt
     INTEGER,INTENT(IN) :: CurrentStage
-  END SUBROUTINE
-END INTERFACE
-
-INTERFACE Particle_FinalizeTimeDisk
-  MODULE PROCEDURE Particle_FinalizeTimeDisk
-END INTERFACE
-
-INTERFACE TimeStepSteadyState
-  MODULE PROCEDURE TimeStepSteadyState
+  END SUBROUTINE ParticleTimeStepRKPointer
 END INTERFACE
 
 PROCEDURE(ParticleTimeStepPointer),  POINTER :: ParticleTimeStep     !< Point to the particle time step routine to be used
 PROCEDURE(ParticleTimeStepRKPointer),POINTER :: ParticleTimeStepRK   !< Point to the particle RK time step routine to be used
 
-PUBLIC :: Particle_InitTimeDisc
-PUBLIC :: ParticleTimeRHS
-PUBLIC :: ParticleTimeStep
-PUBLIC :: ParticleTimeStepRK
-PUBLIC :: TimeStepSteadyState
-PUBLIC :: Particle_FinalizeTimeDisk
+PUBLIC:: Particle_InitTimeDisc
+PUBLIC:: ParticleTimeRHS
+PUBLIC:: ParticleTimeStep
+PUBLIC:: ParticleTimeStepRK
+PUBLIC:: TimeStepSteadyState
+PUBLIC:: Particle_FinalizeTimeDisk
 
 !===================================================================================================================================
 

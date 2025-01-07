@@ -21,13 +21,10 @@ MODULE MOD_LoadBalance_Tools
 ! MODULES
 IMPLICIT NONE
 PRIVATE
+!-----------------------------------------------------------------------------------------------------------------------------------
 
 #if USE_LOADBALANCE && USE_MPI
-INTERFACE DomainDecomposition
-  MODULE PROCEDURE DomainDecomposition
-END INTERFACE
-
-PUBLIC::DomainDecomposition
+PUBLIC:: DomainDecomposition
 #endif /*USE_LOADBALANCE && USE_MPI*/
 !==================================================================================================================================
 

@@ -23,12 +23,6 @@ MODULE MOD_EOS
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-
-INTERFACE InitEOS
-  MODULE PROCEDURE InitEOS
-END INTERFACE
 
 INTERFACE ConsToPrim
   MODULE PROCEDURE ConsToPrim
@@ -54,17 +48,13 @@ INTERFACE EntropyToCons
   MODULE PROCEDURE EntropyToCons_Side
 END INTERFACE
 
-INTERFACE PRESSURE_RIEMANN
-  MODULE PROCEDURE PRESSURE_RIEMANN
-END INTERFACE
-
-PUBLIC::InitEos
-PUBLIC::ConsToPrim
-PUBLIC::PrimToCons
-PUBLIC::ConsToEntropy
-PUBLIC::EntropyToCons
-PUBLIC::PRESSURE_RIEMANN
-PUBLIC::DefineParametersEos
+PUBLIC:: DefineParametersEos
+PUBLIC:: InitEos
+PUBLIC:: ConsToPrim
+PUBLIC:: PrimToCons
+PUBLIC:: ConsToEntropy
+PUBLIC:: EntropyToCons
+PUBLIC:: PRESSURE_RIEMANN
 !==================================================================================================================================
 
 CONTAINS
@@ -118,7 +108,6 @@ USE MOD_EOS_Vars      ,ONLY: Ts,cSuth
 USE MOD_EOS_Vars      ,ONLY: Tref,ExpoSuth
 #endif
 #endif /*PARABOLIC*/
-
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -202,6 +191,7 @@ END SUBROUTINE InitEos
 PPURE SUBROUTINE ConsToPrim(prim,cons)
 ! MODULES
 USE MOD_EOS_Vars,ONLY:KappaM1,R
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -233,6 +223,7 @@ END SUBROUTINE ConsToPrim
 !==================================================================================================================================
 PPURE SUBROUTINE ConsToPrim_Side(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -254,6 +245,7 @@ END SUBROUTINE ConsToPrim_Side
 !==================================================================================================================================
 PPURE SUBROUTINE ConsToPrim_Elem(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -276,6 +268,7 @@ END SUBROUTINE ConsToPrim_Elem
 PPURE SUBROUTINE ConsToPrim_Volume(Nloc,prim,cons)
 ! MODULES
 USE MOD_Mesh_Vars,ONLY:nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -300,6 +293,7 @@ END SUBROUTINE ConsToPrim_Volume
 PPURE SUBROUTINE PrimToCons(prim,cons)
 ! MODULES
 USE MOD_EOS_Vars,ONLY:sKappaM1
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -327,6 +321,7 @@ END SUBROUTINE PrimToCons
 !==================================================================================================================================
 PPURE SUBROUTINE PrimToCons_Side(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -348,6 +343,7 @@ END SUBROUTINE PrimToCons_Side
 !==================================================================================================================================
 PPURE SUBROUTINE PrimToCons_Elem(Nloc,prim,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -370,6 +366,7 @@ END SUBROUTINE PrimToCons_Elem
 PPURE SUBROUTINE PrimToCons_Volume(Nloc,prim,cons)
 ! MODULES
 USE MOD_Mesh_Vars,ONLY:nElems
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -424,6 +421,7 @@ entropy(ENER)      = - rho_p          ! -ρ / p
 
 END SUBROUTINE ConsToEntropy
 
+
 !==================================================================================================================================
 !> Transformation from entropy to conservative variables U, dS/dU, S = -rho*s/(kappa-1), s=ln(p)-kappa*ln(rho)
 !==================================================================================================================================
@@ -455,6 +453,7 @@ cons(ENER) = rhoe * (1 - SUM(entropy2(MOMV)**2) * 0.5/ entropy2(ENER)) !sKappaM1
 
 END SUBROUTINE EntropyToCons
 
+
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
@@ -478,10 +477,12 @@ DO iElem=1,nElems
 END DO
 END SUBROUTINE ConsToEntropy_Volume
 
+
 !> Transformation from primitive to conservative variables on a single side
 !==================================================================================================================================
 PPURE SUBROUTINE EntropyToCons_Side(Nloc,entropy,cons)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -496,6 +497,7 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
   CALL EntropyToCons(entropy(:,p,q),cons(:,p,q))
 END DO; END DO ! p,q=0,Nloc
 END SUBROUTINE EntropyToCons_Side
+
 
 !==================================================================================================================================
 !> Riemann solver function to get pressure at BCs

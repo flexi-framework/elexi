@@ -58,28 +58,11 @@ INTEGER,PARAMETER    :: Geo_NormVec(3)=(/2,3,4/)
 INTEGER,PARAMETER    :: Geo_TangVec1(3)=(/5,6,7/)
 INTEGER,PARAMETER    :: Geo_TangVec2(3)=(/8,9,10/)
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE BuildCoords
-  MODULE PROCEDURE BuildCoords
-END INTERFACE
 
-INTERFACE CalcMetrics
-  MODULE PROCEDURE CalcMetrics
-END INTERFACE
-
-INTERFACE CalcSurfMetrics
-  MODULE PROCEDURE CalcSurfMetrics
-END INTERFACE
-
-INTERFACE SurfMetricsFromJa
-  MODULE PROCEDURE SurfMetricsFromJa
-END INTERFACE
-
-PUBLIC::BuildCoords
-PUBLIC::CalcMetrics
-PUBLIC::CalcSurfMetrics
-PUBLIC::SurfMetricsFromJa
+PUBLIC:: BuildCoords
+PUBLIC:: CalcMetrics
+PUBLIC:: CalcSurfMetrics
+PUBLIC:: SurfMetricsFromJa
 !==================================================================================================================================
 
 CONTAINS
@@ -104,7 +87,7 @@ USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D_XYZ
 #endif
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -204,7 +187,7 @@ USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D_XYZ
 #if USE_PARTICLES
 USE MOD_Particle_Mesh_Vars ,ONLY: XCL_NGeo,dXCL_NGeo
 #endif /*PARTICLES*/
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -835,7 +818,7 @@ END SUBROUTINE CalcSurfMetrics
 SUBROUTINE SurfMetricsFromJa(Nloc,NormalDir,TangDir,NormalSign,Ja_Face,NormVec,TangVec1,TangVec2,SurfElem)
 ! MODULES
 USE MOD_Mathtools,   ONLY: CROSS
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

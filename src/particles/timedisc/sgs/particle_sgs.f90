@@ -25,21 +25,9 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 #if PARABOLIC
-INTERFACE ParticleInitSGS
-  MODULE PROCEDURE ParticleInitSGS
-END INTERFACE
-
-INTERFACE ParticleSGS
-  MODULE PROCEDURE ParticleSGS
-END INTERFACE
-
-INTERFACE ParticleFinalizeSGS
-  MODULE PROCEDURE ParticleFinalizeSGS
-END INTERFACE
-
-PUBLIC::ParticleInitSGS
-PUBLIC::ParticleSGS
-PUBLIC::ParticleFinalizeSGS
+PUBLIC:: ParticleInitSGS
+PUBLIC:: ParticleSGS
+PUBLIC:: ParticleFinalizeSGS
 !===================================================================================================================================
 
 CONTAINS

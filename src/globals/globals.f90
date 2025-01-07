@@ -18,8 +18,12 @@
 !> Provides parameters, used globally (please use EXTREMLY carefully!)
 !==================================================================================================================================
 MODULE MOD_Globals
-USE ISO_C_BINDING
 ! MODULES
+USE ISO_C_BINDING
+USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: HP => INT16,  & ! half precision (only defined for integer)
+                                         SP => REAL32, & ! single precision
+                                         DP => REAL64, & ! double precision
+                                         QP => REAL128   ! quadruple precision
 #if USE_MPI
 USE mpi
 #endif
@@ -32,32 +36,32 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-CHARACTER(LEN=255)::ParameterFile                                             !< filename of the parameter file
-INTEGER,PARAMETER ::UNIT_stdOut = 6                                           !< unit for writing to standard output (e.g. terminal)
-INTEGER,PARAMETER ::UNIT_logOut = 133                                         !< unit for writing log files
-INTEGER           ::UNIT_errOut = 999                                         !< unit for writing error files
-LOGICAL           ::Logging                                                   !< switch to turn log file writing on or of
-LOGICAL           ::use_escape_codes = .TRUE.                                 !< If set to .FALSE., output will consist only of standard text, allowing the
+CHARACTER(LEN=255):: ParameterFile                                            !< filename of the parameter file
+INTEGER,PARAMETER :: UNIT_stdOut = 6                                          !< unit for writing to standard output (e.g. terminal)
+INTEGER,PARAMETER :: UNIT_logOut = 133                                        !< unit for writing log files
+INTEGER           :: UNIT_errOut = 999                                        !< unit for writing error files
+LOGICAL           :: Logging                                                  !< switch to turn log file writing on or of
+LOGICAL           :: use_escape_codes = .TRUE.                                !< If set to .FALSE., output will consist only of standard text, allowing the
                                                                               !< escape characters to be switched off in environments which don't support them.
-LOGICAL           ::ErrorFiles                                                !< switch to turn error file writing on or of
-CHARACTER(LEN=255)::ErrorFileName = 'NOT_SET'                                 !< file to write error data into
-INTEGER           ::iError                                                    !< default error handle
-INTEGER           ::myRank,myLocalRank,myLeaderRank,myWorkerRank
-INTEGER           ::nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
-INTEGER           ::MPI_COMM_FLEXI !< Flexi MPI communicator
-LOGICAL           ::MPIRoot                                                   !< flag whether process is MPI root process
-LOGICAL           ::MPILocalRoot                                              !< flag whether process is root of MPI subgroup
+LOGICAL           :: ErrorFiles                                               !< switch to turn error file writing on or of
+CHARACTER(LEN=255):: ErrorFileName = 'NOT_SET'                                !< file to write error data into
+INTEGER           :: iError                                                   !< default error handle
+INTEGER           :: myRank,myLocalRank,myLeaderRank,myWorkerRank
+INTEGER           :: nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
+INTEGER           :: MPI_COMM_FLEXI !< Flexi MPI communicator
+LOGICAL           :: MPIRoot                                                  !< flag whether process is MPI root process
+LOGICAL           :: MPILocalRoot                                             !< flag whether process is root of MPI subgroup
 #if USE_MPI
-INTEGER           ::MPIStatus(MPI_STATUS_SIZE)
-INTEGER           ::MPI_COMM_NODE    = MPI_COMM_NULL                          !< local node subgroup
-INTEGER           ::MPI_COMM_LEADERS = MPI_COMM_NULL                          !< all node masters
-INTEGER           ::MPI_COMM_WORKERS = MPI_COMM_NULL                          !< all non-master nodes
+INTEGER           :: MPIStatus(MPI_STATUS_SIZE)
+INTEGER           :: MPI_COMM_NODE    = MPI_COMM_NULL                         !< local node subgroup
+INTEGER           :: MPI_COMM_LEADERS = MPI_COMM_NULL                         !< all node masters
+INTEGER           :: MPI_COMM_WORKERS = MPI_COMM_NULL                         !< all non-master nodes
 #endif
 #if USE_PARTICLES
 #ifdef INTKIND8
-INTEGER(KIND=SELECTED_INT_KIND(18))  :: nGlobalNbrOfParticles(6)              !< 1-3: min,max,total number of simulation particles over all processors
+INTEGER(KIND=DP)  :: nGlobalNbrOfParticles(6)                                 !< 1-3: min,max,total number of simulation particles over all processors
 #else
-INTEGER(KIND=SELECTED_INT_KIND( 8))  :: nGlobalNbrOfParticles(6)              !< 1-3: min,max,total number of simulation particles over all processors
+INTEGER(KIND=SP)  :: nGlobalNbrOfParticles(6)                                 !< 1-3: min,max,total number of simulation particles over all processors
 #endif
 #endif /*USE_PARTICLES*/
 
@@ -72,101 +76,54 @@ LOGICAL           :: postiMode = .FALSE.                                      !<
 #if LIBS_MPICH_FIX_SHM_INTERFACE
 INTERFACE MPI_WIN_ALLOCATE_SHARED
   SUBROUTINE PMPI_WIN_ALLOCATE_SHARED(SIZE, DISP_UNIT, INFO, COMM, BASEPTR, WIN, IERROR)
-      USE, INTRINSIC ::  ISO_C_BINDING, ONLY : C_PTR
-      IMPORT         ::  MPI_ADDRESS_KIND
-      INTEGER        ::  DISP_UNIT, INFO, COMM, WIN, IERROR
-      INTEGER(KIND=MPI_ADDRESS_KIND) ::  SIZE
-      TYPE(C_PTR)    ::  BASEPTR
-  END SUBROUTINE
+    ! MODULES
+    USE, INTRINSIC ::  ISO_C_BINDING, ONLY : C_PTR
+    IMPORT         ::  MPI_ADDRESS_KIND
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
+    INTEGER,INTENT(IN)     ::  DISP_UNIT, INFO, COMM, WIN, IERROR
+    INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: SIZE
+    TYPE(C_PTR),INTENT(IN) ::  BASEPTR
+  END SUBROUTINE PMPI_WIN_ALLOCATE_SHARED
 END INTERFACE
 
 INTERFACE MPI_WIN_SHARED_QUERY
   SUBROUTINE PMPI_WIN_SHARED_QUERY(WIN, RANK, SIZE, DISP_UNIT, BASEPTR, IERROR)
-      USE, INTRINSIC :: ISO_C_BINDING, ONLY : C_PTR
-      IMPORT         :: MPI_ADDRESS_KIND
-      INTEGER        :: WIN, RANK, DISP_UNIT, IERROR
-      INTEGER(KIND=MPI_ADDRESS_KIND) :: SIZE
-      TYPE(C_PTR)    :: BASEPTR
-  END SUBROUTINE
+    ! MODULES
+    USE, INTRINSIC ::  ISO_C_BINDING, ONLY : C_PTR
+    IMPORT         ::  MPI_ADDRESS_KIND
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
+    INTEGER,INTENT(IN)     :: WIN, RANK, DISP_UNIT, IERROR
+    INTEGER(KIND=MPI_ADDRESS_KIND),INTENT(IN) :: SIZE
+    TYPE(C_PTR),INTENT(IN) ::  BASEPTR
+  END SUBROUTINE PMPI_WIN_SHARED_QUERY
 END INTERFACE
 #endif /*LIBS_MPICH_FIX_SHM_INTERFACE*/
 
-INTERFACE Abort
-  MODULE PROCEDURE Abort
-END INTERFACE Abort
-
-INTERFACE CollectiveStop
-  MODULE PROCEDURE CollectiveStop
-END INTERFACE CollectiveStop
-
-INTERFACE PrintWarning
-  MODULE PROCEDURE PrintWarning
-END INTERFACE PrintWarning
-
-INTERFACE FILEEXISTS
-  MODULE PROCEDURE FILEEXISTS
-END INTERFACE FILEEXISTS
-
-INTERFACE INTSTAMP
-  MODULE PROCEDURE INTSTAMP
-END INTERFACE INTSTAMP
-
-INTERFACE TIMESTAMP
-  MODULE PROCEDURE TIMESTAMP
-END INTERFACE
-
-INTERFACE FLEXITIME
-  MODULE PROCEDURE FLEXITIME
-END INTERFACE
-
-INTERFACE DisplaySimulationTime
-  MODULE PROCEDURE DisplaySimulationTime
-END INTERFACE
-
-INTERFACE CreateErrFile
-  MODULE PROCEDURE CreateErrFile
-END INTERFACE CreateErrFile
-
 INTERFACE
   SUBROUTINE setstacksizeunlimited() BIND(C)
+    ! MODULES
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
   END SUBROUTINE setstacksizeunlimited
 END INTERFACE
 
 INTERFACE
   SUBROUTINE NOP_INLINE(N) BIND(C, name="noop")
+    ! MODULES
     USE ISO_C_BINDING, ONLY: C_INT
+    ! IMPLICIT VARIABLE HANDLING
     IMPLICIT NONE
-    INTEGER (C_INT), VALUE :: N
+    ! INPUT / OUTPUT VARIABLES
+    INTEGER(C_INT),VALUE,INTENT(IN) :: N
   END SUBROUTINE NOP_INLINE
 END INTERFACE
 
-INTERFACE str2real
-  MODULE PROCEDURE str2real
-END INTERFACE
-
-INTERFACE str2int
-  MODULE PROCEDURE str2int
-END INTERFACE
-
-INTERFACE int2str
-  MODULE PROCEDURE int2str
-END INTERFACE
-
-INTERFACE int2strf
-  MODULE PROCEDURE int2strf
-END INTERFACE
-
-INTERFACE str2logical
-  MODULE PROCEDURE str2logical
-END INTERFACE
-
-INTERFACE GetParameterFromFile
-  MODULE PROCEDURE GetParameterFromFile
-END INTERFACE
-
-PUBLIC :: setstacksizeunlimited
-
 !==================================================================================================================================
+
 CONTAINS
 
 !==================================================================================================================================
@@ -189,16 +146,17 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE CollectiveStop(SourceFile,SourceLine,CompDate,CompTime,ErrorMessage,IntInfo,RealInfo)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)                  :: SourceFile      !< Source file where error has occurred
-INTEGER                           :: SourceLine      !< Line in source file
-CHARACTER(LEN=*)                  :: CompDate        !< Compilation date
-CHARACTER(LEN=*)                  :: CompTime        !< Compilation time
-CHARACTER(LEN=*)                  :: ErrorMessage    !< Error message
-INTEGER,OPTIONAL                  :: IntInfo         !< Error info (integer)
-REAL,OPTIONAL                     :: RealInfo        !< Error info (real)
+CHARACTER(LEN=*),INTENT(IN)       :: SourceFile      !< Source file where error has occurred
+INTEGER,INTENT(IN)                :: SourceLine      !< Line in source file
+CHARACTER(LEN=*),INTENT(IN)       :: CompDate        !< Compilation date
+CHARACTER(LEN=*),INTENT(IN)       :: CompTime        !< Compilation time
+CHARACTER(LEN=*),INTENT(IN)       :: ErrorMessage    !< Error message
+INTEGER,OPTIONAL,INTENT(IN)       :: IntInfo         !< Error info (integer)
+REAL,OPTIONAL,INTENT(IN)          :: RealInfo        !< Error info (real)
 !   There is no way back!
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -240,20 +198,21 @@ SUBROUTINE Abort(SourceFile,SourceLine,CompDate,CompTime,ErrorMessage,IntInfo,Re
 #endif /*USE_MPI*/
                 )
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)                  :: SourceFile      !< Source file where error has occurred
-INTEGER                           :: SourceLine      !< Line in source file
-CHARACTER(LEN=*)                  :: CompDate        !< Compilation date
-CHARACTER(LEN=*)                  :: CompTime        !< Compilation time
-CHARACTER(LEN=*)                  :: ErrorMessage    !< Error message
-INTEGER,OPTIONAL                  :: IntInfo         !< Error info (integer)
-REAL,OPTIONAL                     :: RealInfo        !< Error info (real)
+CHARACTER(LEN=*),INTENT(IN)       :: SourceFile      !< Source file where error has occurred
+INTEGER,INTENT(IN)                :: SourceLine      !< Line in source file
+CHARACTER(LEN=*),INTENT(IN)       :: CompDate        !< Compilation date
+CHARACTER(LEN=*),INTENT(IN)       :: CompTime        !< Compilation time
+CHARACTER(LEN=*),INTENT(IN)       :: ErrorMessage    !< Error message
+INTEGER,OPTIONAL,INTENT(IN)       :: IntInfo         !< Error info (integer)
+REAL,OPTIONAL,INTENT(IN)          :: RealInfo        !< Error info (real)
 #if USE_MPI
 INTEGER,OPTIONAL                  :: ErrorCode       !< MPI Error info (integer)
 #endif /*USE_MPI*/
-!   There is no way back!
+! There is no way back!
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=50)                 :: IntString,RealString
@@ -292,8 +251,9 @@ SUBROUTINE PrintWarning(msg)
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-CHARACTER(LEN=*) :: msg  !< output message
+CHARACTER(LEN=*),INTENT(IN) :: msg  !< output message
 !===================================================================================================================================
 IF (myRank.EQ.0) THEN
   WRITE(UNIT_stdOut,'(A)') '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
@@ -302,6 +262,7 @@ IF (myRank.EQ.0) THEN
   WRITE(UNIT_stdOut,'(A)') '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
 END IF
 END SUBROUTINE PrintWarning
+
 
 !==================================================================================================================================
 !> Convert a String to an Integer
@@ -325,6 +286,7 @@ INTEGER,INTENT(OUT)            :: stat
 WRITE(str,'(I0)',IOSTAT=stat)  int_number
 END SUBROUTINE int2str
 
+
 !==================================================================================================================================
 !> Convert an Integer to a String
 !==================================================================================================================================
@@ -346,7 +308,8 @@ INTEGER,INTENT(IN) :: int_number
 !===================================================================================================================================
 WRITE(int2strf,'(I0)')  int_number
 int2strf = TRIM(ADJUSTL(int2strf))
-END FUNCTION
+END FUNCTION int2strf
+
 
 !==================================================================================================================================
 !> Convert a String to an Integer
@@ -357,7 +320,7 @@ SUBROUTINE str2int(str,int_number,stat)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(len=*),INTENT(IN) :: str        !< input string
+CHARACTER(LEN=*),INTENT(IN) :: str        !< input string
 INTEGER,INTENT(OUT)         :: int_number !< output integer
 INTEGER,INTENT(OUT)         :: stat       !< status
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -405,109 +368,111 @@ READ(str,*,IOSTAT=stat)  logical_number
 END SUBROUTINE str2logical
 
 
-!==================================================================================================================================
-!> read compile flags from a specified file
-!> example line in "CMakeLists.txt": SET(FLEXI_EQNSYSNAME "navierstokes" CACHE STRING "Used equation system")
-!> ParameterName: timestep
-!> output: 0.1
-!> Type of Msg: [G]et[P]arameter[F]rom[File] -> GPFF: not ordinary read-in tool
-!==================================================================================================================================
-SUBROUTINE GetParameterFromFile(FileName,ParameterName,output,DelimiterSymbolIN,CommentSymbolIN,DoDisplayInfo)
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)          :: FileName          !< e.g. './../myfile'
-CHARACTER(LEN=*),INTENT(IN)          :: ParameterName     !< e.g. 'timestep'
-CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: DelimiterSymbolIN !< e.g. '=' (default is '=')
-CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: CommentSymbolIN   !< e.g. '#' (default is '!')
-CHARACTER(LEN=*),INTENT(INOUT)       :: output            !< e.g. '0.1'
-LOGICAL,OPTIONAL,INTENT(IN)          :: DoDisplayInfo     !< default is: TRUE
-                                                          !< display DefMsg or errors if the parameter or the file is not found
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-LOGICAL                              :: ExistFile         !> file exists=.true., file does not exist=.false.
-INTEGER                              :: iSTATUS           !> status
-CHARACTER(LEN=255)                   :: temp,temp2,temp3  !> temp variables for read in of file lines
-CHARACTER(LEN=255)                   :: DelimiterSymbol   !> symbol for commenting out code, e.g., "#" or "!"
-CHARACTER(LEN=255)                   :: CommentSymbol     !> symbol for commenting out code, e.g., "#" or "!"
-INTEGER                              :: ioUnit            !> field handler unit and ??
-INTEGER                              :: IndNum            !> Index Number
-CHARACTER(LEN=8)                     :: DefMsg            !> additional flag like "DEFAULT" or "*CUSTOM"
-!===================================================================================================================================
-IF(PRESENT(DelimiterSymbolIN))THEN
-  DelimiterSymbol=TRIM(ADJUSTL(DelimiterSymbolIN))
-ELSE
-  DelimiterSymbol='='
-END IF
-IF(PRESENT(CommentSymbolIN))THEN
-  CommentSymbol=TRIM(ADJUSTL(CommentSymbolIN))
-ELSE
-  CommentSymbol='!'
-END IF
-output=''
-! read from file
-INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
-IF(ExistFile) THEN
-  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ')
-  DO
-    READ(ioUnit,'(A)',iostat=iSTATUS)temp
-    IF(ADJUSTL(temp(1:LEN(TRIM(CommentSymbol)))).EQ.TRIM(CommentSymbol)) CYCLE  ! complete line is commented out
-    IF(iSTATUS.EQ.-1)EXIT                           ! end of file is reached
-    IF(LEN(trim(temp)).GT.1)THEN                    ! exclude empty lines
-      IndNum=INDEX(temp,TRIM(ParameterName))        ! e.g. 'timestep'
-      IF(IndNum.GT.0)THEN
-        IF(IndNum-1.GT.0)THEN                       ! check if the parameter name is contained within a substring of another
-          IF(temp(IndNum-1:IndNum-1).NE.' ')CYCLE   ! parameter, e.g., "timestep" within "fd_timestep" -> skip
-        END IF
-        temp2=TRIM(ADJUSTL(temp(IndNum+LEN(TRIM(ParameterName)):LEN(temp))))
-        IF(DelimiterSymbol.NE.'')THEN               ! demiliting symbol must not be empty
-          IndNum=INDEX(temp2,TRIM(DelimiterSymbol)) ! only use string FROM delimiting symbol +1
-          IF(IndNum.GT.0)THEN
-            temp3=TRIM(ADJUSTL(temp2(IndNum+1:LEN(temp2))))
-            temp2=temp3
-          END IF
-        ELSE
-          ! no nothing?
-        END IF
-        IndNum=INDEX(temp2,TRIM(CommentSymbol)) ! only use string UP TO commenting symbol
-        IF(IndNum.EQ.0)IndNum=LEN(TRIM(temp2))+1
-        output=TRIM(ADJUSTL(temp2(1:IndNum-1)))
-        DefMsg='GPFF'
-        SWRITE(UNIT_stdOut,'(a3,a30,a3,a33,a3,a7,a3)')' | ',TRIM(ParameterName),' | ', output,' | ',TRIM(DefMsg),' | '
-        EXIT ! found the parameter -> exit loop
-      END IF
-    END IF
-  END DO
-  CLOSE(ioUnit)
-  IF(output.EQ.'')THEN
-    IF(PRESENT(DoDisplayInfo))THEN
-      IF(DoDisplayInfo)THEN
-        SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
-      END IF
-    ELSE
-      SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
-    END IF
-    output='ParameterName does not exist'
-  END IF
-ELSE
-  IF(PRESENT(DoDisplayInfo))THEN
-    IF(DoDisplayInfo)THEN
-      SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
-    END IF
-  ELSE
-    SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
-  END IF
-  output='file does not exist'
-END IF
-END SUBROUTINE GetParameterFromFile
+! !==================================================================================================================================
+! !> read compile flags from a specified file
+! !> example line in "CMakeLists.txt": SET(FLEXI_EQNSYSNAME "navierstokes" CACHE STRING "Used equation system")
+! !> ParameterName: timestep
+! !> output: 0.1
+! !> Type of Msg: [G]et[P]arameter[F]rom[File] -> GPFF: not ordinary read-in tool
+! !==================================================================================================================================
+! SUBROUTINE GetParameterFromFile(FileName,ParameterName,output,DelimiterSymbolIN,CommentSymbolIN,DoDisplayInfo)
+! ! MODULES
+! ! IMPLICIT VARIABLE HANDLING
+! IMPLICIT NONE
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT/OUTPUT VARIABLES
+! CHARACTER(LEN=*),INTENT(IN)          :: FileName          !< e.g. './../myfile'
+! CHARACTER(LEN=*),INTENT(IN)          :: ParameterName     !< e.g. 'timestep'
+! CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: DelimiterSymbolIN !< e.g. '=' (default is '=')
+! CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: CommentSymbolIN   !< e.g. '#' (default is '!')
+! CHARACTER(LEN=*),INTENT(INOUT)       :: output            !< e.g. '0.1'
+! LOGICAL,OPTIONAL,INTENT(IN)          :: DoDisplayInfo     !< default is: TRUE
+!                                                           !< display DefMsg or errors if the parameter or the file is not found
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! LOGICAL                              :: ExistFile         !> file exists=.true., file does not exist=.false.
+! INTEGER                              :: iSTATUS           !> status
+! CHARACTER(LEN=255)                   :: temp,temp2,temp3  !> temp variables for read in of file lines
+! CHARACTER(LEN=255)                   :: DelimiterSymbol   !> symbol for commenting out code, e.g., "#" or "!"
+! CHARACTER(LEN=255)                   :: CommentSymbol     !> symbol for commenting out code, e.g., "#" or "!"
+! INTEGER                              :: ioUnit            !> field handler unit and ??
+! INTEGER                              :: IndNum            !> Index Number
+! CHARACTER(LEN=8)                     :: DefMsg            !> additional flag like "DEFAULT" or "*CUSTOM"
+! !===================================================================================================================================
+! IF(PRESENT(DelimiterSymbolIN))THEN
+!   DelimiterSymbol=TRIM(ADJUSTL(DelimiterSymbolIN))
+! ELSE
+!   DelimiterSymbol='='
+! END IF
+! IF(PRESENT(CommentSymbolIN))THEN
+!   CommentSymbol=TRIM(ADJUSTL(CommentSymbolIN))
+! ELSE
+!   CommentSymbol='!'
+! END IF
+! output=''
+! ! read from file
+! INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
+! IF(ExistFile) THEN
+!   OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ')
+!   DO
+!     READ(ioUnit,'(A)',iostat=iSTATUS)temp
+!     IF(ADJUSTL(temp(1:LEN(TRIM(CommentSymbol)))).EQ.TRIM(CommentSymbol)) CYCLE  ! complete line is commented out
+!     IF(iSTATUS.EQ.-1)EXIT                           ! end of file is reached
+!     IF(LEN(trim(temp)).GT.1)THEN                    ! exclude empty lines
+!       IndNum=INDEX(temp,TRIM(ParameterName))        ! e.g. 'timestep'
+!       IF(IndNum.GT.0)THEN
+!         IF(IndNum-1.GT.0)THEN                       ! check if the parameter name is contained within a substring of another
+!           IF(temp(IndNum-1:IndNum-1).NE.' ')CYCLE   ! parameter, e.g., "timestep" within "fd_timestep" -> skip
+!         END IF
+!         temp2=TRIM(ADJUSTL(temp(IndNum+LEN(TRIM(ParameterName)):LEN(temp))))
+!         IF(DelimiterSymbol.NE.'')THEN               ! demiliting symbol must not be empty
+!           IndNum=INDEX(temp2,TRIM(DelimiterSymbol)) ! only use string FROM delimiting symbol +1
+!           IF(IndNum.GT.0)THEN
+!             temp3=TRIM(ADJUSTL(temp2(IndNum+1:LEN(temp2))))
+!             temp2=temp3
+!           END IF
+!         ELSE
+!           ! no nothing?
+!         END IF
+!         IndNum=INDEX(temp2,TRIM(CommentSymbol)) ! only use string UP TO commenting symbol
+!         IF(IndNum.EQ.0)IndNum=LEN(TRIM(temp2))+1
+!         output=TRIM(ADJUSTL(temp2(1:IndNum-1)))
+!         DefMsg='GPFF'
+!         SWRITE(UNIT_stdOut,'(a3,a30,a3,a33,a3,a7,a3)')' | ',TRIM(ParameterName),' | ', output,' | ',TRIM(DefMsg),' | '
+!         EXIT ! found the parameter -> exit loop
+!       END IF
+!     END IF
+!   END DO
+!   CLOSE(ioUnit)
+!   IF(output.EQ.'')THEN
+!     IF(PRESENT(DoDisplayInfo))THEN
+!       IF(DoDisplayInfo)THEN
+!         SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
+!       END IF
+!     ELSE
+!       SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
+!     END IF
+!     output='ParameterName does not exist'
+!   END IF
+! ELSE
+!   IF(PRESENT(DoDisplayInfo))THEN
+!     IF(DoDisplayInfo)THEN
+!       SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
+!     END IF
+!   ELSE
+!     SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
+!   END IF
+!   output='file does not exist'
+! END IF
+! END SUBROUTINE GetParameterFromFile
+
 
 !==================================================================================================================================
 !> Open file for error output
 !==================================================================================================================================
 SUBROUTINE CreateErrFile()
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -533,6 +498,7 @@ END SUBROUTINE CreateErrFile
 !==================================================================================================================================
 FUNCTION FILEEXISTS(filename)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -544,17 +510,19 @@ LOGICAL                     :: FILEEXISTS !< logical indicating if file with cur
 INQUIRE(FILE=TRIM(filename), EXIST=FILEEXISTS)
 END FUNCTION FILEEXISTS
 
+
 !==================================================================================================================================
 !> Creates an integer stamp that will afterwards be given to the SOUBRUTINE timestamp
 !==================================================================================================================================
 FUNCTION INTSTAMP(Nam,Num)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)   :: Nam      !< Name
-INTEGER            :: Num      !< Number
-CHARACTER(LEN=200) :: IntStamp !< The stamp
+CHARACTER(LEN=*),INTENT(IN) :: Nam      !< Name
+INTEGER,INTENT(IN)          :: Num      !< Number
+CHARACTER(LEN=200)          :: IntStamp !< The stamp
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -567,13 +535,14 @@ END FUNCTION INTSTAMP
 !==================================================================================================================================
 FUNCTION TIMESTAMP(Filename,Time,Time2)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*)   :: Filename  !< (file)name
-REAL               :: Time      !< physical time
-REAL,OPTIONAL      :: Time2     !< physical time (in case of range)
-CHARACTER(LEN=255) :: TimeStamp !< the complete timestamp
+CHARACTER(LEN=*),INTENT(IN) :: Filename  !< (file)name
+REAL,INTENT(IN)             :: Time      !< physical time
+REAL,OPTIONAL,INTENT(IN)    :: Time2     !< physical time (in case of range)
+CHARACTER(LEN=255)          :: TimeStamp !< the complete timestamp
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i         ! loop variable
@@ -772,6 +741,7 @@ FUNCTION FLEXITIME(     &
 #endif /*USE_MPI*/
                   )
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -791,6 +761,5 @@ END IF
 #endif /*USE_MPI*/
 GETTIME(FlexiTime)
 END FUNCTION FLEXITIME
-
 
 END MODULE MOD_Globals

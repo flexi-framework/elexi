@@ -274,18 +274,6 @@ TYPE(tElemPtr),POINTER         :: Elems(:)        !< array of mesh elements with
 LOGICAL          :: MeshInitIsDone =.FALSE.       !< marks whether the mesh init routines are finished
 !==================================================================================================================================
 
-INTERFACE getNewSide
-  MODULE PROCEDURE getNewSide
-END INTERFACE
-
-INTERFACE getNewElem
-  MODULE PROCEDURE getNewElem
-END INTERFACE
-
-INTERFACE deleteMeshPointer
-  MODULE PROCEDURE deleteMeshPointer
-END INTERFACE
-
 CONTAINS
 
 !==================================================================================================================================

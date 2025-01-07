@@ -24,21 +24,16 @@ MODULE MOD_SigmaModel
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-
-INTERFACE InitSigmaModel
-  MODULE PROCEDURE InitSigmaModel
-END INTERFACE
+!----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE SigmaModel
   MODULE PROCEDURE SigmaModel_Point
   MODULE PROCEDURE SigmaModel_Volume
 END INTERFACE
 
-!INTERFACE FinalizeSigmaModel
-!   MODULE PROCEDURE FinalizeSigmaModel
-!END INTERFACE
-
-PUBLIC::InitSigmaModel,SigmaModel_Volume,FinalizeSigmaModel
+PUBLIC:: InitSigmaModel
+PUBLIC:: SigmaModel_Volume
+PUBLIC:: FinalizeSigmaModel
 !===================================================================================================================================
 
 CONTAINS
@@ -54,6 +49,7 @@ USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL,GETREALARRAY
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -93,11 +89,15 @@ LBWRITE(UNIT_stdOut,'(A)')' INIT SIGMA-MODEL DONE!'
 LBWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitSigmaModel
 
+
 !===================================================================================================================================
 !> Compute sigma-Model Eddy-Visosity
 !===================================================================================================================================
 SUBROUTINE SigmaModel_Point(gradUx,gradUy,gradUz,dens,CSdeltaS2,muSGS)
 ! MODULES
+! External procedures defined in LAPACK
+USE MOD_Lapack, ONLY: DSYEV
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -106,8 +106,6 @@ REAL                          ,INTENT(IN)  :: dens       !> pointwise density
 REAL                          ,INTENT(IN)  :: CSdeltaS2  !> filter width
 REAL                          ,INTENT(OUT) :: muSGS      !> pointwise eddyviscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
-! External procedures defined in LAPACK
-EXTERNAL DSYEV
 ! LOCAL VARIABLES
 INTEGER            :: info
 REAL               :: d_model
@@ -139,6 +137,7 @@ END IF
 muSGS = CSdeltaS2 * d_model * dens
 END SUBROUTINE SigmaModel_Point
 
+
 !===================================================================================================================================
 !> Compute SigmaModel Eddy-Visosity for the volume
 !===================================================================================================================================
@@ -150,6 +149,7 @@ USE MOD_EddyVisc_Vars,     ONLY: muSGS, CSdeltaS2, muSGS_limits
 USE MOD_EOS_Vars,          ONLY: mu0
 USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
 USE MOD_DG_Vars,           ONLY: U
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -167,12 +167,14 @@ DO iElem = 1,nElems
 END DO
 END SUBROUTINE SigmaModel_Volume
 
+
 !===============================================================================================================================
 !> Deallocate arrays and finalize variables used by SigmaModel SGS model
 !===============================================================================================================================
 SUBROUTINE FinalizeSigmaModel()
 ! MODULES
 USE MOD_EddyVisc_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

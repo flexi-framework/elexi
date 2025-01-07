@@ -16,42 +16,20 @@
 
 MODULE MOD_Particle_BGM
 !===================================================================================================================================
-!> Contains
-!===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
+!----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersParticleBGM
-  MODULE PROCEDURE DefineParametersParticleBGM
-END INTERFACE
-
-INTERFACE BuildBGMAndIdentifyHaloRegion
-  MODULE PROCEDURE BuildBGMAndIdentifyHaloRegion
-END INTERFACE
-
-INTERFACE FinalizeBGM
-  MODULE PROCEDURE FinalizeBGM
-END INTERFACE
-
+PUBLIC:: DefineParametersParticleBGM
+PUBLIC:: BuildBGMAndIdentifyHaloRegion
+PUBLIC:: FinalizeBGM
 #if USE_MPI
-INTERFACE WriteHaloInfo
-  MODULE PROCEDURE WriteHaloInfo
-END INTERFACE
-
-INTERFACE FinalizeHaloInfo
-  MODULE PROCEDURE FinalizeHaloInfo
-END INTERFACE
+PUBLIC:: WriteHaloInfo
+PUBLIC:: FinalizeHaloInfo
 #endif /*USE_MPI*/
-
-PUBLIC :: DefineParametersParticleBGM
-PUBLIC :: BuildBGMAndIdentifyHaloRegion
-PUBLIC :: FinalizeBGM
-#if USE_MPI
-PUBLIC :: WriteHaloInfo
-PUBLIC :: FinalizeHaloInfo
-#endif /*USE_MPI*/
+!==================================================================================================================================
 
 CONTAINS
 
@@ -780,7 +758,7 @@ ELSE
       ! Use a named loop so the entire element can be cycled
 ElemLoop: DO iElem = offsetElemMPI(iProc-1)+1,offsetElemMPI(iProc)
         ! Ignore elements other than halo elements
-        IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).LT.2) CYCLE
+        IF (ElemInfo_Shared(ELEM_HALOFLAG,iElem).LT.2) CYCLE ElemLoop
 
         DO iSide = ElemInfo_Shared(ELEM_FIRSTSIDEIND,iElem)+1,ElemInfo_Shared(ELEM_LASTSIDEIND,iElem)
           IF (SideIsExchangeSide(iSide)) THEN
@@ -2023,7 +2001,7 @@ DO iBGM = BGMCellXmin,BGMCellXmax
   END DO ! jBGM
 END DO ! iBGM
 
-END SUBROUTINE
+END SUBROUTINE AddElementToFIBGM
 
 
 LOGICAL FUNCTION SideIsExchangeSide(SideID)

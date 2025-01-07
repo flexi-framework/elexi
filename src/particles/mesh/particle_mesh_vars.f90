@@ -269,7 +269,7 @@ REAL                                     :: epsInCell                         ! 
 TYPE tFastInitBGM
   INTEGER                                :: nElem                             ! Number of elements in background mesh cell
   INTEGER, ALLOCATABLE                   :: Element(:)                        ! List of elements/physical cells in BGM cell
-END TYPE
+END TYPE tFastInitBGM
 
 TYPE tGeometry
   REAL                                   :: CNxmin                            ! minimum x coord of all compute-node nodes
@@ -319,7 +319,7 @@ TYPE tGeometry
 
   REAL   ,ALLOCATABLE                    :: CharLength(:)                     ! Characteristic length for each cell: L=V^(1/3)
   INTEGER,ALLOCATABLE                    :: ElemToRegion(:)                   ! ElemToRegion(1:nElems)
-END TYPE
+END TYPE tGeometry
 
 TYPE (tGeometry)                         :: GEO
 

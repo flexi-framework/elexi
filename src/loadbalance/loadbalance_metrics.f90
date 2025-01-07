@@ -24,18 +24,9 @@ MODULE MOD_LoadBalance_Metrics
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE MoveCoords
-  MODULE PROCEDURE MoveCoords
-END INTERFACE
 
-INTERFACE MoveMetrics
-  MODULE PROCEDURE MoveMetrics
-END INTERFACE
-
-PUBLIC::MoveCoords
-PUBLIC::MoveMetrics
+PUBLIC:: MoveCoords
+PUBLIC:: MoveMetrics
 !==================================================================================================================================
 
 CONTAINS

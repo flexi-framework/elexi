@@ -23,16 +23,8 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------!
 
-INTERFACE CreateParticle
-  MODULE PROCEDURE CreateParticle
-END INTERFACE
-
-INTERFACE RemoveParticle
-  MODULE PROCEDURE RemoveParticle
-END INTERFACE
-
-PUBLIC :: CreateParticle
-PUBLIC :: RemoveParticle
+PUBLIC:: CreateParticle
+PUBLIC:: RemoveParticle
 !===================================================================================================================================
 
 CONTAINS

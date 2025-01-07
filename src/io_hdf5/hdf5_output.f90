@@ -26,70 +26,30 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE WriteTimeAverage
-  MODULE PROCEDURE WriteTimeAverage
-END INTERFACE
-
-INTERFACE WriteBaseFlow
-  MODULE PROCEDURE WriteBaseFlow
-END INTERFACE
-
-INTERFACE FlushFiles
-  MODULE PROCEDURE FlushFiles
-END INTERFACE
-
-INTERFACE RemoveHDF5
-  MODULE PROCEDURE RemoveHDF5
-END INTERFACE
-
-INTERFACE WriteHeader
-  MODULE PROCEDURE WriteHeader
-END INTERFACE
-
-!INTERFACE WriteArray
-!  MODULE PROCEDURE WriteArray
-!END INTERFACE
-
-INTERFACE WriteAttribute
-  MODULE PROCEDURE WriteAttribute
-END INTERFACE
-
-INTERFACE MarkWriteSuccessful
-  MODULE PROCEDURE MarkWriteSuccessful
-END INTERFACE
-
-INTERFACE WriteAdditionalElemData
-  MODULE PROCEDURE WriteAdditionalElemData
-END INTERFACE
-
-INTERFACE WriteAdditionalFieldData
-  MODULE PROCEDURE WriteAdditionalFieldData
-END INTERFACE
-
 INTERFACE
   SUBROUTINE copy_userblock(outfilename,infilename) BIND(C)
-      USE ISO_C_BINDING, ONLY: C_CHAR
-      CHARACTER(KIND=C_CHAR) :: outfilename(*)
-      CHARACTER(KIND=C_CHAR) :: infilename(*)
+    ! MODULES
+    USE ISO_C_BINDING, ONLY: C_CHAR
+    ! IMPLICIT VARIABLE HANDLING
+    IMPLICIT NONE
+    ! INPUT / OUTPUT VARIABLES
+    CHARACTER(KIND=C_CHAR),INTENT(IN) :: outfilename(*)
+    CHARACTER(KIND=C_CHAR),INTENT(IN) :: infilename(*)
   END SUBROUTINE copy_userblock
 END INTERFACE
 
-INTERFACE GenerateFileSkeleton
-  MODULE PROCEDURE GenerateFileSkeleton
-END INTERFACE
-
-PUBLIC :: GatheredWriteArray
-PUBLIC :: WriteAdditionalElemData
-PUBLIC :: WriteAdditionalFieldData
-PUBLIC :: WriteBaseFlow
-PUBLIC :: WriteTimeAverage
-PUBLIC :: GenerateFileSkeleton
-PUBLIC :: MarkWriteSuccessful
-PUBLIC :: FlushFiles
-PUBLIC :: RemoveHDF5
-PUBLIC :: WriteHeader
-PUBLIC :: WriteArray
-PUBLIC :: WriteAttribute
+PUBLIC:: GatheredWriteArray
+PUBLIC:: WriteAdditionalElemData
+PUBLIC:: WriteAdditionalFieldData
+PUBLIC:: WriteBaseFlow
+PUBLIC:: WriteTimeAverage
+PUBLIC:: GenerateFileSkeleton
+PUBLIC:: MarkWriteSuccessful
+PUBLIC:: FlushFiles
+PUBLIC:: RemoveHDF5
+PUBLIC:: WriteHeader
+PUBLIC:: WriteArray
+PUBLIC:: WriteAttribute
 !==================================================================================================================================
 
 CONTAINS

@@ -23,31 +23,11 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-!INTERFACE InitParticleOutput
-!  MODULE PROCEDURE InitParticleOutput
-!END INTERFACE
-
-INTERFACE FillParticleData
-  MODULE PROCEDURE FillParticleData
-END INTERFACE
-
-INTERFACE WriteInfoStdOut
-  MODULE PROCEDURE WriteInfoStdOut
-END INTERFACE
-
-INTERFACE WriteParticleAnalyze
-  MODULE PROCEDURE WriteParticleAnalyze
-END INTERFACE
-
-INTERFACE Visualize_Particles
-  MODULE PROCEDURE Visualize_Particles
-END INTERFACE
-
-!PUBLIC :: InitParticleOutput
-PUBLIC :: FillParticleData
-PUBLIC :: WriteInfoStdOut
-PUBLIC :: WriteParticleAnalyze
-PUBLIC :: Visualize_Particles
+! PUBLIC:: InitParticleOutput
+PUBLIC:: FillParticleData
+PUBLIC:: WriteInfoStdOut
+PUBLIC:: WriteParticleAnalyze
+PUBLIC:: Visualize_Particles
 !===================================================================================================================================
 
 CONTAINS

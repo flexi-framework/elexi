@@ -23,32 +23,6 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE SinglePointToElement
-  MODULE PROCEDURE SinglePointToElement
-END INTERFACE
-
-INTERFACE LocateParticleInElement
-  MODULE PROCEDURE LocateParticleInElement
-END INTERFACE
-
-INTERFACE PartInElemCheck
-  MODULE PROCEDURE PartInElemCheck
-END INTERFACE
-
-INTERFACE ParticleInsideQuad3D
-  MODULE PROCEDURE ParticleInsideQuad3D
-END INTERFACE
-
-INTERFACE PARTHASMOVED
-  MODULE PROCEDURE PARTHASMOVED
-END INTERFACE
-
-#if USE_LOADBALANCE
-INTERFACE CountPartsPerElem
-  MODULE PROCEDURE CountPartsPerElem
-END INTERFACE
-#endif /*USE_LOADBALANCE*/
-
 PUBLIC:: SinglePointToElement
 PUBLIC:: LocateParticleInElement
 PUBLIC:: PartInElemCheck

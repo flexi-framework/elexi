@@ -102,7 +102,7 @@ TYPE tSurfaceMapping
   INTEGER,ALLOCATABLE                   :: SendSurfGlobalID(:)
   INTEGER                               :: nSendSurfSides
   INTEGER                               :: nRecvSurfSides
-END TYPE
+END TYPE tSurfaceMapping
 TYPE (tSurfaceMapping),ALLOCATABLE      :: SurfMapping(:)
 
 INTEGER                                 :: SampWallState_Shared_Win
@@ -164,7 +164,7 @@ TYPE tPartBoundary
   LOGICAL , ALLOCATABLE                  :: doRoughWallModelling(:) ! Flag if walls are modelled as rough walls
   REAL    , ALLOCATABLE                  :: RoughMeanIC(:)          ! Mean of the Gaussian distribution
   REAL    , ALLOCATABLE                  :: RoughVarianceIC(:)      ! Standard deviation of the Gaussian distribution
-END TYPE
+END TYPE tPartBoundary
 
 INTEGER                                  :: nPartBound              ! number of particle boundaries
 TYPE(tPartBoundary)                      :: PartBound               ! Boundary Data for Particles
@@ -173,16 +173,16 @@ LOGICAL                                  :: LowVeloRemove                 !Flag 
 
 !Parameters of rebound ANN
 TYPE tPartBoundANN
-  REAL(4) , ALLOCATABLE                  :: w(:,:,:)
-  REAL(4) , ALLOCATABLE                  :: b(:,:)
-  REAL(4) , ALLOCATABLE                  :: beta(:,:)
-  REAL(4) , ALLOCATABLE                  :: output(:)
-  REAL(4) , ALLOCATABLE                  :: max_in(:)
-  REAL(4) , ALLOCATABLE                  :: max_out(:)
+  REAL(SP) , ALLOCATABLE                 :: w(:,:,:)
+  REAL(SP) , ALLOCATABLE                 :: b(:,:)
+  REAL(SP) , ALLOCATABLE                 :: beta(:,:)
+  REAL(SP) , ALLOCATABLE                 :: output(:)
+  REAL(SP) , ALLOCATABLE                 :: max_in(:)
+  REAL(SP) , ALLOCATABLE                 :: max_out(:)
   INTEGER                                :: nLayer
   INTEGER , ALLOCATABLE                  :: nN(:)
   INTEGER                                :: hgs=30
-END TYPE
+END TYPE tPartBoundANN
 TYPE(tPartBoundANN)                      :: PartBoundANN
 !===================================================================================================================================
 

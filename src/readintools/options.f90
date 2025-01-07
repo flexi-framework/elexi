@@ -137,10 +137,7 @@ END TYPE StringOption
   !CHARACTER(LEN=255),ALLOCATABLE  :: value(:)
 !END TYPE StringArrayOption
 
-INTERFACE GETSTRLENREAL
-  MODULE PROCEDURE GETSTRLENREAL
-END INTERFACE
-PUBLIC :: GETSTRLENREAL
+PUBLIC:: GETSTRLENREAL
 
 CONTAINS
 
@@ -625,7 +622,7 @@ USE MOD_ISO_VARYING_STRING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CLASS(OPTION)                        :: this     !< CLASS(OPTION)
+CLASS(OPTION),INTENT(INOUT)          :: this     !< CLASS(OPTION)
 CHARACTER(LEN=*),INTENT(IN)          :: rest_in  !< string to parse
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -791,7 +788,7 @@ USE MOD_Globals, ONLY:Abort
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-CLASS(OPTION)                          :: this      !< CLASS(OPTION)
+CLASS(OPTION),INTENT(INOUT)            :: this      !< CLASS(OPTION)
 CHARACTER(LEN=255),INTENT(IN)          :: string_in !< (IN) string containing a real number
 REAL,INTENT(OUT)                       :: value     !< (OUT) the converted real
 INTEGER,INTENT(OUT)                    :: digits    !< (OUT) the number of digits if floating representation, or -1 if scientific
@@ -842,4 +839,4 @@ END IF
 
 END SUBROUTINE parseReal
 
-END MODULE
+END MODULE MOD_Options

@@ -23,31 +23,11 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE DefineParametersParticleInterpolation
-  MODULE PROCEDURE DefineParametersParticleInterpolation
-END INTERFACE
-
-INTERFACE InitParticleInterpolation
-  MODULE PROCEDURE InitParticleInterpolation
-END INTERFACE
-
-INTERFACE InterpolateFieldToParticle
-  MODULE PROCEDURE InterpolateFieldToParticle
-END INTERFACE
-
-INTERFACE InterpolateFieldToSingleParticle
-  MODULE PROCEDURE InterpolateFieldToSingleParticle
-END INTERFACE
-
-INTERFACE FinalizeParticleInterpolation
-  MODULE PROCEDURE FinalizeParticleInterpolation
-END INTERFACE
-
-PUBLIC :: DefineParametersParticleInterpolation
-PUBLIC :: InitParticleInterpolation
-PUBLIC :: InterpolateFieldToParticle
-PUBLIC :: InterpolateFieldToSingleParticle
-PUBLIC :: FinalizeParticleInterpolation
+PUBLIC:: DefineParametersParticleInterpolation
+PUBLIC:: InitParticleInterpolation
+PUBLIC:: InterpolateFieldToParticle
+PUBLIC:: InterpolateFieldToSingleParticle
+PUBLIC:: FinalizeParticleInterpolation
 !===================================================================================================================================
 
 CONTAINS
@@ -59,6 +39,7 @@ SUBROUTINE DefineParametersParticleInterpolation()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Particle Interpolation")
@@ -84,7 +65,7 @@ USE MOD_Particle_Interpolation_Vars
 USE MOD_Equation_Vars,          ONLY: nVarTurb
 #endif
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -182,7 +163,7 @@ USE MOD_TimeDisc_Vars,               ONLY: t
 USE MOD_Eval_xyz,                    ONLY: EvaluateField_FV
 USE MOD_FV_Vars,                     ONLY: FV_Elems
 #endif /* FV_ENABLED */
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -362,9 +343,8 @@ USE MOD_Particle_Vars,           ONLY: PartPosRef,PartState,PEM
 USE MOD_Eval_xyz,                ONLY: EvaluateField_FV
 USE MOD_FV_Vars,                 ONLY: FV_Elems
 #endif /* FV_ENABLED */
-!----------------------------------------------------------------------------------------------------------------------------------
-  IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)               :: PartID
@@ -457,7 +437,7 @@ SUBROUTINE FinalizeParticleInterpolation()
 ! MODULES
 USE MOD_Particle_Interpolation_Vars
 ! IMPLICIT VARIABLE HANDLING
- IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -474,6 +454,5 @@ SDEALLOCATE(TurbFieldAtParticle)
 PartInterpolationInitIsDone = .FALSE.
 
 END SUBROUTINE FinalizeParticleInterpolation
-
 
 END MODULE MOD_Particle_Interpolation

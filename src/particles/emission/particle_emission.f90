@@ -23,16 +23,8 @@ IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitializeParticleEmission
-  MODULE PROCEDURE InitializeParticleEmission
-END INTERFACE
-
-INTERFACE ParticleInserting
-  MODULE PROCEDURE ParticleInserting
-END INTERFACE
-
-PUBLIC :: InitializeParticleEmission
-PUBLIC :: ParticleInserting
+PUBLIC:: InitializeParticleEmission
+PUBLIC:: ParticleInserting
 !===================================================================================================================================
 
 CONTAINS

@@ -168,15 +168,15 @@ USE MOD_Globals
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER(KIND=8),ALLOCATABLE,INTENT(INOUT) :: Vec(:)
-INTEGER,INTENT(IN)                        :: OldSize, NewSize
-INTEGER,INTENT(IN),OPTIONAL               :: Default
+INTEGER(KIND=DP),ALLOCATABLE,INTENT(INOUT) :: Vec(:)
+INTEGER,INTENT(IN)                         :: OldSize, NewSize
+INTEGER,INTENT(IN),OPTIONAL                :: Default
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=8),ALLOCATABLE               :: TempVec(:)
-INTEGER                                   :: ALLOCSTAT
+INTEGER(KIND=DP),ALLOCATABLE               :: TempVec(:)
+INTEGER                                    :: ALLOCSTAT
 !===================================================================================================================================
 ! Allocate new memory space
 ALLOCATE(TempVec(NewSize),STAT=ALLOCSTAT)

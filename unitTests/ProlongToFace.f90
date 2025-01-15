@@ -17,6 +17,7 @@ USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -104,7 +105,6 @@ FV_Elems_master = 1
 FV_Elems_slave = 1
 CALL ProlongToFaceCons(NRef,Uvol_nVar,FV_Uface_master,FV_Uface_slave,L_Minus,L_Plus,.FALSE.)
 #endif
-
 
 IF (doGenerateReference) THEN
   ! Save the calculated solution to a binary file for later comparison

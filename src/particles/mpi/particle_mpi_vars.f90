@@ -18,6 +18,8 @@
 !===================================================================================================================================
 MODULE MOD_Particle_MPI_Vars
 ! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -32,9 +34,9 @@ LOGICAL                                  :: ParticleMPIInitIsDone=.FALSE.
 LOGICAL                                  :: CheckExchangeProcs               ! On default, check if proc communication is symmetric
 
 TYPE tPartMPIGROUP
-  INTEGER                                :: COMM                             ! MPI communicator for PIC GTS region
-  INTEGER                                :: Request                          ! MPI request for asynchronous communication
-  INTEGER                                :: RequestIndex                     ! MPI request for asynchronous communication
+  TYPE(MPI_Comm)                         :: COMM                             ! MPI communicator for PIC GTS region
+  TYPE(MPI_Request)                      :: Request                          ! MPI request for asynchronous communication
+  TYPE(MPI_Request)                      :: RequestIndex                     ! MPI request for asynchronous communication
   INTEGER                                :: nProcs                           ! number of MPI processes for particles
   INTEGER                                :: MyRank                           ! MyRank of PartMPIVAR%COMM
   LOGICAL                                :: MPIRoot                          ! Root, MPIRank=0
@@ -79,8 +81,8 @@ TYPE tParticleMPIExchange
   INTEGER,ALLOCATABLE            :: nPartsSend(:,:)                          ! Only MPI neighbors
   INTEGER,ALLOCATABLE            :: nPartsRecv(:,:)                          ! Only MPI neighbors
   INTEGER                        :: nMPIParticles                            ! Number of all received particles
-  INTEGER,ALLOCATABLE            :: SendRequest(:,:)                         ! Send request message handle 1 - Number, 2-Message
-  INTEGER,ALLOCATABLE            :: RecvRequest(:,:)                         ! Receive request message handle,  1 - Number, 2-Message
+  TYPE(MPI_Request),ALLOCATABLE  :: SendRequest(:,:)                         ! Send request message handle 1 - Number, 2-Message
+  TYPE(MPI_Request),ALLOCATABLE  :: RecvRequest(:,:)                         ! Receive request message handle,  1 - Number, 2-Message
   TYPE(tMPIMessage),ALLOCATABLE  :: send_message(:)                          ! Message, required for particle emission
 END TYPE tParticleMPIExchange
  TYPE (tParticleMPIExchange)     :: PartMPIExchange
@@ -89,8 +91,8 @@ TYPE tParticleMPIExchange2
   INTEGER,ALLOCATABLE            :: nPartsSend(:,:)                          ! Only same init communicator
   INTEGER,ALLOCATABLE            :: nPartsRecv(:,:)                          ! Only same init communicator
   INTEGER                        :: nMPIParticles                            ! Number of all received particles
-  INTEGER,ALLOCATABLE            :: SendRequest(:,:)                         ! Send requires message handle 1 - Number, 2-Message
-  INTEGER,ALLOCATABLE            :: RecvRequest(:,:)                         ! Receive request message handle,  1 - Number, 2-Message
+  TYPE(MPI_Request),ALLOCATABLE  :: SendRequest(:,:)                         ! Send request message handle 1 - Number, 2-Message
+  TYPE(MPI_Request),ALLOCATABLE  :: RecvRequest(:,:)                         ! Receive request message handle,  1 - Number, 2-Message
   TYPE(tMPIMessage),ALLOCATABLE  :: send_message(:)                          ! Message, required for particle emission
 END TYPE tParticleMPIExchange2
 TYPE (tParticleMPIExchange2)     :: PartMPIInsert
@@ -99,8 +101,8 @@ TYPE tParticleMPIExchange3
   INTEGER,ALLOCATABLE            :: nPartsSend(:,:)                          ! Only same init communicator
   INTEGER,ALLOCATABLE            :: nPartsRecv(:,:)                          ! Only same init communicator
   INTEGER                        :: nMPIParticles                            ! Number of all received particles
-  INTEGER,ALLOCATABLE            :: SendRequest(:,:)                         ! Send requires message handle 1 - Number, 2-Message
-  INTEGER,ALLOCATABLE            :: RecvRequest(:,:)                         ! Receive request message handle,  1 - Number, 2-Message
+  TYPE(MPI_Request),ALLOCATABLE  :: SendRequest(:,:)                         ! Send request message handle 1 - Number, 2-Message
+  TYPE(MPI_Request),ALLOCATABLE  :: RecvRequest(:,:)                         ! Receive request message handle,  1 - Number, 2-Message
   TYPE(tMPIMessage),ALLOCATABLE  :: send_message(:)                          ! Message, required for particle emission
 END TYPE tParticleMPIExchange3
 TYPE (tParticleMPIExchange3)     :: PartMPILocate

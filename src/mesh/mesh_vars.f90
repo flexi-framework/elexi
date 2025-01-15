@@ -25,6 +25,8 @@
 !==================================================================================================================================
 MODULE MOD_Mesh_Vars
 ! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -86,13 +88,13 @@ REAL,ALLOCPOINT,DIMENSION(:,:,:,:,:) :: TreeCoords_Shared
 REAL,ALLOCPOINT,DIMENSION(:,:,:)     :: xiMinMax_Shared
 #if USE_MPI
 ! integers to hold shared memory windows
-INTEGER          :: ElemToTree_Shared_Win
-INTEGER          :: ElemInfo_Shared_Win
-INTEGER          :: SideInfo_Shared_Win
-INTEGER          :: NodeInfo_Shared_Win
-INTEGER          :: NodeCoords_Shared_Win
-INTEGER          :: TreeCoords_Shared_Win
-INTEGER          :: xiMinMax_Shared_Win
+TYPE(MPI_Win)    :: ElemToTree_Shared_Win
+TYPE(MPI_Win)    :: ElemInfo_Shared_Win
+TYPE(MPI_Win)    :: SideInfo_Shared_Win
+TYPE(MPI_Win)    :: NodeInfo_Shared_Win
+TYPE(MPI_Win)    :: NodeCoords_Shared_Win
+TYPE(MPI_Win)    :: TreeCoords_Shared_Win
+TYPE(MPI_Win)    :: xiMinMax_Shared_Win
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Metrics on GaussPoints

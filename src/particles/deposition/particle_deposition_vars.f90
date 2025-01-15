@@ -19,6 +19,8 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Deposition_Vars
 ! MODULES
+USE MOD_Globals
+! IMPILCIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -50,10 +52,10 @@ REAL,ALLOCATABLE                  :: CellVolWeightFac(:)                     !< 
 ! MPI-SHM arrays
 REAL,ALLOCPOINT,DIMENSION(:,:)    :: FEMNodeSource_Shared                    !< Array for the cummulative source on each FEM node
 #if USE_MPI
-INTEGER                           :: MPI_DEPO_REQUEST                        !< MPI request for non-blocking deposition
+TYPE(MPI_Request)                 :: MPI_DEPO_REQUEST                        !< MPI request for non-blocking deposition
 
 ! integers to hold shared memory windows
-INTEGER                           :: FEMNodeSource_Shared_Win                !< Array for the cummulative source on each FEM node
+TYPE(MPI_Win)                     :: FEMNodeSource_Shared_Win                !< Array for the cummulative source on each FEM node
 #endif /*USE_MPI*/
 
 #endif /*PARTICLES_COUPLING >= 2*/

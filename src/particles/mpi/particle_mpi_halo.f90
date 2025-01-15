@@ -86,7 +86,7 @@ LOGICAL                        :: ProcHasExchangeElem
 REAL                           :: MPI_halo_eps,MPI_halo_eps_velo,MPI_halo_diag,vec(1:3),deltaT
 INTEGER                        :: iStage,errType
 ! Non-symmetric particle exchange
-INTEGER,ALLOCATABLE            :: SendRequest(:),RecvRequest(:)
+TYPE(MPI_Request),ALLOCATABLE  :: SendRequest(:),RecvRequest(:)
 LOGICAL,ALLOCATABLE            :: GlobalProcToRecvProc(:)
 LOGICAL,ALLOCATABLE            :: CommFlag(:)
 INTEGER                        :: nNonSymmetricExchangeProcs,nNonSymmetricExchangeProcsGlob

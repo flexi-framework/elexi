@@ -439,7 +439,7 @@ MeasureStartTime()          ! LoadBalance
 CALL ProlongToFaceCons(PP_N,U_pointer,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 MeasureSplitTime_DG()       ! LoadBalance
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
-CALL ProlongToFaceCons(PP_N,FV_U_pointer,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.FALSE.,pureFV=.TRUE.)
+CALL ProlongToFaceCons(PP_N,U_pointer,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.FALSE.,pureFV=.TRUE.)
 MeasureSplitTime_FV()       ! LoadBalance
 #endif /*FV_ENABLED*/
 

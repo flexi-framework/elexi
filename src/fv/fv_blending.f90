@@ -207,14 +207,14 @@ REAL,INTENT(INOUT)    :: FV_alpha(nElems)    !< elementwise blending coefficient
 ! LOCAL VARIABLES
 !==================================================================================================================================
 ! TODO: You get here two times the network latency. Could be optimized
-CALL FV_ProlongFValphaToFace(FV_alpha)
+! CALL FV_ProlongFValphaToFace(FV_alpha)
 #if USE_MPI
 ! Prolong blending factor to faces
-! CALL FV_ProlongFValphaToFace(doMPISides=.TRUE.)
+CALL FV_ProlongFValphaToFace(FV_alpha,doMPISides=.TRUE.)
 CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.TRUE.)
 CALL StartExchange_FV_alpha(FV_alpha_slave,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=2)
 #endif
-! CALL FV_ProlongFValphaToFace(doMPISides=.FALSE.)
+CALL FV_ProlongFValphaToFace(FV_alpha,doMPISides=.FALSE.)
 CALL FV_alpha_Mortar(FV_alpha_master,FV_alpha_slave,doMPISides=.FALSE.)
 #if USE_MPI
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems)

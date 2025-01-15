@@ -17,7 +17,7 @@
 MODULE MOD_MPI_Shared_Vars
 ! MODULES
 #if USE_MPI
-USE mpi
+USE mpi_f08
 #endif
 
 ! IMPLICIT VARIABLE HANDLING

@@ -30,7 +30,7 @@ USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: HP => INT16,  & ! half precision (only 
                                          DP => REAL64, & ! double precision
                                          QP => REAL128   ! quadruple precision
 #if USE_MPI
-USE mpi
+USE mpi_f08
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Vars      ,ONLY: PerformLoadBalance
@@ -42,25 +42,25 @@ IMPLICIT NONE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=255):: ParameterFile                                            !< filename of the parameter file
-INTEGER,PARAMETER :: UNIT_stdOut = 6                                          !< unit for writing to standard output (e.g. terminal)
-INTEGER,PARAMETER :: UNIT_logOut = 133                                        !< unit for writing log files
-INTEGER           :: UNIT_errOut = 999                                        !< unit for writing error files
+INTEGER,PARAMETER :: UNIT_stdOut=6                                            !< unit for writing to standard output (e.g. terminal)
+INTEGER,PARAMETER :: UNIT_logOut=133                                          !< unit for writing log files
+INTEGER           :: UNIT_errOut=999                                          !< unit for writing error files
 LOGICAL           :: Logging                                                  !< switch to turn log file writing on or of
 LOGICAL           :: use_escape_codes = .TRUE.                                !< If set to .FALSE., output will consist only of standard text, allowing the
                                                                               !< escape characters to be switched off in environments which don't support them.
 LOGICAL           :: ErrorFiles                                               !< switch to turn error file writing on or of
-CHARACTER(LEN=255):: ErrorFileName = 'NOT_SET'                                !< file to write error data into
+CHARACTER(LEN=255):: ErrorFileName='NOT_SET'                                  !< file to write error data into
 INTEGER           :: iError                                                   !< default error handle
 INTEGER           :: myRank,myLocalRank,myLeaderRank,myWorkerRank
 INTEGER           :: nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
-INTEGER           :: MPI_COMM_FLEXI !< Flexi MPI communicator
+TYPE(MPI_Comm)    :: MPI_COMM_FLEXI                                           !< Flexi MPI communicator
 LOGICAL           :: MPIRoot                                                  !< flag whether process is MPI root process
 LOGICAL           :: MPILocalRoot                                             !< flag whether process is root of MPI subgroup
 #if USE_MPI
-INTEGER           :: MPIStatus(MPI_STATUS_SIZE)
-INTEGER           :: MPI_COMM_NODE    = MPI_COMM_NULL                         !< local node subgroup
-INTEGER           :: MPI_COMM_LEADERS = MPI_COMM_NULL                         !< all node masters
-INTEGER           :: MPI_COMM_WORKERS = MPI_COMM_NULL                         !< all non-master nodes
+! TYPE(MPI_Status)  :: MPIStatus(MPI_STATUS_SIZE)
+TYPE(MPI_Comm)    :: MPI_COMM_NODE   =MPI_COMM_NULL                           !< local node subgroup
+TYPE(MPI_Comm)    :: MPI_COMM_LEADERS=MPI_COMM_NULL                           !< all node masters
+TYPE(MPI_Comm)    :: MPI_COMM_WORKERS=MPI_COMM_NULL                           !< all non-master nodes
 #endif
 #if USE_PARTICLES
 #ifdef INTKIND8
@@ -751,15 +751,15 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 #if USE_MPI
-INTEGER, INTENT(IN),OPTIONAL    :: Comm                                       !< global mpi communicator
+TYPE(mpi_Comm),INTENT(IN),OPTIONAL :: Comm                                       !< global mpi communicator
 #endif /*USE_MPI*/
-REAL                            :: FlexiTime                                  !< output time
+REAL                               :: FlexiTime                                  !< output time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
 #if USE_MPI
-IF(PRESENT(Comm))THEN
-  CALL MPI_BARRIER(Comm,iError)
+IF (PRESENT(Comm)) THEN
+  CALL MPI_BARRIER(Comm          ,iError)
 ELSE
   CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 END IF

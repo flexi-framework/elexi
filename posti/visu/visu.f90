@@ -67,7 +67,7 @@ USE MOD_Posti_Part_Tools    ,ONLY: ReadPartStateFile, InitParticleOutput
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)               :: mpi_comm_IN
+TYPE(MPI_Comm),INTENT(IN)        :: mpi_comm_IN
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
@@ -170,7 +170,6 @@ CALL InitMPI( &
 #endif /*USE_MPI*/
             )
 CALL InitMPIInfo()
-
 
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies

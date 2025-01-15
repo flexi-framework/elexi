@@ -20,10 +20,6 @@
 MODULE MOD_Particle_Boundary_Vars
 ! MODULES
 USE MOD_Particle_Globals
-#if USE_MPI
-USE MPI
-#endif /*USE_MPI*/
-
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC

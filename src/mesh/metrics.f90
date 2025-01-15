@@ -665,7 +665,7 @@ REAL               :: tmp2(       3,0:PP_N,0:PP_NZ)
 ! Mortars
 REAL,ALLOCATABLE   :: Mortar_Ja(:,:,:,:,:)
 #if USE_MPI
-INTEGER            :: MPIRequest_Geo(nNbProcs,2)
+TYPE(MPI_Request)  :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE   :: Geo(:,:,:,:,:)
 #endif /*USE_MPI*/
 !==================================================================================================================================

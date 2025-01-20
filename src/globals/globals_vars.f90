@@ -24,7 +24,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-CHARACTER(LEN=6),PARAMETER :: ProgramName  = 'FLEXI'               !> name of this program
+CHARACTER(LEN=6),PARAMETER :: ProgramName  = 'ƎLexi'               !> name of this program
 INTEGER,PARAMETER          :: MajorVersion = 2                     !> FileVersion number saved in each hdf5 file with hdf5 header
 INTEGER,PARAMETER          :: MinorVersion = 9                     !> FileVersion number saved in each hdf5 file with hdf5 header
 INTEGER,PARAMETER          :: PatchVersion = 9                     !> FileVersion number saved in each hdf5 file with hdf5 header

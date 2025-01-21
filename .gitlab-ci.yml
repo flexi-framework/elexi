@@ -6,6 +6,9 @@ before_script:
   - ulimit -s unlimited
   - module list || true
   - python3 -V  || true
+  # Setup Python virtual environment
+  - source venv/bin/activate || true
+  # Setup CMake generator
   - unset CMAKE_GENERATOR
   - if [ -n "${DO_CORE_SPLIT}" ]; then
       echo " FLEXI_SPLIT_TYPE=OMPI_COMM_TYPE_CORE. Splitting shared memory domains on processor-level!";
@@ -87,8 +90,8 @@ stages:
   allow_failure: false
 
 .reggie_cache: &reggie_cache
-  key: "reggie"
-  paths: [reggie]
+  key: "venv"
+  paths: [venv]
   policy: pull
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -144,15 +147,21 @@ ruff:
 reggie_download:
   extends: .default_build_param
   artifacts:
-    paths: [reggie]
+    paths: [venv]
   cache:
-    key: "reggie"
-    paths: [reggie]
+    key: "venv"
+    paths: [venv]
     policy: push
   stage: setup
   script:
-    - git clone https://github.com/piclas-framework/reggie2.0.git reggie
-    - if [ -f "reggie/.git/refs/heads/master" ]; then cat reggie/.git/refs/heads/master ; fi
+    # Setup Python virtual environment
+    - rm -rf venv
+    - python -m venv venv
+    - source venv/bin/activate
+    # Install Reggie
+    - pip install git+https://github.com/piclas-framework/reggie2.0.git
+    # Check Reggie
+    - reggie --help
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_checkin": Run most simple reggie with previous builds on check-in
@@ -179,7 +188,7 @@ checkin:
   needs: [build]
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
+    - reggie ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "particle_checkin": Run basic particle regression checks
@@ -189,21 +198,21 @@ FV_particle:
     stage: particle_checkin
     script:
         - cd build
-        - python ../reggie/reggie.py ../regressioncheck/checks/particle/FV -j 6
+        - reggie ../regressioncheck/checks/particle/FV -j 6
 
 CHE_particle:
     <<: *defaults
     stage: particle_checkin
     script:
         - cd build
-        - python ../reggie/reggie.py ../regressioncheck/checks/particle/CHE -j 6
+        - reggie ../regressioncheck/checks/particle/CHE -j 6
 
 CN_particle:
     <<: *defaults
     stage: particle_checkin
     script:
         - cd build
-        - python ../reggie/reggie.py ../regressioncheck/checks/particle/CN -j 6
+        - reggie ../regressioncheck/checks/particle/CN -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
@@ -217,35 +226,35 @@ build_all:
   stage: reggie_nightly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/run_basic -j 6
+    - reggie ../regressioncheck/checks/run_basic -j 6
 
 timediscs:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/timedisc -j 6
+    - reggie ../regressioncheck/checks/timedisc -j 6
 
 convtest:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/convtest -j 6
+    - reggie ../regressioncheck/checks/convtest -j 6
 
 parabolic:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/parabolic -j 6
+    - reggie ../regressioncheck/checks/parabolic -j 6
 
 riemann:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/riemann -j 6
+    - reggie ../regressioncheck/checks/riemann -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "particle_nightly": Build and run
@@ -259,7 +268,7 @@ PROC_particle:
     DO_CORE_SPLIT: "1"
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/particle/PROC -j 6
+    - reggie ../regressioncheck/checks/particle/PROC -j 6
 
 SANI_particle:
   <<: *defaults_nightly
@@ -267,7 +276,7 @@ SANI_particle:
   allow_failure: true
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/particle/SANI -j 6
+    - reggie ../regressioncheck/checks/particle/SANI -j 6
 
 NIG_particle:
   <<: *defaults_nightly
@@ -275,7 +284,7 @@ NIG_particle:
   allow_failure: true
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/particle/NIG -j 6
+    - reggie ../regressioncheck/checks/particle/NIG -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_weekly": Build and run more complex tests, basically complete simulatons
@@ -289,42 +298,42 @@ tgv:
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/tgv -j 6
+    - reggie ../regressioncheck/checks/tgv -j 6
 
 naca:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/naca -j 6
+    - reggie ../regressioncheck/checks/naca -j 6
 
 fv_switch:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/fv_switch -j 6
+    - reggie ../regressioncheck/checks/fv_switch -j 6
 
 fv_blend:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/fv_blend -j 6
+    - reggie ../regressioncheck/checks/fv_blend -j 6
 
 channelRANS:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/channelRANS -j 6
+    - reggie ../regressioncheck/checks/channelRANS -j 6
 
 imperator:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/preconditioner -j 6
+    - reggie ../regressioncheck/checks/preconditioner -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "particle_weekly": Build and run more complex tests, basically complete simulatons
@@ -335,7 +344,7 @@ WEK_particle:
   allow_failure: true
   script:
     - cd build
-    - python ../reggie/reggie.py ../regressioncheck/checks/particle/WEK -j 6
+    - reggie ../regressioncheck/checks/particle/WEK -j 6
 
 # Stage "documentation": Creates doxygen documentation & compiles the documentation creating the *.pdf
 # ----------------------------------------------------------------------------------------------------------------------------------------------------

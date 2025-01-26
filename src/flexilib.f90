@@ -31,9 +31,9 @@ CONTAINS
 !==================================================================================================================================
 !> Initialization of the computation
 !==================================================================================================================================
-SUBROUTINE InitFlexi(nArgs_In,Args_In &
+SUBROUTINE InitFlexi(nArgs_In, Args_In &
 #if USE_MPI
-                    ,mpi_comm_loc     &
+                    ,mpi_comm_loc      &
 #endif /*USE_MPI*/
                     )
 ! MODULES

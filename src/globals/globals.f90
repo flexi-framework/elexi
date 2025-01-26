@@ -53,7 +53,9 @@ CHARACTER(LEN=255):: ErrorFileName='NOT_SET'                                  !<
 INTEGER           :: iError                                                   !< default error handle
 INTEGER           :: myRank,myLocalRank,myLeaderRank,myWorkerRank
 INTEGER           :: nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
+#if USE_MPI
 TYPE(MPI_Comm)    :: MPI_COMM_FLEXI                                           !< Flexi MPI communicator
+#endif
 LOGICAL           :: MPIRoot                                                  !< flag whether process is MPI root process
 LOGICAL           :: MPILocalRoot                                             !< flag whether process is root of MPI subgroup
 #if USE_MPI

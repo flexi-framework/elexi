@@ -63,11 +63,14 @@ END FUNCTION cstrToChar255
 !===================================================================================================================================
 !> Wrapper to visu_InitFile for Paraview plugin, returns the available variable names and boundary names.
 !===================================================================================================================================
-SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, strlen_mesh, meshfile_IN, varnames, bcnames &
+SUBROUTINE visu_requestInformation(strlen_state, statefile_IN, strlen_mesh, meshfile_IN, varnames, bcnames &
+#if USE_MPI
+                                  ,mpi_comm_IN &
+#endif /*USE_MPI*/
 #if USE_PARTICLES
                                   ,partnames &
 #endif /*USE_PARTICLES*/
-                                  )
+                                   )
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
@@ -83,13 +86,15 @@ USE MOD_Visu_Vars  ,ONLY: PartNamesAll
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-TYPE(MPI_Comm),INTENT(IN)             :: mpi_comm_IN
 INTEGER,INTENT(IN)                    :: strlen_state
 TYPE(C_PTR),TARGET,INTENT(IN)         :: statefile_IN
 INTEGER,INTENT(IN)                    :: strlen_mesh
 TYPE(C_PTR),TARGET,INTENT(IN)         :: meshfile_IN
 TYPE (CARRAY), INTENT(INOUT)          :: varnames
 TYPE (CARRAY), INTENT(INOUT)          :: bcnames
+#if USE_MPI
+TYPE(MPI_Comm),INTENT(IN)             :: mpi_comm_IN
+#endif /*USE_MPI*/
 #if USE_PARTICLES
 TYPE (CARRAY), INTENT(INOUT)          :: partnames
 #endif /*USE_PARTICLES*/
@@ -150,20 +155,22 @@ END SUBROUTINE visu_requestInformation
 !> ParaView reader, and afterwards the data and coordinate arrays as well as the variable names are converted to C arrays since
 !> ParaView needs the data in this format.
 !===================================================================================================================================
-SUBROUTINE visu_CWrapper(mpi_comm_IN,  &
-    UseHighOrder,UseCurveds_IN,                                                                                     &
-    strlen_prm      ,prmfile_IN      ,strlen_posti     ,postifile_IN       ,strlen_state ,statefile_IN,             &
+SUBROUTINE visu_CWrapper(UseHighOrder, UseCurveds_IN   ,&
+    strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
     coordsDG_out    ,valuesDG_out    ,nodeidsDG_out    ,&
     coordsFV_out    ,valuesFV_out    ,nodeidsFV_out    ,&
     varnames_out,                                                                                                   &
     coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out,&
     coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,&
     varnamesSurf_out                                    &
+#if USE_MPI
+   ,mpi_comm_IN                                         &
+#endif /*USE_MPI*/
 #if USE_PARTICLES
    ,coordsPart_out  ,valuesPart_out  ,nodeidsPart_out  ,varnamesPart_out  ,componentsPart_out,                      &
     coordsImpact_out,valuesImpact_out,nodeidsImpact_out,varnamesImpact_out,componentsImpact_out                     &
 #endif /*USE_PARTICLES*/
-    )
+  )
 ! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
@@ -177,7 +184,6 @@ USE MOD_VTK         ,ONLY: WritePartDataToVTK_array
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-TYPE(MPI_Comm),INTENT(IN)     :: mpi_comm_IN
 INTEGER,INTENT(IN)            :: UseHighOrder
 INTEGER,INTENT(IN)            :: UseCurveds_IN
 INTEGER,INTENT(IN)            :: strlen_prm
@@ -200,6 +206,9 @@ TYPE (CARRAY), INTENT(INOUT)  :: coordsSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: valuesSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: nodeidsSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: varnamesSurf_out
+#if USE_MPI
+TYPE(MPI_Comm),INTENT(IN)     :: mpi_comm_IN
+#endif /*USE_MPI*/
 #if USE_PARTICLES
 TYPE (CARRAY), INTENT(INOUT)  :: coordsPart_out
 TYPE (CARRAY), INTENT(INOUT)  :: valuesPart_out
@@ -227,7 +236,11 @@ UseCurveds = MERGE(.TRUE.,.FALSE.,UseCurveds_IN.GT.0)
 ! Enable progress indicator
 doPrintStatusLine = .TRUE.
 
-CALL visu(mpi_comm_IN, prmfile, postifile, statefile, UseCurveds)
+CALL visu(prmfile, postifile, statefile &
+#if USE_MPI
+         ,mpi_comm_IN &
+#endif /*USE_MPI*/
+         , UseCurveds )
 
 ! Map Fortran arrays to C pointer
 IF (MeshFileMode) THEN

@@ -137,6 +137,7 @@ CALL prms%CreateLogicalOption('UseCollectiveIO', "Set true to activate collectiv
                                                  "This activates the usage of H5FD_MPIO_COLLECTIVE_F instead of H5FD_MPIO_INDEPENDENT_F.",&
                                                '.FALSE.')
 #endif /*USE_PARTICLES*/
+
 END SUBROUTINE DefineParametersIO_HDF5
 
 
@@ -229,7 +230,11 @@ END SUBROUTINE InitMPIInfo
 !==================================================================================================================================
 !> Open HDF5 file and groups
 !==================================================================================================================================
-SUBROUTINE OpenDataFile(FileString,create,single,readOnly,communicatorOpt,userblockSize)
+SUBROUTINE OpenDataFile(FileString,create,single,readOnly,userblockSize &
+#if USE_MPI
+                       ,communicatorOpt &
+#endif /*USE_MPI*/
+)
 ! MODULES
 USE MOD_Globals
 ! #if USE_LOADBALANCE
@@ -244,7 +249,9 @@ LOGICAL,INTENT(IN)                 :: create          !< create file if it doesn
 LOGICAL,INTENT(IN)                 :: single          !< single=T : only one processor opens file, single=F : open/create collectively
 LOGICAL,INTENT(IN)                 :: readOnly        !< T : file is opened in read only mode, so file system timestamp remains unchanged
                                                       !< F: file is open read/write mode
+#if USE_MPI
 TYPE(MPI_Comm),INTENT(IN),OPTIONAL :: communicatorOpt !< only MPI and single=F: optional communicator to be used for collective access
+#endif /*USE_MPI*/
                                                       !< default: MPI_COMM_FLEXI
 INTEGER,INTENT(IN),OPTIONAL        :: userblockSize   !< size of the file to be prepended to HDF5 file
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -252,7 +259,7 @@ INTEGER,INTENT(IN),OPTIONAL        :: userblockSize   !< size of the file to be 
 INTEGER(HSIZE_T)              :: userblockSize_loc, tmp, tmp2
 #if USE_MPI
 TYPE(MPI_Comm)                :: comm
-#endif
+#endif /*USE_MPI*/
 !==================================================================================================================================
 LOGWRITE(*,'(A)')'  OPEN HDF5 FILE "',TRIM(FileString),'" ...'
 

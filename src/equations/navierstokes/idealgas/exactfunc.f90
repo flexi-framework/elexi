@@ -61,6 +61,7 @@ CALL addStrListEntry('IniExactFunc','sinevelz'          ,43)
 CALL addStrListEntry('IniExactFunc','sinevelnorho'      ,44)
 CALL addStrListEntry('IniExactFunc','roundjet'          ,5)
 CALL addStrListEntry('IniExactFunc','parabjet'          ,51)
+CALL addStrListEntry('IniExactFunc','parabjetml'        ,52)
 CALL addStrListEntry('IniExactFunc','cylinder'          ,6)
 CALL addStrListEntry('IniExactFunc','shuvortex'         ,7)
 CALL addStrListEntry('IniExactFunc','couette'           ,8)
@@ -614,6 +615,21 @@ CASE(51)
 #endif
   END IF
   CALL PrimToCons(prim,resu)
+CASE(52)
+  ! Parabolic velocity distribution following Rabault et al., 2019 (https://arxiv.org/pdf/1808.07664.pdf)
+  ! "ARTIFICIAL NEURAL NETWORKS TRAINED THROUGH DEEP REINFORCEMENT LEARNING DISCOVER CONTROL STRATEGIES FOR ACTIVE FLOW CONTROL"
+  ASSOCIATE(offset => 0.01,       & ! offset velocity profile a bit in y to induce vortex shedding faster
+            ! height = 4.-2.*offset   ! height of domain without offset to ramp velocity to zero at boundaries
+            ! y      = x(2) -offset   ! move velocity profile by offset
+            height => 4.-2.*0.01, & ! height of domain without offset to ramp velocity to zero at boundaries
+            y      => x(2) -0.01)
+  prim       = RefStatePrim(:,RefState)
+  prim(VELV) = 0.
+  IF (ABS(y).LT.ABS(height)) THEN
+    prim(VEL1) = 6*(height/2. - y)*(height/2. + y)/height**2 ! Parabolic inflow profile
+  END IF
+  CALL PrimToCons(prim,resu)
+  END ASSOCIATE
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow
     prim(DENS)=RefStatePrim(DENS,RefState)  ! Density

@@ -149,8 +149,8 @@ INTEGER                   :: color
 !--- Split communicator from MPI_COMM_FLEXI
 color = MERGE(2,MPI_UNDEFINED,RP_onProc)
 
-! create new RP communicator for RP output. Pass MPI_INFO_NULL as rank to follow the original ordering
-CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI, color, 0, RP_COMM, iError)
+! create new RP communicator for RP output. Pass 0 as rank to follow the original ordering
+CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,0,RP_COMM,iError)
 
 ! ignore comm if proc not on RP_COMM
 IF (RP_onProc) THEN
@@ -714,7 +714,6 @@ END SUBROUTINE WriteRP
 !==================================================================================================================================
 SUBROUTINE FinalizeRecordPoints()
 ! MODULES
-USE MOD_Globals,                 ONLY: iError
 USE MOD_RecordPoints_Vars
 #if USE_MPI
 USE MOD_Globals,                 ONLY: iError

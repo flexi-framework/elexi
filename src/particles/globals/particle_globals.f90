@@ -21,9 +21,7 @@ MODULE MOD_Particle_Globals
 ! MODULES
 USE MOD_Globals
 USE MOD_Memory
-#if USE_MPI
-USE MPI
-#endif /*MPI*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 
 !-----------------------------------------------------------------------------------------------------------------------------------

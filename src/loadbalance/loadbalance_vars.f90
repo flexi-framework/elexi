@@ -23,6 +23,9 @@ USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: HP => INT16,  & ! half precision (only 
                                          SP => REAL32, & ! single precision
                                          DP => REAL64, & ! double precision
                                          QP => REAL128   ! quadruple precision
+#if USE_MPI
+USE mpi_f08
+#endif /*USE_MPI*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
@@ -90,7 +93,7 @@ INTEGER,ALLOCATABLE                 :: MPIoffsetPartSend(:)
 INTEGER,ALLOCATABLE                 :: MPInPartRecv(:)
 INTEGER,ALLOCATABLE                 :: MPIoffsetPartRecv(:)
 INTEGER,POINTER                     :: ElemInfoRank_Shared(:) => NULL()
-INTEGER                             :: ElemInfoRank_Shared_Win
+TYPE(MPI_Win)                       :: ElemInfoRank_Shared_Win
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! general load balancing

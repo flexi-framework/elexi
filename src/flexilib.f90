@@ -31,9 +31,9 @@ CONTAINS
 !==================================================================================================================================
 !> Initialization of the computation
 !==================================================================================================================================
-SUBROUTINE InitFlexi(nArgs_In,Args_In &
+SUBROUTINE InitFlexi(nArgs_In, Args_In &
 #if USE_MPI
-                    ,mpi_comm_loc     &
+                    ,mpi_comm_loc      &
 #endif /*USE_MPI*/
                     )
 ! MODULES
@@ -95,10 +95,10 @@ USE MOD_Particle_MPI,      ONLY:DefineParticleMPI,InitParticleMPI
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)            :: nArgs_In
+INTEGER,INTENT(IN)                     :: nArgs_In
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(:)
 #if USE_MPI
-INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
+TYPE(MPI_Comm),INTENT(IN),OPTIONAL     :: mpi_comm_loc
 #endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

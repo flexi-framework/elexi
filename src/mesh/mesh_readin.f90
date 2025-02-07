@@ -532,7 +532,11 @@ CALL ReadMeshNodes()
 #if USE_LOADBALANCE
 IF (.NOT.PerformLoadBalance) &
 #endif /*USE_LOADBALANCE*/
-  CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.,communicatorOpt=MPI_COMM_FLEXI)
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE. &
+#if USE_MPI
+                   ,communicatorOpt=MPI_COMM_FLEXI                           &
+#endif /*USE_MPI*/
+                   )
 
 IF(useCurveds)THEN
   ALLOCATE(NodeCoords(3,0:NGeo,0:NGeo,0:NGeo,nElems))

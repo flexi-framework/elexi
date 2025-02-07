@@ -34,7 +34,11 @@ CONTAINS
 !===================================================================================================================================
 !> Main routine of the visualization tool visu. Called either by the ParaView plugin or by the standalone program version.
 !===================================================================================================================================
-SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile, UseCurveds)
+SUBROUTINE visu(prmfile, postifile, statefile &
+#if USE_MPI
+               ,mpi_comm_IN &
+#endif /*USE_MPI*/
+               , UseCurveds)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -67,10 +71,12 @@ USE MOD_Posti_Part_Tools    ,ONLY: ReadPartStateFile, InitParticleOutput
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)               :: mpi_comm_IN
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
+#if USE_MPI
+TYPE(MPI_Comm),INTENT(IN)        :: mpi_comm_IN
+#endif /*USE_MPI*/
 LOGICAL,INTENT(IN),OPTIONAL      :: UseCurveds
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -170,7 +176,6 @@ CALL InitMPI( &
 #endif /*USE_MPI*/
             )
 CALL InitMPIInfo()
-
 
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies

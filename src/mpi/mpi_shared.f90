@@ -96,8 +96,8 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: sharedGroup
-INTEGER                         :: worldGroup
+TYPE(MPI_Group)                 :: sharedGroup
+TYPE(MPI_Group)                 :: worldGroup
 INTEGER                         :: i
 INTEGER                         :: color
 !==================================================================================================================================
@@ -242,7 +242,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(1)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 LOGICAL,INTENT(OUT),POINTER               :: DataPointer(:)           !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -311,7 +311,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(2)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 LOGICAL,INTENT(OUT),POINTER               :: DataPointer(:,:)         !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -381,7 +381,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(1)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:)           !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -453,7 +453,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(2)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:,:)         !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -524,7 +524,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(3)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:,:,:)       !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -595,7 +595,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(4)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 INTEGER,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:)     !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -666,7 +666,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(1)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:)         !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -737,7 +737,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(2)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:)         !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -808,7 +808,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(3)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:)       !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -879,7 +879,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(4)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:)     !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -950,7 +950,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(5)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:,:)   !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -1021,7 +1021,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: nVal(6)                  !> Local number of variables in each rank
-INTEGER,INTENT(OUT)                       :: SM_WIN                   !> Shared memory window
+TYPE(MPI_Win),INTENT(OUT)                 :: SM_WIN                   !> Shared memory window
 REAL   ,INTENT(OUT),POINTER               :: DataPointer(:,:,:,:,:,:) !> Pointer to the RMA window
 #if DEBUG_MEMORY
 CHARACTER(LEN=*),INTENT(IN)               :: SM_WIN_NAME              !> Shared memory window name
@@ -1086,8 +1086,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(INOUT)       :: SharedWindow !> Shared memory window
-INTEGER,INTENT(INOUT)       :: Communicator !> Shared memory communicator
+TYPE(MPI_Win) ,INTENT(INOUT)    :: SharedWindow !> Shared memory window
+TYPE(MPI_Comm),INTENT(INOUT)    :: Communicator !> Shared memory communicator
 ! LOGICAL,INTENT(IN)          :: Barrier_Opt  !
 ! LOCAL VARIABLES
 ! LOGICAL                     :: Barrier

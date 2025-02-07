@@ -315,7 +315,11 @@ LastNodeInd  = offsetNodeID+nNodeIDs
 
 ! read local Node Info from data file
 ALLOCATE(NodeInfo(FirstNodeInd:LastNodeInd))
-CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.,communicatorOpt=MPI_COMM_FLEXI)
+CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE. &
+#if USE_MPI
+                 ,communicatorOpt=MPI_COMM_FLEXI                         &
+#endif /*USE_MPI*/
+                 )
 CALL ReadArray('GlobalNodeIDs',1,(/nNodeIDs/),offsetNodeID,1,IntArray=NodeInfo)
 ALLOCATE(NodeCoords_indx(3,nNodeIDs))
 CALL ReadArray('NodeCoords',2,(/3,nNodeIDs/),offsetNodeID,2,RealArray=NodeCoords_indx)

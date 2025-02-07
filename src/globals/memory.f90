@@ -20,9 +20,7 @@ MODULE MOD_Memory
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-#if USE_MPI
-USE MPI
-#endif /*MPI*/
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 SAVE

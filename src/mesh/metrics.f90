@@ -52,11 +52,13 @@ MODULE MOD_Metrics
 IMPLICIT NONE
 PRIVATE
 
-INTEGER,PARAMETER    :: GeoSize=10       !< number of entries in each line of ElemInfo
-INTEGER,PARAMETER    :: Geo_SurfElem=1
-INTEGER,PARAMETER    :: Geo_NormVec(3)=(/2,3,4/)
-INTEGER,PARAMETER    :: Geo_TangVec1(3)=(/5,6,7/)
-INTEGER,PARAMETER    :: Geo_TangVec2(3)=(/8,9,10/)
+INTEGER,PARAMETER    :: GeoSize         = 10       !< number of entries in each line of ElemInfo
+INTEGER,PARAMETER    :: Geo_SurfElem    = 1
+#if USE_MPI
+INTEGER,PARAMETER    :: Geo_NormVec( 3) = (/2,3,4/)
+INTEGER,PARAMETER    :: Geo_TangVec1(3) = (/5,6,7/)
+INTEGER,PARAMETER    :: Geo_TangVec2(3) = (/8,9,10/)
+#endif /*USE_MPI*/
 !----------------------------------------------------------------------------------------------------------------------------------
 
 PUBLIC:: BuildCoords
@@ -665,7 +667,7 @@ REAL               :: tmp2(       3,0:PP_N,0:PP_NZ)
 ! Mortars
 REAL,ALLOCATABLE   :: Mortar_Ja(:,:,:,:,:)
 #if USE_MPI
-INTEGER            :: MPIRequest_Geo(nNbProcs,2)
+TYPE(MPI_Request)  :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE   :: Geo(:,:,:,:,:)
 #endif /*USE_MPI*/
 !==================================================================================================================================

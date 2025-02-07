@@ -69,20 +69,20 @@ INTEGER(KIND=IK)                        :: CollisionnLoc                !< Local
 INTEGER,ALLOCATABLE                      :: displsPartInt(:)
 INTEGER,ALLOCATABLE                      :: recvcountPartInt(:)
 
-INTEGER                                  :: Neigh_nElems_Shared_Win     !> MPI SHM window handle
-INTEGER                                  :: Neigh_offsetElem_Shared_Win !> MPI SHM window handle
-INTEGER                                  :: CNElem2CNNeighElem_Win      !> MPI SHM window handle
-INTEGER                                  :: CNNeighElem2CNElem_Win      !> MPI SHM window handle
+TYPE(MPI_Win)                            :: Neigh_nElems_Shared_Win     !> MPI SHM window handle
+TYPE(MPI_Win)                            :: Neigh_offsetElem_Shared_Win !> MPI SHM window handle
+TYPE(MPI_Win)                            :: CNElem2CNNeighElem_Win      !> MPI SHM window handle
+TYPE(MPI_Win)                            :: CNNeighElem2CNElem_Win      !> MPI SHM window handle
 
 ! Shared particle arrays
-INTEGER                                  :: PartData_Shared_Win
-INTEGER                                  :: PartBC_Shared_Win
-INTEGER                                  :: PartColl_Shared_Win
-INTEGER                                  :: PartInt_Shared_Win
-INTEGER                                  :: PartData_Win                !> MPI RMA window handle
-INTEGER                                  :: PartBC_Win                  !> MPI RMA window handle
-INTEGER                                  :: PartColl_Win                !> MPI RMA window handle
-INTEGER                                  :: PartInt_Win                 !> MPI RMA window handle
+TYPE(MPI_Win)                            :: PartData_Shared_Win
+TYPE(MPI_Win)                            :: PartBC_Shared_Win
+TYPE(MPI_Win)                            :: PartColl_Shared_Win
+TYPE(MPI_Win)                            :: PartInt_Shared_Win
+TYPE(MPI_Win)                            :: PartData_Win                !> MPI RMA window handle
+TYPE(MPI_Win)                            :: PartBC_Win                  !> MPI RMA window handle
+TYPE(MPI_Win)                            :: PartColl_Win                !> MPI RMA window handle
+TYPE(MPI_Win)                            :: PartInt_Win                 !> MPI RMA window handle
 #endif /*USE_MPI*/
 
 #endif /*PARTICLES_COUPLING == 4*/

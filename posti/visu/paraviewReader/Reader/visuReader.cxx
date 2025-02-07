@@ -183,7 +183,10 @@ int visuReader::RequestInformation(vtkInformation *,
    } else {
       strlen_mesh = strlen(MeshFileOverwrite);
    }
-   __mod_visu_cwrapper_MOD_visu_requestinformation(&fcomm, &strlen_state, FileNames[0].c_str(), &strlen_mesh, MeshFileOverwrite, &varnames, &bcnames
+   __mod_visu_cwrapper_MOD_visu_requestinformation(&strlen_state, FileNames[0].c_str(), &strlen_mesh, MeshFileOverwrite, &varnames, &bcnames
+#if USE_MPI
+                                                  ,&fcomm
+#endif /*USE_MPI*/
 #if USE_PARTICLES
                                                   ,&partnames
 #endif /*USE_PARTICLES*/
@@ -476,8 +479,8 @@ int visuReader::RequestData(
    }
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str());
-   __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm,
-         &this->HighOrder,&this->UseCurveds,
+   __mod_visu_cwrapper_MOD_visu_cwrapper(
+         &this->HighOrder,
          &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
@@ -487,11 +490,14 @@ int visuReader::RequestData(
          &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
          &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,
          &varnamesSurf
+#if USE_MPI
+         &fcomm,
+#endif /*USE_MPI*/
 #if USE_PARTICLES
         ,&coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,
          &coords_Impact,&values_Impact,&nodeids_Impact,&varnames_Impact,&components_Impact
 #endif /*USE_PARTICLES*/
-   );
+         );
 
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 

@@ -17,6 +17,8 @@
 !===================================================================================================================================
 MODULE MOD_Particle_Analyze_Vars
 ! MODULES
+USE MOD_Globals
+! IMPLCIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
@@ -58,7 +60,7 @@ INTEGER                       :: RPP_nVarNames = 9
 INTEGER,ALLOCATABLE           :: RPP_Records(:)
 INTEGER,ALLOCATABLE           :: RPP_Records_Glob(:)
 #if USE_MPI
-INTEGER                       :: RPP_MPI_Request
+TYPE(MPI_Request)             :: RPP_MPI_Request
 #endif /*USE_MPI*/
 
 END MODULE MOD_Particle_Analyze_Vars

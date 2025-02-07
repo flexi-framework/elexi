@@ -20,10 +20,6 @@
 MODULE MOD_Particle_Boundary_Vars
 ! MODULES
 USE MOD_Particle_Globals
-#if USE_MPI
-USE MPI
-#endif /*USE_MPI*/
-
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
@@ -68,7 +64,7 @@ INTEGER(KIND=IK)                        :: ImpactOffset                  !< Offs
 !----------------------------------------------------------------------------------------------------------------------------------
 #if USE_MPI
 INTEGER                                 :: myImpactRank                  !< rank within impact tracking communicator
-INTEGER                                 :: MPI_COMM_IMPACT=MPI_COMM_NULL !< MPI impact tracking communicator
+TYPE(MPI_Comm)                          :: MPI_COMM_IMPACT=MPI_COMM_NULL !< MPI impact tracking communicator
 INTEGER                                 :: nImpactProcs                  !< number of procs with impact tracking
 #endif /* USE_MPI */
 
@@ -85,7 +81,7 @@ INTEGER,ALLOCPOINT,DIMENSION(:,:)       :: SurfSide2GlobalSide_Shared
 
 #if USE_MPI
 REAL,POINTER,DIMENSION(:,:,:)           :: SurfSideArea_Shared           !> Area of supersampled surface side
-INTEGER                                 :: SurfSideArea_Shared_Win
+TYPE(MPI_Win)                           :: SurfSideArea_Shared_Win
 
 !INTEGER,ALLOCATABLE,DIMENSION(:,:)      :: GlobalSide2SurfHaloSide       ! Mapping Global Side ID to Surf Halo Side ID (exists only on leader procs)
 !                                                                         !> 1st dim: leader rank
@@ -94,8 +90,8 @@ INTEGER                                 :: SurfSideArea_Shared_Win
 !                                                                         !> 1st dim: leader rank
 !                                                                         !> 2nd dim: Surf SideID
 
-INTEGER                                 :: GlobalSide2SurfSide_Shared_Win
-INTEGER                                 :: SurfSide2GlobalSide_Shared_Win
+TYPE(MPI_Win)                           :: GlobalSide2SurfSide_Shared_Win
+TYPE(MPI_Win)                           :: SurfSide2GlobalSide_Shared_Win
 
 TYPE tSurfaceMapping
   INTEGER,ALLOCATABLE                   :: RecvSurfGlobalID(:)
@@ -105,7 +101,7 @@ TYPE tSurfaceMapping
 END TYPE tSurfaceMapping
 TYPE (tSurfaceMapping),ALLOCATABLE      :: SurfMapping(:)
 
-INTEGER                                 :: SampWallState_Shared_Win
+TYPE(MPI_Win)                           :: SampWallState_Shared_Win
 #else /*USE_MPI*/
 INTEGER                                 :: mySurfRank
 #endif /* USE_MPI */

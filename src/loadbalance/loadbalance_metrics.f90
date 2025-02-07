@@ -49,7 +49,9 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE                   :: Elem_xGP_LB(:,:,:,:,:)
 ! Custom data type
-INTEGER                            :: MPI_LENGTH(1),MPI_TYPE(1),MPI_STRUCT
+INTEGER                            :: MPI_LENGTH(1)
+TYPE(MPI_Datatype)                 :: MPI_TYPE(1)
+TYPE(MPI_Datatype)                 :: MPI_STRUCT
 INTEGER(KIND=MPI_ADDRESS_KIND)     :: MPI_DISPLACEMENT(1)
 ! Timer
 REAL                               :: StartT,EndT,WallTime
@@ -134,7 +136,9 @@ REAL,ALLOCATABLE                   :: dXCL_NGeo_LB(   :,:,:,:,:,:)
 ! REAL,ALLOCATABLE                   :: SurfElem_LB    (    :,:,:)
 ! REAL,ALLOCATABLE                   ::      Ja_Face_LB(:,:,:,:,:)
 ! Custom data type
-INTEGER                            :: MPI_LENGTH(1),MPI_TYPE(1),MPI_STRUCT
+INTEGER                            :: MPI_LENGTH(1)
+TYPE(MPI_Datatype)                 :: MPI_TYPE(1)
+TYPE(MPI_Datatype)                 :: MPI_STRUCT
 INTEGER(KIND=MPI_ADDRESS_KIND)     :: MPI_DISPLACEMENT(1)
 ! Timer
 REAL                               :: StartT,EndT,WallTime

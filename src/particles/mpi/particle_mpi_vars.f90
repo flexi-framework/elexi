@@ -34,9 +34,11 @@ LOGICAL                                  :: ParticleMPIInitIsDone=.FALSE.
 LOGICAL                                  :: CheckExchangeProcs               ! On default, check if proc communication is symmetric
 
 TYPE tPartMPIGROUP
+#if USE_MPI
   TYPE(MPI_Comm)                         :: COMM                             ! MPI communicator for PIC GTS region
   TYPE(MPI_Request)                      :: Request                          ! MPI request for asynchronous communication
   TYPE(MPI_Request)                      :: RequestIndex                     ! MPI request for asynchronous communication
+#endif /*USE_MPI*/
   INTEGER                                :: nProcs                           ! number of MPI processes for particles
   INTEGER                                :: MyRank                           ! MyRank of PartMPIVAR%COMM
   LOGICAL                                :: MPIRoot                          ! Root, MPIRank=0

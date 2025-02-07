@@ -2511,7 +2511,6 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ChangeBasis              ,ONLY: ChangeBasis2D
 USE MOD_Mappings                 ,ONLY: CGNS_SideToVol2
-USE MOD_Memory                   ,ONLY: ProcessMemUsage
 USE MOD_Mesh_Vars                ,ONLY: NGeo
 USE MOD_Mesh_Vars                ,ONLY: SideInfo_Shared
 USE MOD_Mesh_Vars                ,ONLY: nNonUniqueGlobalSides
@@ -2525,6 +2524,7 @@ USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3D,sVdm_Bezier
 USE MOD_Particle_Surfaces_Vars   ,ONLY: BezierControlPoints3DElevated,BezierElevation
 USE MOD_ReadInTools              ,ONLY: PrintOption
 #if USE_MPI
+USE MOD_Memory                   ,ONLY: ProcessMemUsage
 USE MOD_Mesh_Vars                ,ONLY: nGlobalElems
 USE MOD_MPI_Shared_Vars          ,ONLY: nComputeNodes
 USE MOD_Particle_Mesh_Vars       ,ONLY: BezierControlPoints3D_Shared,BezierControlPoints3D_Shared_Win
@@ -2553,13 +2553,14 @@ INTEGER                        :: firstElem,lastElem,firstSide,lastSide
 INTEGER                        :: p,q,pq(2)
 REAL                           :: tmp(3,0:NGeo,0:NGeo)
 REAL                           :: tmp2(3,0:NGeo,0:NGeo)
+! Timers
+REAL                           :: StartT,EndT,WallTime
+#if USE_MPI
 ! Memory
 INTEGER(KIND=DP),PARAMETER     :: kByte = 1024
 INTEGER(KIND=DP),PARAMETER     :: gByte = 1073741824
 REAL                           :: memory(3)
-! Timers
-REAL                           :: StartT,EndT,WallTime
-#if !USE_MPI
+#else
 INTEGER,PARAMETER              :: nComputeNodes = 1
 INTEGER                        :: ALLOCSTAT
 #endif /*USE_MPI*/

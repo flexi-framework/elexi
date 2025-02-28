@@ -33,7 +33,7 @@ extern "C" {
 
 extern "C" {
   extern void __mod_visu_cwrapper_MOD_visu_cwrapper(
-        int* HighOrder,
+        int* HighOrder, int* UseCurveds,
         int* strlen_prm,   const char* prmfile_IN,
         int* strlen_posti, const char* postifile_IN,
         int* strlen_state, const char* statefile_IN,

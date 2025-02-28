@@ -165,7 +165,8 @@ int visuReader::RequestInformation(vtkInformation *,
    }
 
    // convert the MPI communicator to a Fortran communicator
-   int fcomm;
+   // int fcomm;
+   MPI_Fint fcomm;
    fcomm = MPI_Comm_c2f(mpiComm);
    MPI_Barrier(mpiComm);
 
@@ -359,9 +360,14 @@ int visuReader::RequestData(
    FileToLoad = FileNames[timestepToLoad];
    SWRITE("File to load "<<FileToLoad);
 
+   // vtkMPICommunicator *communicator = vtkMPICommunicator::SafeDownCast(this->Controller->GetCommunicator());
+   // mpiComm = MPI_COMM_NULL;
+   // if (communicator) {
+   //    mpiComm = *(communicator->GetMPIComm()->GetHandle());
+   // }
 
    // convert the MPI communicator to a fortran communicator
-   int fcomm = MPI_Comm_c2f(mpiComm);
+   MPI_Fint fcomm = MPI_Comm_c2f(mpiComm);
    MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
 
    // get all variables selected for visualization
@@ -480,7 +486,7 @@ int visuReader::RequestData(
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str());
    __mod_visu_cwrapper_MOD_visu_cwrapper(
-         &this->HighOrder,
+         &this->HighOrder,&this->UseCurveds,
          &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
@@ -491,7 +497,7 @@ int visuReader::RequestData(
          &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,
          &varnamesSurf
 #if USE_MPI
-         &fcomm,
+        ,&fcomm
 #endif /*USE_MPI*/
 #if USE_PARTICLES
         ,&coords_Part,&values_Part,&nodeids_Part,&varnames_Part,&components_Part,

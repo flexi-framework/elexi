@@ -165,7 +165,6 @@ int visuReader::RequestInformation(vtkInformation *,
    }
 
    // convert the MPI communicator to a Fortran communicator
-   // int fcomm;
    MPI_Fint fcomm;
    fcomm = MPI_Comm_c2f(mpiComm);
    MPI_Barrier(mpiComm);

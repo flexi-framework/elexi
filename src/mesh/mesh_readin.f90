@@ -74,6 +74,7 @@ SUBROUTINE ReadBCs()
 USE MOD_Globals
 USE MOD_Mesh_Vars  ,ONLY:BoundaryName,BoundaryType,nBCs,nUserBCs
 USE MOD_ReadInTools,ONLY:GETINTARRAY,CountOption,GETSTR
+USE MOD_StringTools,ONLY:LowCase
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -84,6 +85,7 @@ INTEGER,PARAMETER              :: Offset = 0                ! Every process read
 LOGICAL,ALLOCATABLE            :: UserBCFound(:)
 LOGICAL                        :: NameCheck,LengthCheck
 CHARACTER(LEN=255), ALLOCATABLE:: BCNames(:)
+CHARACTER(LEN=255)             :: currBCName, currBoundaryName
 CHARACTER(LEN=255)             :: ErrorString
 INTEGER, ALLOCATABLE           :: BCMapping(:),BCType(:,:)
 INTEGER                        :: iBC,iUserBC
@@ -116,7 +118,9 @@ IF (nUserBCs.GT.0) THEN
   DO iBC=1,nBCs
     DO iUserBC=1,nUserBCs
       ! Check if BoundaryName(iUserBC) is a substring of BCNames(iBC)
-      NameCheck   = INDEX(TRIM(BCNames(iBC)),TRIM(BoundaryName(iUserBC))).NE.0
+      CALL LowCase(BCNames(iBC)           ,currBCName)
+      CALL LowCase(BoundaryName(iUserBC)  ,currBoundaryName)
+      NameCheck = INDEX(TRIM(currBCName),TRIM(currBoundaryName)).NE.0
       ! Check if both strings have equal length
       LengthCheck = LEN(  TRIM(BCNames(iBC))).EQ.LEN(TRIM(BoundaryName(iUserBC)))
       ! Check if both strings are equal (length has to be checked because index checks for substrings!)

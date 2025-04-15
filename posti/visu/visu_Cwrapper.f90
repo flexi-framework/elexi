@@ -163,20 +163,20 @@ END SUBROUTINE visu_requestInformation
 !> ParaView reader, and afterwards the data and coordinate arrays as well as the variable names are converted to C arrays since
 !> ParaView needs the data in this format.
 !===================================================================================================================================
-SUBROUTINE visu_CWrapper(UseHighOrder, UseCurveds_IN   ,&
-    strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
-    coordsDG_out    ,valuesDG_out    ,nodeidsDG_out    ,&
-    coordsFV_out    ,valuesFV_out    ,nodeidsFV_out    ,&
-    varnames_out,                                                                                                   &
-    coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out,&
-    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,&
-    varnamesSurf_out                                    &
+SUBROUTINE visu_CWrapper(UseHighOrder, UseCurveds_IN,                                           &
+    strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,             &
+    coordsDG_out    ,valuesDG_out    ,nodeidsDG_out,                                            &
+    coordsFV_out    ,valuesFV_out    ,nodeidsFV_out,                                            &
+    varnames_out    ,varvectors_out,                                                            &
+    coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out,                                        &
+    coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,                                        &
+    varnamesSurf_out,varvectorsSurf_out                                                         &
 #if USE_MPI
-   ,mpi_comm_IN                                         &
+   ,mpi_comm_IN                                                                                 &
 #endif /*USE_MPI*/
 #if USE_PARTICLES
-   ,coordsPart_out  ,valuesPart_out  ,nodeidsPart_out  ,varnamesPart_out  ,componentsPart_out,                      &
-    coordsImpact_out,valuesImpact_out,nodeidsImpact_out,varnamesImpact_out,componentsImpact_out                     &
+   ,coordsPart_out  ,valuesPart_out  ,nodeidsPart_out  ,varnamesPart_out  ,componentsPart_out,  &
+    coordsImpact_out,valuesImpact_out,nodeidsImpact_out,varnamesImpact_out,componentsImpact_out &
 #endif /*USE_PARTICLES*/
   )
 ! MODULES
@@ -207,6 +207,7 @@ TYPE (CARRAY), INTENT(INOUT)  :: coordsFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: valuesFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: nodeidsFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: varnames_out
+TYPE (CARRAY), INTENT(INOUT)  :: varvectors_out
 TYPE (CARRAY), INTENT(INOUT)  :: coordsSurfDG_out
 TYPE (CARRAY), INTENT(INOUT)  :: valuesSurfDG_out
 TYPE (CARRAY), INTENT(INOUT)  :: nodeidsSurfDG_out
@@ -214,6 +215,7 @@ TYPE (CARRAY), INTENT(INOUT)  :: coordsSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: valuesSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: nodeidsSurfFV_out
 TYPE (CARRAY), INTENT(INOUT)  :: varnamesSurf_out
+TYPE (CARRAY), INTENT(INOUT)  :: varvectorsSurf_out
 #if USE_MPI
 INTEGER,       INTENT(IN)     :: mpi_comm_IN
 #endif /*USE_MPI*/
@@ -264,40 +266,40 @@ IF (MeshFileMode) THEN
   ! We may visualize the scaled Jacobian for debug purposes
   IF (nVarVisu.GT.0) THEN
     CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,PP_dim)
-    CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
+    CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,varvectors_out,VarnamesAll,nVarVisu)
   ELSE
     ! Otherwise, no output of data
-    valuesDG_out%len      = 0
-    varnames_out%len      = 0
+    valuesDG_out%len       = 0
+    varnames_out%len       = 0
   END IF
 
   ! set length of all other output arrays to zero so they are not used in the reader
-  coordsFV_out%dim      = 3
-  coordsFV_out%len      = 0
-  valuesFV_out%len      = 0
-  nodeidsFV_out%len     = 0
-  coordsSurfDG_out%dim  = 2
-  coordsSurfDG_out%len  = 0
-  valuesSurfDG_out%len  = 0
-  nodeidsSurfDG_out%len = 0
-  coordsSurfFV_out%dim  = 2
-  coordsSurfFV_out%len  = 0
-  valuesSurfFV_out%len  = 0
-  nodeidsSurfFV_out%len = 0
-  varnamesSurf_out%len  = 0
+  coordsFV_out%dim         = 3
+  coordsFV_out%len         = 0
+  valuesFV_out%len         = 0
+  nodeidsFV_out%len        = 0
+  coordsSurfDG_out%dim     = 2
+  coordsSurfDG_out%len     = 0
+  valuesSurfDG_out%len     = 0
+  nodeidsSurfDG_out%len    = 0
+  coordsSurfFV_out%dim     = 2
+  coordsSurfFV_out%len     = 0
+  valuesSurfFV_out%len     = 0
+  nodeidsSurfFV_out%len    = 0
+  varnamesSurf_out%len     = 0
 #if USE_PARTICLES
-  coordsPart_out%len    = 0
-  coordsPart_out%dim    = 0
-  valuesPart_out%len    = 0
-  nodeidsPart_out%len   = 0
-  varnamesPart_out%len  = 0
-  componentsPart_out%len  = 0
-  coordsImpact_out%len    = 0
-  coordsImpact_out%dim    = 0
-  valuesImpact_out%len    = 0
-  nodeidsImpact_out%len   = 0
-  varnamesImpact_out%len  = 0
-  componentsImpact_out%len  = 0
+  coordsPart_out%len       = 0
+  coordsPart_out%dim       = 0
+  valuesPart_out%len       = 0
+  nodeidsPart_out%len      = 0
+  varnamesPart_out%len     = 0
+  componentsPart_out%len   = 0
+  coordsImpact_out%len     = 0
+  coordsImpact_out%dim     = 0
+  valuesImpact_out%len     = 0
+  nodeidsImpact_out%len    = 0
+  varnamesImpact_out%len   = 0
+  componentsImpact_out%len = 0
 #endif /*USE_PARTICLES*/
 
   RETURN
@@ -308,12 +310,12 @@ END IF
 IF (Avg2D) THEN
   CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElemsAvg2D_DG,valuesDG_out,UVisu_DG,2)
   CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElemsAvg2D_FV,valuesFV_out,UVisu_FV,2)
-  CALL WriteCoordsToVTK_array(NVisu,nElemsAvg2D_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=2,DGFV=0,HighOrder=UseHighOrder)
+  CALL WriteCoordsToVTK_array(NVisu   ,nElemsAvg2D_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=2,DGFV=0,HighOrder=UseHighOrder)
   CALL WriteCoordsToVTK_array(NVisu_FV,nElemsAvg2D_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=2,DGFV=1,HighOrder=UseHighOrder)
 ELSE
   CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,PP_dim)
   CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,PP_dim)
-  CALL WriteCoordsToVTK_array(NVisu,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0,HighOrder=UseHighOrder)
+  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0,HighOrder=UseHighOrder)
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=PP_dim,DGFV=1,HighOrder=UseHighOrder)
 END IF
 
@@ -343,7 +345,7 @@ CALL WritePartDataToVTK_array(PDE%nPart_visu,PDE%nPartVar_visu,coordsImpact_out,
                               PDE%VarNamePartCombineLen,PDE%VarNamePartVisu,PDE%PartCPointers_allocated)
 #endif
 
-CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
+CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,varvectors_out,VarnamesAll,nVarVisu)
 
 ! Surface
 CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_out,USurfVisu_DG,PP_dim-1)
@@ -354,7 +356,7 @@ CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSur
 CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
     CoordsSurfVisu_FV,nodeidsSurf_FV,dim=PP_dim-1,DGFV=1,HighOrder=UseHighOrder)
 
-CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,VarnamesAll,nVarSurfVisuAll)
+CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,varvectorsSurf_out,VarnamesAll,nVarSurfVisuAll)
 
 END SUBROUTINE visu_CWrapper
 

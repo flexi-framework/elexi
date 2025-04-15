@@ -794,12 +794,12 @@ IF (HighOrder.EQ.1 .AND.DGFV.EQ.0) THEN
   nodeids_out%len =   (NVisu+1)**dim*nElems
 ELSE
   ! set the sizes of the arrays
-  coords_out%len = 3*(NVisu+1)**dim*nElems
+  coords_out%len  = 3*(NVisu+1)**dim*nElems
   nodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
 END IF
 
 ! assign data to the arrays (no copy!!!)
-coords_out%data  = C_LOC(coords(1,0,0,0,1))
+coords_out%data  = C_LOC(coords( 1,0,0,0,1))
 nodeids_out%data = C_LOC(nodeids(1))
 
 SWRITE(UNIT_stdOut,'(A)')" Done!"
@@ -822,18 +822,19 @@ INTEGER,INTENT(IN)                :: nVal                         !> Number of n
 INTEGER,INTENT(IN)                :: NVisu                        !> Polynomial degree for visualization
 INTEGER,INTENT(IN)                :: nElems                       !> Number of elements
 INTEGER,INTENT(IN)                :: dim                          !> Spacial dimension (2D or 3D)
-REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN) :: values(:,:,:,:,:) !> Array containing the points values
+REAL(C_DOUBLE),TARGET,INTENT(IN)  :: values(:,:,:,:,:)            !> Array containing the points values
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 TYPE (CARRAY), INTENT(INOUT)      :: Values_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-values_out%dim  = dim
+values_out%dim = dim
 IF (nElems.EQ.0) THEN
-  values_out%len  = 0
+  values_out%len = 0
   RETURN
 END IF
+
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D DATA   TO VTX XML BINARY (VTU) ARRAY..."
 
 ! values and coords are already in the correct structure of VTK/Paraview
@@ -841,18 +842,19 @@ SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D DATA   TO VTX XML BI
 values_out%len = nVal*(NVisu+1)**dim*nElems
 
 IF (nVal*(NVisu+1)**dim*nElems.GT.0) THEN
-  ! assign data to the arrays (no copy!!!)
+  ! assign data pointer to the arrays (no copy!!!)
   values_out%data = C_LOC(values(0,0,0,1,1))
 END IF
 
 SWRITE(UNIT_stdOut,'(A)')" Done!"
+
 END SUBROUTINE WriteDataToVTK_array
 
 
 !===================================================================================================================================
 !> Subroutine to write variable names to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,VarNamesTotal,nVarVisu)
+SUBROUTINE WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,varvectors_out,VarNamesTotal,nVarVisu)
 ! MODULES
 ! USE ISO_C_BINDING
 USE MOD_Globals
@@ -863,24 +865,31 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVarTotal
 INTEGER,INTENT(IN)             :: mapVisu(nVarTotal)
-TYPE (CARRAY), INTENT(INOUT)   :: varnames_out
+TYPE(CARRAY),INTENT(INOUT)     :: varnames_out
+TYPE(CARRAY),INTENT(INOUT)     :: varvectors_out
 CHARACTER(LEN=255),INTENT(IN)  :: VarNamesTotal(nVarTotal)
 INTEGER,INTENT(IN)             :: nVarVisu
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(C_CHAR),POINTER    :: VarNames_loc(:,:)
-INTEGER                      :: i,iVar
+CHARACTER(C_CHAR),POINTER      :: VarNames_loc(:,:)
+INTEGER(C_INT),POINTER         :: varvectors_loc(:)
+INTEGER                        :: i,iVar
 !===================================================================================================================================
 ! copy varnames
-ALLOCATE(VarNames_loc(255,nVarVisu))
-varnames_out%len  = nVarVisu*255
+ALLOCATE(VarNames_loc(  255,nVarVisu))
+ALLOCATE(varvectors_loc(    nVarVisu))
+
+varnames_out%len   = nVarVisu*255
+varvectors_out%len = nVarVisu
 IF (nVarVisu.GT.0) THEN
-  varnames_out%data = C_LOC(VarNames_loc(1,1))
+  varnames_out%data   = C_LOC(VarNames_loc(  1,1))
+  varvectors_out%data = C_LOC(VarVectors_loc(  1))
 
   DO iVar=1,nVarTotal
     IF (mapVisu(iVar).GT.0) THEN
       DO i=1,255
         VarNames_loc(i,mapVisu(iVar)) = VarNamesTotal(iVar)(i:i)
+        VarVectors_loc(mapVisu(iVar)) = 1
       END DO
     END IF
   END DO
@@ -938,11 +947,11 @@ IF (nVar_out.GT.0) THEN
   END DO
 
   ALLOCATE(VarNamesPart_loc(255,nPartVarCombine))
-  varnamespart_out%len = nPartVarCombine*255
+  varnamespart_out%len  = nPartVarCombine*255
   varnamespart_out%data = C_LOC(VarNamesPart_loc(1,1))
 
   ALLOCATE(componentspart_loc(nPartVarCombine))
-  componentspart_out%len = nPartVarCombine
+  componentspart_out%len  = nPartVarCombine
   componentspart_out%data = C_LOC(componentspart_loc(1))
 
   iVar2 = 1

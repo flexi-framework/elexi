@@ -33,7 +33,7 @@
 
 #include <vtkStringArray.h>
 
-#include <../../pluginTypes_visu.h>
+#include "../../pluginTypes_visu.h"
 
 #include <vtkIOParallelModule.h> // For export macro
 #include <vtkMultiBlockDataSetAlgorithm.h>
@@ -100,18 +100,20 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       // struct to exchange arrays between fortran and C
       struct DoubleARRAY coords_DG;
       struct DoubleARRAY values_DG;
-      struct IntARRAY  nodeids_DG;
+      struct IntARRAY    nodeids_DG;
       struct DoubleARRAY coords_FV;
       struct DoubleARRAY values_FV;
-      struct IntARRAY  nodeids_FV;
-      struct CharARRAY varnames;
+      struct IntARRAY    nodeids_FV;
+      struct CharARRAY   varnames;
+      struct IntARRAY    varvectors;
       struct DoubleARRAY coordsSurf_DG;
       struct DoubleARRAY valuesSurf_DG;
-      struct IntARRAY  nodeidsSurf_DG;
+      struct IntARRAY    nodeidsSurf_DG;
       struct DoubleARRAY coordsSurf_FV;
       struct DoubleARRAY valuesSurf_FV;
-      struct IntARRAY  nodeidsSurf_FV;
-      struct CharARRAY varnamesSurf;
+      struct IntARRAY    nodeidsSurf_FV;
+      struct CharARRAY   varnamesSurf;
+      struct IntARRAY    varvectorsSurf;
 #if USE_PARTICLES
       struct DoubleARRAY coords_Part;
       struct DoubleARRAY values_Part;
@@ -128,9 +130,9 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
       int RequestData(       vtkInformation *, vtkInformationVector **, vtkInformationVector *);
 
-      void InsertData  (vtkMultiBlockDataSet* mb,          int blockno
-                      , struct DoubleARRAY* coords,        struct DoubleARRAY* values
-                      , struct IntARRAY*    nodeids,       struct CharARRAY* varnames);
+      void InsertData  (vtkMultiBlockDataSet* mb,      int blockno
+                      , struct DoubleARRAY*   coords,  struct DoubleARRAY* values
+                      , struct IntARRAY*      nodeids, struct CharARRAY*   varnames, struct IntARRAY* varvectors);
 #if USE_PARTICLES
       /* virtual void InsertPartData(vtkPolyData* mb_part, int blockno, struct DoubleARRAY* coords,
             struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components); */

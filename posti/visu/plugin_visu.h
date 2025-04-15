@@ -39,10 +39,10 @@ extern "C" {
         int* strlen_state, const char* statefile_IN,
         struct DoubleARRAY* coords_out,       struct DoubleARRAY* values_out,        struct IntARRAY* nodeids_out,
         struct DoubleARRAY* coordsFV_out,     struct DoubleARRAY* valuesFV_out,      struct IntARRAY* nodeidsFV_out,
-        struct CharARRAY* varnames_out,
+        struct CharARRAY*   varnames_out,     struct IntARRAY*    varvectors_out,
         struct DoubleARRAY* coordsSurf_out,   struct DoubleARRAY* valuesSurf_out,    struct IntARRAY* nodeidsSurf_out,
         struct DoubleARRAY* coordsSurfFV_out, struct DoubleARRAY* valuesSurfFV_out,  struct IntARRAY* nodeidsSurfFV_out,
-        struct CharARRAY* varnamesSurf_out
+        struct CharARRAY*   varnamesSurf_out, struct IntARRAY*    varvectorsSurf_out
 #if USE_MPI
        ,int* mpi_comm_IN
 #endif /*USE_MPI*/

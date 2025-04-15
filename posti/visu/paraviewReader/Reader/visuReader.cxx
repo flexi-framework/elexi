@@ -14,8 +14,8 @@
 !=================================================================================================================================
 */
 
-#include <visuReader.h>
-#include <../../plugin_visu.h>
+#include "visuReader.h"
+#include "../../plugin_visu.h"
 
 #include <hdf5.h>
 #include <vtkCellArray.h>
@@ -491,10 +491,10 @@ int visuReader::RequestData(
          &strlen_state, FileToLoad.c_str(),
          &coords_DG    ,&values_DG    ,&nodeids_DG,
          &coords_FV    ,&values_FV    ,&nodeids_FV,
-         &varnames,
+         &varnames     ,&varvectors,
          &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
          &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,
-         &varnamesSurf
+         &varnamesSurf ,&varvectorsSurf
 #if USE_MPI
         ,&fcomm
 #endif /*USE_MPI*/
@@ -524,10 +524,10 @@ int visuReader::RequestData(
    }
 
    // Insert DG data into output
-   InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &varnames);
+   InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &varnames, &varvectors);
 
    // Insert FV data into output
-   InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames);
+   InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames, &varvectors);
 
    // get the MultiBlockDataset
    mb = vtkMultiBlockDataSet::SafeDownCast(outInfoSurface->Get(vtkDataObject::DATA_OBJECT()));
@@ -547,10 +547,10 @@ int visuReader::RequestData(
    }
 
    // Insert Surface DG data into output
-   InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &varnamesSurf);
+   InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &varnamesSurf, &varvectorsSurf);
 
    // Insert Surface FV data into output
-   InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
+   InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf, &varvectorsSurf);
 
 #if USE_PARTICLES
 	 // write PartData
@@ -602,9 +602,9 @@ int visuReader::RequestData(
 /*
  * This function inserts the data, loaded by the Posti tool, into a ouput
  */
-void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
-                           ,struct DoubleARRAY* coords  ,struct DoubleARRAY* values
-                           ,struct IntARRAY*    nodeids ,struct CharARRAY* varnames) {
+void visuReader::InsertData(vtkMultiBlockDataSet* mb      ,int blockno
+                           ,struct DoubleARRAY*   coords  ,struct DoubleARRAY* values
+                           ,struct IntARRAY*      nodeids ,struct CharARRAY*   varnames, struct IntARRAY* varvectors) {
     vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(blockno));
 
     // create a 3D double array (must be 3D even we use a 2D Posti tool, since paraview holds the data in 3D)
@@ -680,23 +680,39 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
     unsigned int nVar = varnames->len/255;
 
     if (nVar > 0) {
-      unsigned int sizePerVar = values->len/nVar;
-      int          dataPos    = 0;
+      int dataPos = 0;
       // loop over all loaded variables
       for (unsigned int iVar = 0; iVar < nVar; iVar++) {
-        // For each variable, create a new array and set the number of components to 1
-        // Each variable is loaded separately.
-        // One might implement vector variables (velocity), but then must set number of componenets to 2/3
+        // For each variable, create a new array and set the number of components to varvectors[iVar]
+        // A value of 1 indicates scalar data; values > 1 mean vector data
+        int nComp = varvectors->data[iVar];
+        int nData = coords->len/3;
+
         vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
-        vdata->SetNumberOfComponents(1);
-        vdata->SetNumberOfTuples(sizePerVar);
+        vdata->SetNumberOfComponents(nComp);
+        vdata->SetNumberOfTuples(    nData);
         // copy values
         double* ptr = vdata->GetPointer(0);
-        for (long i = 0; i < sizePerVar; ++i)
-        {
-          *ptr++ = values->data[dataPos+i];
+
+        // Scalar data
+        if (nComp == 1) {
+          // Copy one  value for each node
+          for (long i = 0; i < nData; ++i)
+          {
+            *ptr++ = values->data[dataPos+i];
+          }
+          dataPos += nData;
+        } else {
+          // Copy nComp values for each node
+          for (long i = 0; i < nData; ++i)
+          {
+            for (long iVar = 0; iVar < nComp; ++iVar)
+            {
+              *ptr++ = values->data[dataPos + i*nComp + iVar];
+            }
+          }
+          dataPos += nData*nComp;
         }
-        dataPos += sizePerVar;
         // set name of variable
         char tmps[255];
         strncpy(tmps, varnames->data+iVar*255, 255);

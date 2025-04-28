@@ -6,6 +6,11 @@ IF(${CMAKE_VERSION} VERSION_LESS "3.29.0")
   RETURN()
 ENDIF()
 
+# Set to the environment variable if necessary
+IF (NOT CMAKE_LINKER_TYPE AND NOT "$ENV{CMAKE_LINKER_TYPE}" STREQUAL "")
+  SET(CMAKE_LINKER_TYPE "$ENV{CMAKE_LINKER_TYPE}")
+ENDIF()
+
 # Check if the linker type was set
 IF (CMAKE_LINKER_TYPE)
   # Use the standard linker, typically GNU ld

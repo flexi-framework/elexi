@@ -843,7 +843,7 @@ values_out%len = nVal*(NVisu+1)**dim*nElems
 
 IF (nVal*(NVisu+1)**dim*nElems.GT.0) THEN
   ! assign data pointer to the arrays (no copy!!!)
-  values_out%data = C_LOC(values(0,0,0,1,1))
+  values_out%data = C_LOC(values)
 END IF
 
 SWRITE(UNIT_stdOut,'(A)')" Done!"
@@ -996,9 +996,9 @@ values_out%len  = nVar_out*nParts_out
 nodeids_out%len = nParts_Out
 
 ! assign data to the arrays (no copy!!!)
-coords_out%data  = C_LOC(Coords(1,1))
-values_out%data  = C_LOC(values(1,1))
-nodeids_out%data = C_LOC(nodeids(1))
+coords_out%data  = C_LOC(Coords)
+values_out%data  = C_LOC(values)
+nodeids_out%data = C_LOC(nodeids)
 
 ! create connectivity
 NodeID = 0

@@ -515,8 +515,11 @@ FUNCTION(add_exec target)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
-  # Strip executable library when building in release mode
-  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:${target}>)
+  # Strip executable library when building in release mode, except on macOS
+  # IF(NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+  IF(NOT CMAKE_HOST_APPLE)
+    ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:${target}>)
+  ENDIF()
 ENDFUNCTION()
 
 FUNCTION(add_lib_shared target)
@@ -533,8 +536,11 @@ FUNCTION(add_lib_shared target)
                             DESTINATION lib)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
-  # Strip shared library when building in release mode
-  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:${target}>)
+  # Strip shared library when building in release mode, except on macOS
+  # IF(NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+  IF(NOT CMAKE_HOST_APPLE)
+    ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND $<$<CONFIG:release>:${CMAKE_STRIP}> ARGS --strip-unneeded $<TARGET_FILE:${target}>)
+  ENDIF()
 ENDFUNCTION()
 
 # include flexi.h
@@ -681,6 +687,8 @@ SET_TARGET_PROPERTIES(libflexistatic    PROPERTIES PREFIX ""
                                                    COMPILE_OPTIONS "-fPIC"
                                                    CMAKE_POSITION_INDEPENDENT_CODE ON
                                                    OUTPUT_NAME "libflexif90")
+# Make sure that the script is executed even though cmake is not explicitly executed after the commit is changed in git
+ADD_DEPENDENCIES(libflexistaticF90 UpdateGitCommitHash)
 IF(SELFBUILTEXTERNALS)
   ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
 ENDIF()
@@ -711,11 +719,7 @@ ADD_LIB_SHARED(       libflexishared ./src/flexilib.f90)
 SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
 ADD_DEPENDENCIES(     libflexishared libflexistatic userblocklib stacksizelib nooplib ${INTERNALLIBS})
 ADD_EXEC(        flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib nooplib ${INTERNALLIBS})
-# Make sure that the script is executed even though cmake is not explicitly executed after the commit is changed in git
-ADD_DEPENDENCIES(flexi UpdateGitCommitHash)
-# Create a symlink to elexi
-ADD_CUSTOM_COMMAND(TARGET flexi POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink flexi ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/"elexi")
+ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")

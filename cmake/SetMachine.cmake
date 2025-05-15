@@ -2,11 +2,11 @@
 # Detect machine environments
 # =========================================================================
 # Try to read from environment variable, prevent possible FQDN hostname stall
-SET(CMAKE_HOSTNAME "$ENV{CMAKE_HOSTNAME}")
-IF("${CMAKE_HOSTNAME}" STREQUAL "")
-  CMAKE_HOST_SYSTEM_INFORMATION(RESULT CMAKE_FQDN_HOST QUERY FQDN)
+IF(DEFINED ENV{CMAKE_HOSTNAME} AND NOT "$ENV{CMAKE_HOSTNAME}" STREQUAL "")
+  SET(CMAKE_HOSTNAME  "$ENV{CMAKE_HOSTNAME}")
+  SET(CMAKE_FQDN_HOST    "${CMAKE_HOSTNAME}")
 ELSE()
-  SET(CMAKE_FQDN_HOST CMAKE_HOSTNAME)
+  CMAKE_HOST_SYSTEM_INFORMATION(RESULT CMAKE_FQDN_HOST QUERY FQDN)
 ENDIF()
 MARK_AS_ADVANCED(FORCE CMAKE_FQDN_HOST)
 MARK_AS_ADVANCED(FORCE CMAKE_HOSTNAME)
@@ -36,12 +36,7 @@ MESSAGE(STATUS "Generating for [${CMAKE_GENERATOR}] build system")
 IF (DEFINED ENV{PE_ENV})
   SET(CMAKE_C_COMPILER       cc)
   SET(CMAKE_CXX_COMPILER     CC)
-  SET(CMAKE_Fortran_COMPILER ftn) 
-# HLRS HAWK
-ELSEIF (CMAKE_FQDN_HOST MATCHES "hawk\.hww\.hlrs\.de$")
-  SET(CMAKE_C_COMPILER       mpicc)
-  SET(CMAKE_CXX_COMPILER     mpicxx)
-  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
+  SET(CMAKE_Fortran_COMPILER ftn)
 # SuperMUC
 # ELSEIF(CMAKE_FQDN_HOST MATCHES "sng\.lrz\.de$"
 # LUMI
@@ -49,20 +44,11 @@ ELSEIF(CMAKE_FQDN_HOST MATCHES "\.can$")
   SET(CMAKE_C_COMPILER       cc)
   SET(CMAKE_CXX_COMPILER     CC)
   SET(CMAKE_Fortran_COMPILER ftn)
-# IAG Prandtl
+# IAG Prandtl/Grafik01/Grafik02
 ELSEIF(CMAKE_FQDN_HOST MATCHES "^(prandtl|grafik.*)\.iag\.uni\-stuttgart\.de")
   SET(CMAKE_C_COMPILER       gcc)
   SET(CMAKE_CXX_COMPILER     c++)
   SET(CMAKE_Fortran_COMPILER gfortran)
-# IAG Grafik01/Grafik02
-ELSEIF (CMAKE_FQDN_HOST MATCHES "^ila(head.*|cfd.*)\.ila.uni\-stuttgart\.de")
-  SET(CMAKE_C_COMPILER       mpicc)
-  SET(CMAKE_CXX_COMPILER     mpicxx)
-  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
-ELSEIF (CMAKE_FQDN_HOST MATCHES "^(xenon.*|argon.*)\.ila.uni\-stuttgart\.de")
-  SET(CMAKE_C_COMPILER       mpicc)
-  SET(CMAKE_CXX_COMPILER     mpicxx)
-  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
 ENDIF()
 
 # =========================================================================

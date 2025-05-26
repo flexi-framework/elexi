@@ -4,6 +4,7 @@
 [![doi](https://img.shields.io/badge/DOI-10.1016/j.cpc.2023.108762-blue "DOI")](https://doi.org/10.1016/j.cpc.2023.108762)
 [![youtube](https://img.shields.io/badge/YouTube-red?logo=youtube "YouTube")](https://www.youtube.com/@nrgiag8633)
 [![userguide](https://img.shields.io/badge/Userguide-silver "Userguide")][userguide]
+[![readthedocs](https://img.shields.io/badge/ReadTheDocs-2980b9 "ReadTheDocs")][readthedocs]
 [![gallery](https://img.shields.io/badge/Gallery-teal "Gallery")][gallery]
 
 # About
@@ -47,19 +48,24 @@ or use the following Bibtex entry
 To refer to specific applications and features, you can also cite the appropriate paper from this [list][publications].
 
 # Quick Start Guide
-For a more detailed installation instructions, please see the documention [here][userguide].
+For a more detailed installation instructions, please see the [online documentation][readthedocs] or the [userguide][userguide].
 
 [ƎLexi][elexi] is tested for various Linux distributions including Ubuntu, OpenSUSE, CentOS, or Arch. ƎLexi also runs on macOS. For the installation, you require the following dependencies:
 
 | Package          | Required | Installed by ƎLexi |
 |:-----------------|:--------:|:------------------:|
-| Git              |      x   |                    |
-| CMake            |      x   |                    |
-| C/C++ Compiler   |      x   |                    |
-| Fortran Compiler |      x   |                    |
-| LAPACK/OpenBLAS  |      x   |      x             |
-| HDF5             |      x   |      x             |
-| MPI              |     (x)  |                    |
+| [Git](https://git-scm.com/)                                | x   |   |
+| [CMake](https://cmake.org)                                 | x   |   |
+| Fortran and C/C++ Compilers ([GNU](https://gcc.gnu.org/) compilers recommended)  |  x  |     |
+| [LAPACK](https://www.netlib.org/lapack) / [OpenBLAS](https://www.openblas.net)   |  x  |  x  |
+| [HDF5](https://www.hdfgroup.org)                           |  x  | x |
+| [MPI](https://www.mcs.anl.gov/research/projects/mpi)       | (x) |   |
+| [OpenMP](https://www.openmp.org)                           | (x) |   |
+| [FFTW](https://www.fftw.org)                               | (x) | x |
+| [PAPI](https://icl.cs.utk.edu/papi)                        |     |   |
+| [Reggie2.0](https://github.com/reggie-framework/reggie2.0) |     |   |
+| [ParaView](https://www.paraview.org/)                      |     |   |
+
 
 The MPI library is only required for running parallel simulations on multiple ranks. The HDF5 and LAPACK libraries can are optionally built and locally installed during the [FLEXI][flexi] build process. The names of the packages and the package manager might differ depending on the specific distribution used.
 
@@ -85,22 +91,10 @@ Navigate to the directory of the tutorial **cavity** and run [ƎLexi][elexi]
     cd tutorials/cavity
     flexi parameter_flexi.ini
 
-# Used libraries
-[ƎLexi][elexi] uses several external libraries as well as auxiliary functions from open source projects, including:
-* [CMake](https://cmake.org)
-* [FFTW](https://www.fftw.org)
-* [HDF5](https://www.hdfgroup.org)
-* [LAPACK](https://www.netlib.org/lapack)
-* [MPI](https://www.mcs.anl.gov/research/projects/mpi)
-* [OpenMP](https://www.openmp.org)
-* [OpenBLAS](https://www.openblas.net)
-* [PAPI](https://icl.cs.utk.edu/papi)
-* [Reggie2.0](https://github.com/reggie-framework/reggie2.0)
-
-[nrg]:          https://numericsresearchgroup.org/index.html
-[flexi]:        https://numericsresearchgroup.org/flexi_index.html
-[elexi]:        https://numericsresearchgroup.org/codes.html#codes_particle
-[publications]: https://numericsresearchgroup.org/publications.html#services
-[userguide]:    https://numericsresearchgroup.org/userguide/userguide.pdf
-[gallery]:      https://numericsresearchgroup.org/gallery.html#portfolio
-[youtube]:      https://www.youtube.com/@nrgiag8633 
+[nrg]:           https://numericsresearchgroup.org/index.html
+[flexi]:         https://numericsresearchgroup.org/flexi_index.html
+[publications]:  https://numericsresearchgroup.org/publications.html#services
+[userguide]:     https://numericsresearchgroup.org/userguide/pdf/userguide.pdf
+[readthedocs]:   https://numericsresearchgroup.org/userguide/html/index.html
+[gallery]:       https://numericsresearchgroup.org/gallery.html#portfolio
+[youtube]:       https://www.youtube.com/@nrgiag8633 

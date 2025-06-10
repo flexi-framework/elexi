@@ -57,11 +57,14 @@ ignore            = ["C003",    # C003: implicit-external-procedures
 "src/**/*_vars.f90"                                 = ["C132"]           # Vars files need to be public
 "src/globals/globals.f90"                           = ["C132"]           # Globals needs to public
 "src/globals/lapack.f90"                            = ["T041"]           # LAPACK needs assumed size variables
+"src/globals/preprocessing.f90"                     = ["C132"]           # PreProc needs to be public
 "src/io_hdf5/io_hdf5.f90"                           = ["C131"]           # HDF5 needs to be public
 "src/io_hdf5/hdf5_output.f90"                       = ["T041"]           # Userblock needs assumed size variables
 "src/output/output.f90"                             = ["T041"]           # Userblock needs assumed size variables
-"src/globals/preprocessing.f90"                     = ["C132"]           # PreProc needs to be public
+"src/particles/globals/particle_globals.f90"        = ["C132"]           # Globals needs to be public
+"src/particles/particle_rhs.f90"                    = ["C001"]           # False positive due to preprocesser
 "src/readintools/isovaryingstring.f90"              = ["T042"]           # ISO Varying String needs assumed size variables
+"src/readintools/readintools.f90"                   = ["OB021"]          # False positive
 "src/readintools/stringtools.f90"                   = ["T042"]           # ISO Varying String needs assumed size variables
 "src/testcase/*/testcase.f90"                       = ["T041"]           # Test case needs assumed size variables
 # POSTI too

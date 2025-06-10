@@ -405,7 +405,7 @@ REAL                              :: rot_old(1:3)
 REAL                              :: w,w_crit,sigma_y,E_eff
 ! RebANN
 INTEGER                           :: k
-REAL(4)                           :: randnum(6),xin(8)
+REAL(KIND=SP)                     :: randnum(6),xin(8)
 REAL                              :: dp1,dp2,ekin_1,ekin_2,S
 !===================================================================================================================================
 

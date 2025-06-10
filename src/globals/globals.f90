@@ -24,12 +24,6 @@ USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: HP => INT16,  & ! half precision (only 
                                          SP => REAL32, & ! single precision
                                          DP => REAL64, & ! double precision
                                          QP => REAL128   ! quadruple precision
-! MODULES
-USE ISO_C_BINDING
-USE, INTRINSIC :: ISO_FORTRAN_ENV, ONLY: HP => INT16,  & ! half precision (only defined for integer)
-                                         SP => REAL32, & ! single precision
-                                         DP => REAL64, & ! double precision
-                                         QP => REAL128   ! quadruple precision
 #if USE_MPI
 USE mpi_f08
 #endif

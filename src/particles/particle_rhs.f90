@@ -15,8 +15,6 @@
 #include "eos.h"
 #include "particle.h"
 
-#define PHI(x) 1+0.5*x+1./6*x**2
-
 !===================================================================================================================================
 ! Subroutine to compute the particle right hand side, therefore the acceleration due to the Lorentz-force with
 ! respect to the Lorentz factor
@@ -26,7 +24,6 @@ MODULE MOD_Particle_RHS
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-
 PUBLIC:: CalcPartRHS, InitRHS
 #if USE_EXTEND_RHS || USE_FAXEN_CORR
 PUBLIC:: extRHS

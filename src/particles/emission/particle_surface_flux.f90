@@ -1150,7 +1150,7 @@ INTEGER, INTENT(OUT), ALLOCATABLE   :: PartInsSubSides(:,:,:)
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=8)        :: inserted_Particle_iter,inserted_Particle_time,inserted_Particle_diff
+INTEGER(KIND=DP)       :: inserted_Particle_iter,inserted_Particle_time,inserted_Particle_diff
 INTEGER                :: currentBC, PartInsSF, IntSample
 REAL                   :: VFR_total, PartIns, RandVal1
 !===================================================================================================================================

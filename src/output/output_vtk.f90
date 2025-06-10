@@ -1036,7 +1036,8 @@ INTEGER,INTENT(IN)            :: nGlobalParts
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iPart,Offset,nBytes,nVTKElems,nVTKCells,ivtk=44,iVar,str_len
+INTEGER,PARAMETER  :: ivtk = 44
+INTEGER            :: iPart,Offset,nBytes,nVTKElems,nVTKCells,iVar,str_len
 INTEGER            :: INTdummy
 INTEGER            :: Vertex(nGlobalParts)
 INTEGER            :: ElemType
@@ -1044,7 +1045,7 @@ CHARACTER(LEN=35)  :: StrOffset,TempStr1,TempStr2
 CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf,components_string
 CHARACTER(LEN=255) :: VarNameString
-REAL(KIND=4)       :: FLOATdummy
+REAL(KIND=SP)      :: FLOATdummy
 INTEGER            :: nParts_glob(1:nProcessors)
 #if USE_MPI
 INTEGER            :: iProc,nMaxParts

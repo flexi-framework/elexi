@@ -936,7 +936,7 @@ USE MOD_Mesh_Vars              ,ONLY: nElems,nSides
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(KIND=8)               :: ArraySize
+INTEGER(KIND=DP)              :: ArraySize
 #if USE_BASSETFORCE
 INTEGER                       :: k
 REAL                          :: s32
@@ -2057,8 +2057,9 @@ SUBROUTINE InitRandomSeed(nRandomSeeds,SeedSize,Seeds)
 !> Initialize pseudo random numbers: Create Random_seed array
 !===================================================================================================================================
 ! MODULES
+USE MOD_Globals,               ONLY: SP,DP
 #if USE_MPI
-USE MOD_Globals,               ONLY:myRank
+USE MOD_Globals,               ONLY: myRank
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -2070,13 +2071,13 @@ INTEGER,INTENT(INOUT)          :: Seeds(SeedSize)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! LOCAL VARIABLES
 INTEGER                        :: iSeed,DateTime(8),ProcessID,iStat,OpenFileID,GoodSeeds
-INTEGER(KIND=8)                :: Clock,AuxilaryClock
+INTEGER(KIND=DP)               :: Clock,AuxilaryClock
 LOGICAL                        :: uRandomExists
 !==================================================================================================================================
 
 uRandomExists=.FALSE.
 IF (nRandomSeeds.NE.-1) THEN
-  Clock     = 1536679165842_8
+  Clock     = 1536679165842_DP
   ProcessID = 3671
 ELSE
 ! First try if the OS provides a random number generator
@@ -2093,9 +2094,9 @@ ELSE
     CALL SYSTEM_CLOCK(COUNT=Clock)
     IF (Clock .EQ. 0) THEN
       CALL DATE_AND_TIME(values=DateTime)
-      Clock =(DateTime(1) - 1970) * 365_8 * 24 * 60 * 60 * 1000 &
-      + DateTime(2) * 31_8 * 24 * 60 * 60 * 1000 &
-      + DateTime(3) * 24_8 * 60 * 60 * 1000 &
+      Clock =(DateTime(1) - 1970) * 365_DP * 24 * 60 * 60 * 1000 &
+      + DateTime(2) * 31_DP * 24 * 60 * 60 * 1000 &
+      + DateTime(3) * 24_DP * 60 * 60 * 1000 &
       + DateTime(5) * 60 * 60 * 1000 &
       + DateTime(6) * 60 * 1000 &
       + DateTime(7) * 1000 &
@@ -2123,10 +2124,10 @@ IF(.NOT. uRandomExists) THEN
     IF (AuxilaryClock .EQ. 0) THEN
       AuxilaryClock = 104729
     ELSE
-      AuxilaryClock = MOD(AuxilaryClock, 4294967296_8)
+      AuxilaryClock = MOD(AuxilaryClock, 4294967296_DP)
     END IF
-    AuxilaryClock = MOD(AuxilaryClock * 279470273_8, 4294967291_8)
-    GoodSeeds = INT(MOD(AuxilaryClock, INT(HUGE(0),KIND=8)), KIND(0))
+    AuxilaryClock = MOD(AuxilaryClock * 279470273_DP, 4294967291_DP)
+    GoodSeeds = INT(MOD(AuxilaryClock, INT(HUGE(0),KIND=DP)), KIND(0))
     Seeds(iSeed) = GoodSeeds
   END DO
 END IF

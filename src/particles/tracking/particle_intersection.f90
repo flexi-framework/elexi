@@ -1534,7 +1534,7 @@ INTEGER,INTENT(IN)                   :: SideID,PartID
 !--------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER,INTENT(INOUT)                  :: iClipIter,nXiClip,nEtaClip,nInterSections
-INTEGER(KIND=2),INTENT(INOUT)          :: ClipMode
+INTEGER(KIND=HP),INTENT(INOUT)         :: ClipMode
 REAL,DIMENSION(2,2),INTENT(INOUT)      :: LineNormVec
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -2499,6 +2499,7 @@ SUBROUTINE CheckXiClip(ClipMode              &
 !   title = {Curves and Surfaces for CAGD: A Practical Guide},
 !   year = {2002},
 !================================================================================================================================
+USE MOD_Globals,                 ONLY: HP
 USE MOD_Mesh_Vars,               ONLY: NGeo
 USE MOD_Particle_Surfaces_Vars,  ONLY: XiArray,XiBuf,MinMax,XiUp,XiDown
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipLocalTol,FacNchooseK
@@ -2523,7 +2524,7 @@ REAL,INTENT(IN),DIMENSION(1:3)       :: LastPartPos
 ! OUTPUT VARIABLES
 INTEGER,INTENT(INOUT)                :: iClipIter
 INTEGER,INTENT(INOUT)                :: nXiClip,nEtaClip,nInterSections
-INTEGER(KIND=2),INTENT(INOUT)        :: ClipMode
+INTEGER(KIND=HP),INTENT(INOUT)       :: ClipMode
 REAL,DIMENSION(2,2),INTENT(INOUT)    :: LineNormVec
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -2532,7 +2533,7 @@ REAL                                 :: XiMin,XiMax,XiSplit,XiTmp
 REAL                                 :: PlusXi,MinusXi
 INTEGER                              :: tmpnClip,tmpnXi,tmpnEta
 REAL                                 :: dmin,dmax
-INTEGER(KIND=2)                      :: tmpClipMode
+INTEGER(KIND=HP)                     :: tmpClipMode
 REAL,DIMENSION(2,2)                  :: tmpLineNormVec
 !================================================================================================================================
 
@@ -2911,6 +2912,7 @@ SUBROUTINE CheckEtaClip(ClipMode              &
 !   title = {Curves and Surfaces for CAGD: A Practical Guide},
 !   year = {2002},
 !================================================================================================================================
+USE MOD_Globals,                 ONLY: HP
 USE MOD_Mesh_Vars,               ONLY: NGeo
 USE MOD_Particle_Surfaces_Vars,  ONLY: EtaArray,XiBuf,MinMax,XiUp,XiDown
 USE MOD_Particle_Surfaces_Vars,  ONLY: BezierClipLocalTol,FacNchooseK
@@ -2935,7 +2937,7 @@ REAL,INTENT(IN),DIMENSION(1:3)       :: LastPartPos
 ! OUTPUT VARIABLES
 INTEGER,INTENT(INOUT)                :: iClipIter
 INTEGER,INTENT(INOUT)                :: nXiClip,nEtaClip,nInterSections
-INTEGER(KIND=2),INTENT(INOUT)        :: ClipMode
+INTEGER(KIND=HP),INTENT(INOUT)       :: ClipMode
 REAL,DIMENSION(2,2),INTENT(INOUT)    :: LineNormVec
 !--------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -2944,7 +2946,7 @@ REAL                                 :: EtaMin,EtaMax,EtaSplit,EtaTmp
 REAL                                 :: PlusEta,MinusEta
 INTEGER                              :: tmpnClip,tmpnXi,tmpnEta
 REAL                                 :: dmin,dmax
-INTEGER(KIND=2)                      :: tmpClipMode
+INTEGER(KIND=HP)                     :: tmpClipMode
 REAL,DIMENSION(2,2)                  :: tmpLineNormVec
 !================================================================================================================================
 

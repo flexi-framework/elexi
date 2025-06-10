@@ -340,7 +340,7 @@ REAL                  :: nElemsFV
 REAL                  :: ElemTimeFVElem
 #endif /*FV_ENABLED*/
 #if USE_PARTICLES
-INTEGER(KIND=8)       :: helpSum
+INTEGER(KIND=DP)      :: helpSum
 REAL                  :: ElemTimePartElem
 REAL                  :: stotalParts,sTotalTracks
 REAL                  :: sTotalSurfaceFluxes

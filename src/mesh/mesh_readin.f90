@@ -52,11 +52,11 @@ INTEGER,PARAMETER    :: SideInfoSize=5        !< number of entries in each line 
 ! INTEGER,PARAMETER    :: SIDE_BCID=5
 !> @}
 
-#if USE_PARTICLES
-INTEGER,ALLOCATABLE  :: NodeInfo(:)
-INTEGER,ALLOCATABLE  :: NodeMap(:)
-INTEGER              :: nNodeIDs
-#endif
+! #if USE_PARTICLES
+! INTEGER,ALLOCATABLE  :: NodeInfo(:)
+! INTEGER,ALLOCATABLE  :: NodeMap(:)
+! INTEGER              :: nNodeIDs
+! #endif
 
 PUBLIC:: ReadMesh
 PUBLIC:: BuildPartition

@@ -716,7 +716,7 @@ LOGICAL,INTENT(OUT),OPTIONAL   :: isMovedOut
 INTEGER                         :: iPV,iDir
 REAL                            :: MoveVector(1:3),GEOLims(2)
 LOGICAL                         :: isMoved
-CHARACTER(LEN=1),DIMENSION(3)   :: DirChar = (/CHARACTER(LEN=1) :: 'x', 'y', 'z'/)
+CHARACTER(LEN=1),PARAMETER      :: DirChar(3) = (/CHARACTER(LEN=1) :: 'x', 'y', 'z'/)
 !===================================================================================================================================
 
 isMoved = .FALSE.

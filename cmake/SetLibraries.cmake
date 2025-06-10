@@ -132,7 +132,7 @@ ELSE()
 ENDIF()
 
 # Set type of library to look up, STATIC/SHARED
-SET(LIB_TYPE STATIC)
+SET(LIB_TYPE SHARED)
 STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 
 # We support two methods for finding HDF5:

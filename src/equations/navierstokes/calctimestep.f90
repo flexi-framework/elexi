@@ -269,7 +269,7 @@ END FUNCTION CALCTIMESTEP
 !==================================================================================================================================
 !> Deallocate CalcTimeStep arrays
 !==================================================================================================================================
-SUBROUTINE FinalizeCalctimestep()
+SUBROUTINE FinalizeCalctimeStep()
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -278,6 +278,6 @@ SDEALLOCATE(MetricsAdv)
 #if PARABOLIC
 SDEALLOCATE(MetricsVisc)
 #endif
-END SUBROUTINE
+END SUBROUTINE FinalizeCalctimeStep
 
 END MODULE MOD_CalcTimeStep

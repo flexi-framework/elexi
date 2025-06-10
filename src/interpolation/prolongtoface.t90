@@ -144,7 +144,7 @@ END DO
 END SUBROUTINE ProlongToFace
 
 
-#if PP_EntropyVars==1
+#if PP_EntropyVars == 1
 !==================================================================================================================================
 !> Prolongs the conservatives variables to the sides
 !> In the case of Gauss disc2, we project the entropy variables and then transform back to conservative variables

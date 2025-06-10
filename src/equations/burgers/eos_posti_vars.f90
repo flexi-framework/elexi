@@ -1,8 +1,7 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
-! Copyright (c) 2022-2024 Prof. Andrea Beck
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
-! For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
 ! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -12,22 +11,38 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
+
 !==================================================================================================================================
-!> Defines frequently used variables, that can be either set by the parameter file or precompiled
-!> or directly depend on parameters set by the preprocessor
+! Posti related variables
 !==================================================================================================================================
-MODULE MOD_PreProc
+MODULE MOD_EOS_Posti_Vars
 ! MODULES
 IMPLICIT NONE
 PUBLIC
-!----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-REAL,PARAMETER        :: PP_RealTolerance = EPSILON(1.0D0) !< machine precision
-REAL,PARAMETER        :: PP_Pi = ACOS(-1.0D0)              !< Pi up to machine accuracy
-#if PP_N == N
-INTEGER               :: PP_N                              !< polynomial degree
-#endif
+SAVE
 
-!==================================================================================================================================
-END MODULE MOD_PreProc
+INTEGER,PARAMETER :: nVarDepEOS=3
+
+! r u v w
+INTEGER,DIMENSION(1:nVarDepEOS,0:nVarDepEOS),PARAMETER :: DepTableEOS = TRANSPOSE(RESHAPE(&
+(/&
+  0,1,0,0 ,& !1  u
+  0,0,1,0 ,& !2  v
+  0,0,0,1  & !3  w
+/),(/nVarDepEOS+1,nVarDepEOS/)))
+
+CHARACTER(LEN=255),DIMENSION(nVarDepEOS),PARAMETER :: DepNames = &
+(/ CHARACTER(LEN=255) :: &
+"u"       ,& !1
+"v"       ,& !2
+"w"        & !3
+/)
+
+! Only dummy variables
+INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepSurfaceOnlyEOS = &
+(/ 0,0,0 /)
+INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepVolumeOnlyEOS = &
+(/ 0,0,0 /)
+
+END MODULE MOD_EOS_Posti_Vars

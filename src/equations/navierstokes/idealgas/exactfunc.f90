@@ -71,6 +71,7 @@ CALL addStrListEntry('IniExactFunc','sod'               ,11)
 CALL addStrListEntry('IniExactFunc','dmr'               ,13)
 CALL addStrListEntry('IniExactFunc','mshock'            ,14)
 CALL addStrListEntry('IniExactFunc','harmonicgausspulse',15)
+CALL addStrListEntry('IniExactFunc','shockVortex'       ,16)
 CALL addStrListEntry('IniExactFunc','roundjet'          ,33)
 CALL addStrListEntry('IniExactFunc','convergence'       ,34)
 CALL addStrListEntry('IniExactFunc','sinevelx'          ,35)
@@ -98,12 +99,12 @@ CALL prms%CreateRealOption(         'JetAmplitude',          "Roundjet CASE(5,51
 CALL prms%CreateRealOption(         'Ramping',               "Subsonic mass inflow CASE(28)"  , '1.0')
 CALL prms%CreateRealOption(         'P_Parameter',           "Couette-Poiseuille flow CASE(8)", '0.0')
 CALL prms%CreateRealOption(         'U_Parameter',           "Couette-Poiseuille flow CASE(8)", '0.01')
-CALL prms%CreateRealOption(         'AmplitudeFactor',         "Harmonic Gauss Pulse CASE(15)", '0.1')
-CALL prms%CreateRealOption(         'HarmonicFrequency',       "Harmonic Gauss Pulse CASE(15)", '400')
-CALL prms%CreateRealOption(         'SigmaSqr',                "Harmonic Gauss Pulse CASE(15)", '0.1')
+CALL prms%CreateRealOption(         'AmplitudeFactor',       "Harmonic Gauss Pulse CASE(15)", '0.1')
+CALL prms%CreateRealOption(         'HarmonicFrequency',     "Harmonic Gauss Pulse CASE(15)", '400')
+CALL prms%CreateRealOption(         'SigmaSqr',              "Harmonic Gauss Pulse CASE(15)", '0.1')
 #if PARABOLIC
-CALL prms%CreateRealOption(         'delta99_in',              "Blasius boundary layer CASE(1338,1339,1340)")
-CALL prms%CreateRealArrayOption(    'x_in',                    "Blasius boundary layer CASE(1338,1339,1340)")
+CALL prms%CreateRealOption(         'delta99_in',            "Blasius boundary layer CASE(1338,1339,1340)")
+CALL prms%CreateRealArrayOption(    'x_in',                  "Blasius boundary layer CASE(1338,1339,1340)")
 #endif
 
 END SUBROUTINE DefineParametersExactFunc
@@ -178,6 +179,8 @@ SELECT CASE (IniExactFunc)
     HarmonicFrequency = GETREAL('HarmonicFrequency')
     AmplitudeFactor   = GETREAL('AmplitudeFactor')
     SiqmaSqr          = GETREAL('SigmaSqr')
+  CASE(16) ! shock-vortex
+    MachShock        = GETREAL('MachShock','1.1')
 #if PARABOLIC
   CASE(1338) ! Blasius boundary layer solution
     delta99_in        = GETREAL('delta99_in')
@@ -803,6 +806,35 @@ CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone
   CALL PrimToCons(prim,resu)
 CASE(15) ! harmonic gauss pulse
   Resu = RefStateCons(:,RefState)
+CASE(16) ! shock-vortex interaction
+  ! Stationary shock with (default) M_s=1.1 at x=0.5, added isentropic vortex travelling from left to right
+  ! Assumes R=1!!
+  Ms      = MachShock
+  ! First, define the shock states
+  prim(1)   = 1.
+  prim(2)   = SQRT(Kappa)*Ms
+  prim(3:4) = 0.
+  prim(5)   = 1.
+  IF (x(1).LT.0.5) THEN
+    ! Left state, the shock state has been initialized before
+  ELSE
+    ! Right state, scale the left state
+    prim(1) = prim(1) *     (KappaP1*Ms**2)/(2.+KappaM1*Ms**2)
+    prim(2) = prim(2) * 1./((KappaP1*Ms**2)/(2.+KappaM1*Ms**2))
+    prim(5) = prim(5) * (1.+2.*Kappa/KappaP1*(Ms**2-1.))
+  END IF
+  ! Superimposed shu-vortex
+  r2 = SQRT((x(1)-0.25)**2+(x(2)-0.5)**2)
+  du = 0.3*r2/0.05*EXP(0.204*(1.-(r2/0.05)**2)) ! Velocity pertubation
+  phi = ATAN2((x(2)-0.5),(x(1)-0.25))
+  ! Add vel. pert.
+  prim(2) = prim(2) + du*SIN(phi)
+  prim(3) = prim(3) - du*COS(phi)
+  dTemp = -1.*(KappaM1*du**2)/(4.*0.204*Kappa) ! Temperature pertubation
+  !! Add temp. pert.
+  prim(1) = prim(1)*(1.+dTemp)**(sKappaM1)
+  prim(5) = prim(5)*(1.+dTemp)**(Kappa*sKappaM1)
+  CALL PrimToCons(prim,resu)
 #if PARABOLIC
 CASE(1338) ! blasius
   prim=RefStatePrim(:,RefState)

@@ -28,13 +28,7 @@ ADD_DEPENDENCIES( target_${TOOL_NAME} libflexishared)
 ADD_DEPENDENCIES( ${TOOL_NAME}libF90 target_${TOOL_NAME})
 
 # Standalone Posti executable
-<<<<<<< HEAD
-ADD_EXEC(             posti_${TOOL_NAME} ${TOOL_DIR}/posti_walldistance.f90)
-TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared)
-ADD_DEPENDENCIES(     posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared ${SELFBUILTEXTERNALS})
-=======
 ADD_EXEC(                  posti_${TOOL_NAME} ${TOOL_DIR}/${TOOL_MAIN})
 TARGET_INCLUDE_DIRECTORIES(posti_${TOOL_NAME} PRIVATE ${TOOL_DIR})
 TARGET_LINK_LIBRARIES(     posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared)
 ADD_DEPENDENCIES(          posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared)
->>>>>>> flexi/master

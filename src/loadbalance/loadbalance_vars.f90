@@ -92,7 +92,7 @@ INTEGER,ALLOCATABLE                 :: MPInPartSend(:)
 INTEGER,ALLOCATABLE                 :: MPIoffsetPartSend(:)
 INTEGER,ALLOCATABLE                 :: MPInPartRecv(:)
 INTEGER,ALLOCATABLE                 :: MPIoffsetPartRecv(:)
-INTEGER,POINTER                     :: ElemInfoRank_Shared(:) => NULL()
+INTEGER,POINTER,CONTIGUOUS          :: ElemInfoRank_Shared(:) => NULL()
 TYPE(MPI_Win)                       :: ElemInfoRank_Shared_Win
 
 !-----------------------------------------------------------------------------------------------------------------------------------

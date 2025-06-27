@@ -155,7 +155,7 @@ INTEGER,ALLOCATABLE            :: sendbuf(:,:,:),recvbuf(:,:,:)
 INTEGER,ALLOCATABLE            :: offsetElemsInBGMCell(:,:,:)
 INTEGER                        :: nHaloElems
 INTEGER,ALLOCATABLE            :: offsetCNHalo2GlobalElem(:)
-REAL,POINTER                   :: MPISideBoundsOfElemCenter_Shared(:,:) => null()
+REAL,POINTER,CONTIGUOUS        :: MPISideBoundsOfElemCenter_Shared(:,:) => null()
 TYPE(MPI_Win)                  :: MPISideBoundsOfElemCenter_Shared_Win
 REAL                           :: BoundsOfElemCenter(1:4)
 LOGICAL                        :: ElemInsideHalo

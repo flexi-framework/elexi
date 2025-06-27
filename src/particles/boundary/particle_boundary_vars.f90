@@ -80,7 +80,7 @@ INTEGER,ALLOCPOINT,DIMENSION(:,:)       :: GlobalSide2SurfSide_Shared
 INTEGER,ALLOCPOINT,DIMENSION(:,:)       :: SurfSide2GlobalSide_Shared
 
 #if USE_MPI
-REAL,POINTER,DIMENSION(:,:,:)           :: SurfSideArea_Shared           !> Area of supersampled surface side
+REAL,POINTER,CONTIGUOUS,DIMENSION(:,:,:):: SurfSideArea_Shared           !> Area of supersampled surface side
 TYPE(MPI_Win)                           :: SurfSideArea_Shared_Win
 
 !INTEGER,ALLOCATABLE,DIMENSION(:,:)      :: GlobalSide2SurfHaloSide       ! Mapping Global Side ID to Surf Halo Side ID (exists only on leader procs)

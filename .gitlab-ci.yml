@@ -1,11 +1,33 @@
+# -*- coding: utf-8 -*-
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+# For more information see https://www.flexi-project.org and https://numericsresearchgroup.org
+#
+# Copyright (c) 2010-2022 Prof. Claus-Dieter Munz
+# Copyright (c) 2022-2025 Prof. Andrea Beck
+#
+# FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+#
+# FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+# of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+#
+# You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+
+# ==================================================================================================================================
+# Continuous Integration/Continuous Deployment
+# ==================================================================================================================================
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Settings
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Check module environment
 before_script:
   - ulimit -s unlimited
-  - module list || true
-  - python3 -V  || true
+  # - module list || true
+  - python3 --version
   # Setup Python virtual environment
   - source venv/bin/activate || true
   # Setup CMake generator
@@ -54,30 +76,26 @@ stages:
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Default parameters for the build and testing stage
 .default_build_param: &default_build_param
-  tags: [flexitag]
+  tags: [dockertag]
+  # Docker image to use for the CI/CD pipeline
+  # image: ${CI_REGISTRY_IMAGE}/nrg-fedora:42-x86_64
+  image: registry.iag.uni-stuttgart.de/flexi/elexi/nrg-fedora_42-x86_64
   artifacts:
     name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
     expire_in: 1 day
     when: on_failure
-
-.default_python_param: &default_python_param
-  tags: [dockertag]
-  image: registry.iag.uni-stuttgart.de/flexi/elexi/nrg-fedora_41-x86_64
   variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   cache:
     paths:
-      - venv
       - .cache/pip
-  before_script:
-    - ulimit -s unlimited
-    - python3 --version
-    # Setup Python virtual environment
-    # - rm -rf venv
-    # - uv venv venv
-    # - source venv/bin/activate
-    # Install coverage
-    # - uv pip install --no-cache-dir coverage
+
+.default_python_param: &default_python_param
+  <<: *default_build_param
+
+# Deployment needs to be done on the actual server
+.default_deploy_param: &default_deploy_param
+  tags: [flexitag]
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Default parameters for the reggie stage
@@ -89,10 +107,17 @@ stages:
   <<: *default_python_param
   allow_failure: false
 
-.reggie_cache: &reggie_cache
+.venv_cache: &venv_cache
   key: "venv"
-  paths: [venv]
+  paths:
+    - venv
   policy: pull
+
+# .reggie_cache: &reggie_cache
+#   key: "reggie"
+#   paths:
+#     - reggie
+#   policy: pull
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Defaults for the standard tests (utilizing "extends" to merge the other "artifacts" options with the specific path)
@@ -102,7 +127,8 @@ stages:
   artifacts:
     paths: [build]
   cache:
-    - *reggie_cache
+    - *venv_cache
+    # - *reggie_cache
     - key: "${CI_COMMIT_REF_SLUG}"
       paths: [build]
       policy: pull
@@ -155,22 +181,41 @@ ruff:
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "setup": Setup the reggie environment
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
+
+venv_create:
+  extends: .default_build_param
+  cache:
+    - key: "venv"
+      paths:
+        - venv
+      policy: pull-push
+  stage: setup
+  script:
+    - deactivate || true
+    - rm -rf venv
+    - uv venv venv
+    - source venv/bin/activate
+    - uv pip install --upgrade pip setuptools wheel
+    - uv pip install --upgrade pytest pytest-cov
+
 reggie_download:
   extends: .default_build_param
+  needs: [venv_create]
   artifacts:
     paths: [venv]
   cache:
-    key: "venv"
-    paths: [venv]
-    policy: push
+    - key: "venv"
+      paths:
+        - venv
+      policy: pull-push
+    # - key: "reggie"
+    #   paths:
+    #     - reggie
+    #   policy: push
   stage: setup
   script:
-    # Setup Python virtual environment
-    - rm -rf venv
-    - python -m venv venv
-    - source venv/bin/activate
     # Install Reggie
-    - pip install git+https://github.com/piclas-framework/reggie2.0.git
+    - uv pip install git+https://github.com/piclas-framework/reggie2.0.git
     # Check Reggie
     - reggie --help
 
@@ -198,8 +243,7 @@ checkin:
   stage: reggie_checkin
   needs: [build]
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
+    - reggie regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./build/bin/flexi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "particle_checkin": Run basic particle regression checks
@@ -208,22 +252,19 @@ FV_particle:
     <<: *defaults
     stage: particle_checkin
     script:
-        - cd build
-        - reggie ../regressioncheck/checks/particle/FV -j 6
+        - reggie regressioncheck/checks/particle/FV -j 6
 
 CHE_particle:
     <<: *defaults
     stage: particle_checkin
     script:
-        - cd build
-        - reggie ../regressioncheck/checks/particle/CHE -j 6
+        - reggie regressioncheck/checks/particle/CHE -j 6
 
 CN_particle:
     <<: *defaults
     stage: particle_checkin
     script:
-        - cd build
-        - reggie ../regressioncheck/checks/particle/CN -j 6
+        - reggie regressioncheck/checks/particle/CN -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
@@ -236,36 +277,31 @@ build_all:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/run_basic -j 6
+    - reggie regressioncheck/checks/run_basic -j 6
 
 timediscs:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/timedisc -j 6
+    - reggie regressioncheck/checks/timedisc -j 6
 
 convtest:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/convtest -j 6
+    - reggie regressioncheck/checks/convtest -j 6
 
 parabolic:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/parabolic -j 6
+    - reggie regressioncheck/checks/parabolic -j 6
 
 riemann:
   <<: *defaults_nightly
   stage: reggie_nightly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/riemann -j 6
+    - reggie regressioncheck/checks/riemann -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "particle_nightly": Build and run
@@ -278,24 +314,21 @@ PROC_particle:
   variables:
     DO_CORE_SPLIT: "1"
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/particle/PROC -j 6
+    - reggie regressioncheck/checks/particle/PROC -j 6
 
 SANI_particle:
   <<: *defaults_nightly
   stage: particle_nightly
   allow_failure: true
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/particle/SANI -j 6
+    - reggie regressioncheck/checks/particle/SANI -j 6
 
 NIG_particle:
   <<: *defaults_nightly
   stage: particle_nightly
   allow_failure: true
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/particle/NIG -j 6
+    - reggie regressioncheck/checks/particle/NIG -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_weekly": Build and run more complex tests, basically complete simulatons
@@ -308,43 +341,37 @@ tgv:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/tgv -j 6
+    - reggie regressioncheck/checks/tgv -j 6
 
 naca:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/naca -j 6
+    - reggie regressioncheck/checks/naca -j 6
 
 fv_switch:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/fv_switch -j 6
+    - reggie regressioncheck/checks/fv_switch -j 6
 
 fv_blend:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/fv_blend -j 6
+    - reggie regressioncheck/checks/fv_blend -j 6
 
 channelRANS:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/channelRANS -j 6
+    - reggie regressioncheck/checks/channelRANS -j 6
 
 imperator:
   <<: *defaults_weekly
   stage: reggie_weekly
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/preconditioner -j 6
+    - reggie regressioncheck/checks/preconditioner -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "particle_weekly": Build and run more complex tests, basically complete simulatons
@@ -354,8 +381,7 @@ WEK_particle:
   stage: particle_weekly
   allow_failure: true
   script:
-    - cd build
-    - reggie ../regressioncheck/checks/particle/WEK -j 6
+    - reggie regressioncheck/checks/particle/WEK -j 6
 
 # Stage "documentation": Creates doxygen documentation & compiles the documentation creating the *.pdf
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -380,6 +406,7 @@ documentation:
 userguide:
   extends: .default_build_param
   stage: documentation
+  image: sphinxdoc/sphinx-latexpdf:latest
   rules:
     - if: '$DO_DEPLOY'
     - if: '$DO_WEEKLY'
@@ -406,7 +433,7 @@ userguide:
 # Stage "deploy": Copies the doxygen documentation and userguide *.pdf to the homepage server & copies the repository to github
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 homepage:
-  extends: .default_build_param
+  extends: .default_deploy_param
   stage: deploy
   rules:
     - if: '$DO_DEPLOY && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'
@@ -421,7 +448,7 @@ homepage:
     - rsync --recursive --delete docs/documentation/_build/html/*          webserver:nrg.git/nrg_website/NRG/userguide/html/.
 
 github:
-  extends: .default_build_param
+  extends: .default_deploy_param
   stage: deploy
   rules:
     - if: '$DO_DEPLOY && $CI_SERVER_URL =~ /.*\.iag\.uni-stuttgart\.de$/'

@@ -10,7 +10,7 @@ RUN echo 'install_weak_deps=False' >> /etc/dnf/dnf.conf
 # Setup required packages
 RUN dnf makecache             && \
     dnf update  -y            && \
-    dnf install -y git-core cmake gcc-c++ gcc-gfortran ninja mpich-devel zlib-ng-devel openblas-devel hdf5-devel hdf5-mpich-devel && \
+    dnf install -y git-core cmake gcc-c++ gcc-gfortran libasan libubsan ninja mpich-devel zlib-ng-devel openblas-devel hdf5-devel hdf5-mpich-devel && \
     dnf install -y python3 uv && \
     dnf install -y doxygen    && \
     dnf install -y ruff       &&  `# Setup Ruff`      \

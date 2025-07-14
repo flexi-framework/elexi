@@ -434,6 +434,9 @@ USE MOD_Particle_Vars
 #if USE_MPI
 USE MOD_Particle_MPI_Vars           ,ONLY: PartTargetProc
 #endif /*USE_MPI*/
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+USE MOD_Particle_Interpolation_Vars ,ONLY: GradAtParticle
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -473,6 +476,9 @@ IF(ALLOCATED(PartIndex))          CALL ChangeSizeArray(PartIndex         ,PDM%ma
 IF(ALLOCATED(Pt))                 CALL ChangeSizeArray(Pt                ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(Pt_temp))            CALL ChangeSizeArray(Pt_temp           ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize,0.)
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+IF(ALLOCATED(GradAtParticle))     CALL ChangeSizeArray(GradAtParticle    ,PDM%maxParticleNumber,NewSize,0.)
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 
 #if PARTICLES_COUPLING >= 2
 IF(ALLOCATED(PartNodeSource))     CALL ChangeSizeArray(PartNodeSource    ,PDM%maxParticleNumber,NewSize,0.)
@@ -483,6 +489,7 @@ IF(ALLOCATED(durdt))              CALL ChangeSizeArray(durdt             ,PDM%ma
 IF(ALLOCATED(bIter))              CALL ChangeSizeArray(bIter             ,PDM%maxParticleNumber,NewSize,0)
 IF(ALLOCATED(Fbdt))               CALL ChangeSizeArray(Fbdt              ,PDM%maxParticleNumber,NewSize,0.)
 #endif /* USE_BASSETFORCE */
+
 
 #if USE_EXTEND_RHS && ANALYZE_RHS
 IF(ALLOCATED(Pt_ext))             CALL ChangeSizeArray(Pt_ext            ,PDM%maxParticleNumber,NewSize,0.)
@@ -524,6 +531,9 @@ USE MOD_Particle_Vars
 #if USE_MPI
 USE MOD_Particle_MPI_Vars           ,ONLY: PartTargetProc
 #endif /*USE_MPI*/
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+USE MOD_Particle_Interpolation_Vars ,ONLY: GradAtParticle
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -589,6 +599,9 @@ IF(ALLOCATED(PartIndex))          CALL ChangeSizeArray(PartIndex         ,PDM%ma
 IF(ALLOCATED(Pt))                 CALL ChangeSizeArray(Pt                ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(Pt_temp))            CALL ChangeSizeArray(Pt_temp           ,PDM%maxParticleNumber,NewSize,0.)
 IF(ALLOCATED(FieldAtParticle))    CALL ChangeSizeArray(FieldAtParticle   ,PDM%maxParticleNumber,NewSize,0.)
+#if USE_EXTEND_RHS || USE_FAXEN_CORR
+IF(ALLOCATED(GradAtParticle))     CALL ChangeSizeArray(GradAtParticle    ,PDM%maxParticleNumber,NewSize,0.)
+#endif /* USE_EXTEND_RHS || USE_FAXEN_CORR */
 
 #if PARTICLES_COUPLING >= 2
 IF(ALLOCATED(PartNodeSource))     CALL ChangeSizeArray(PartNodeSource    ,PDM%maxParticleNumber,NewSize,0.)

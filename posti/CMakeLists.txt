@@ -101,6 +101,8 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER
   ENDIF()
   MARK_AS_ADVANCED(FORCE FFTW_INCLUDES)
   MARK_AS_ADVANCED(FORCE FFTW_LIBRARY)
+  # When using Ninja, CMake tries to parallelize the build resulting in missing module files. Add a dummy target to ensure synchronization
+  ADD_DEPENDENCIES(libposti fftwlib)
 ENDIF()
 
 IF(POSTI_VISU)

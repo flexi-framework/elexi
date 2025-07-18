@@ -1155,9 +1155,9 @@ IF (myComputeNodeRank.EQ.0) THEN
   ! Temporary array
   ALLOCATE(FIBGM_Sort(MAXVAL(FIBGM_nElems)))
 
-  DO kBGM = BGMCellZmin,BGMCellZmax
-    DO jBGM = BGMCellYmin,BGMCellYmax
-      DO iBGM = BGMCellXmin,BGMCellXmax
+  DO kBGM = BGMkmin,BGMkmax
+    DO jBGM = BGMjmin,BGMjmax
+      DO iBGM = BGMimin,BGMimax
         IF(FIBGM_nElems(iBGM,jBGM,kBGM).GT.1) THEN
           ASSOCIATE(FIBGM_ElemLoc => FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+1:&
                                                    FIBGM_offsetElem(iBGM,jBGM,kBGM)+  &

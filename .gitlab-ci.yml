@@ -31,7 +31,6 @@ before_script:
   # Setup Python virtual environment
   - source venv/bin/activate || true
   # Setup CMake generator
-  - unset CMAKE_GENERATOR
   - if [ -n "${DO_CORE_SPLIT}" ]; then
       echo " FLEXI_SPLIT_TYPE=OMPI_COMM_TYPE_CORE. Splitting shared memory domains on processor-level!";
       export FLEXI_SPLIT_TYPE=OMPI_COMM_TYPE_CORE;
@@ -43,16 +42,15 @@ before_script:
         echo " Splitting shared memory domains on node-level! Set variable DO_CORE_SPLIT=T to force core-level OR DO_NODE_SPLIT=T to force sub-node-level shared memory splitting for all regression tests.";
       fi
     fi
+  # ELEXI always uses ninja
+  - unset CMAKE_GENERATOR
+  - export DO_NINJA=1
   - if [ -n "${DO_NINJA}" ]; then
       echo " Setting CMAKE_GENERATOR=Ninja to use ninja generator";
       export CMAKE_GENERATOR=Ninja;
-      export GENERATOR=ninja;
-      export NCORES=0;
     else
       echo " Using default generator [Unix Makefiles] and [make] for compiling.";
       export CMAKE_GENERATOR=;
-      export GENERATOR=make;
-      export NCORES=;
     fi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -236,7 +234,7 @@ build:
     - mkdir -p build
     - cd build
     - cmake .. -DLIBS_BUILD_HDF5=OFF
-    - $GENERATOR -j $NCORES
+    - cmake --build . -j
 
 checkin:
   <<: *defaults

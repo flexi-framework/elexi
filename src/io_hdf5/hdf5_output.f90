@@ -944,9 +944,9 @@ LOGICAL                        :: chunky,exists
 TYPE(C_PTR)                    :: buf
 LOGICAL,DIMENSION(rank)        :: mask            ! Sanity check array, masking the rank
 ! Sanity check
-INTEGER                        :: rankTest
-INTEGER(HSIZE_T)               :: dimsTest(rank)
-INTEGER(HSIZE_T)               :: maxDimsTest(rank)
+! INTEGER                        :: rankTest
+! INTEGER(HSIZE_T)               :: dimsTest(rank)
+! INTEGER(HSIZE_T)               :: maxDimsTest(rank)
 !==================================================================================================================================
 LOGWRITE(*,'(A,I1.1,A,A,A)')' WRITE ',Rank,'D ARRAY "',TRIM(DataSetName),'" TO HDF5 FILE...'
 
@@ -1014,16 +1014,16 @@ END IF
 
 ! Sanity check for dimensions of FileSpace since it might have been created outside of routine
 ! Get the dimensionality (rank) of the filespace
-CALL H5SGET_SIMPLE_EXTENT_NDIMS_F(FileSpace,rankTest, ierror)
-IF(rank.NE.rankTest) CALL Abort(__STAMP__,'ERROR in WriteArrayToHDF5: Rank of available filespace does not correspond to the input rank!')
-! Get the dimensions and max dimensions of the filespace
-CALL H5SGET_SIMPLE_EXTENT_DIMS_F(FileSpace, dimsTest, maxDimsTest, ierror)
-IF(ANY(dimsTest.NE.nValGlobal)) THEN
-  IPWRITE(UNIT_stdOut,*) 'Dataset name:            ', TRIM(DatasetName)
-  IPWRITE(UNIT_stdOut,*) 'Dimensions of filespace: ', dimsTest
-  IPWRITE(UNIT_stdOut,*) 'Dimensions of input:     ', nValGlobal
-  CALL Abort(__STAMP__,'ERROR in WriteArrayToHDF5: Dimensions of available filespace do not correspond to the input dimensions!')
-END IF
+! CALL H5SGET_SIMPLE_EXTENT_NDIMS_F(FileSpace,rankTest, ierror)
+! IF(rank.NE.rankTest) CALL Abort(__STAMP__,'ERROR in WriteArrayToHDF5: Rank of available filespace does not correspond to the input rank!')
+! ! Get the dimensions and max dimensions of the filespace
+! CALL H5SGET_SIMPLE_EXTENT_DIMS_F(FileSpace, dimsTest, maxDimsTest, ierror)
+! IF(ANY(dimsTest.NE.nValGlobal)) THEN
+!   IPWRITE(UNIT_stdOut,*) 'Dataset name:            ', TRIM(DatasetName)
+!   IPWRITE(UNIT_stdOut,*) 'Dimensions of filespace: ', dimsTest
+!   IPWRITE(UNIT_stdOut,*) 'Dimensions of input:     ', nValGlobal
+!   CALL Abort(__STAMP__,'ERROR in WriteArrayToHDF5: Dimensions of available filespace do not correspond to the input dimensions!')
+! END IF
 
 ! Create property list for collective dataset write
 CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)

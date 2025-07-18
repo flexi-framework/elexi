@@ -943,6 +943,10 @@ INTEGER(HSIZE_T)               :: Dimsf(Rank),OffsetHDF(Rank),nValMax(Rank)
 LOGICAL                        :: chunky,exists
 TYPE(C_PTR)                    :: buf
 LOGICAL,DIMENSION(rank)        :: mask            ! Sanity check array, masking the rank
+! Sanity check
+INTEGER                        :: rankTest
+INTEGER(HSIZE_T)               :: dimsTest(rank)
+INTEGER(HSIZE_T)               :: maxDimsTest(rank)
 !==================================================================================================================================
 LOGWRITE(*,'(A,I1.1,A,A,A)')' WRITE ',Rank,'D ARRAY "',TRIM(DataSetName),'" TO HDF5 FILE...'
 
@@ -982,15 +986,14 @@ CALL H5LEXISTS_F(File_ID, TRIM(DataSetName), exists, iError)
 IF (.NOT.exists) THEN
   ! Create the data space for the  dataset.
   CALL H5SCREATE_SIMPLE_F(Rank, Dimsf, FileSpace, iError, nValMax)
+  IF(iError.NE.0) CALL Abort(__STAMP__,'ERROR in WriteArrayToHDF5: Filespace could not be created.')
   CALL H5DCREATE_F(File_ID, TRIM(DataSetName), Type_ID, FileSpace, DSet_ID,iError,dsetparams)
+  IF(iError.NE.0) CALL Abort(__STAMP__,'ERROR in WriteArrayToHDF5: Dataset '//TRIM(DatasetName)//' could not be created.')
   CALL H5SCLOSE_F(FileSpace, iError)
 ELSE
   CALL H5DOPEN_F(File_ID, TRIM(DatasetName),DSet_ID, iError)
 END IF
 IF (chunky) CALL H5DSET_EXTENT_F(DSet_ID,Dimsf,iError) ! if resizable then dataset may need to be extended
-
-! Dataset empty, return before allocating memory space
-IF (PRODUCT(nVal).EQ.0) RETURN
 
 ! Each process defines dataset in memory and writes it to the hyperslab in the file.
 Dimsf     = nVal  ! Now we need the local array size
@@ -1009,6 +1012,19 @@ ELSE
   CALL H5SSELECT_HYPERSLAB_F(FileSpace, H5S_SELECT_SET_F, OffsetHDF, Dimsf, iError)
 END IF
 
+! Sanity check for dimensions of FileSpace since it might have been created outside of routine
+! Get the dimensionality (rank) of the filespace
+CALL H5SGET_SIMPLE_EXTENT_NDIMS_F(FileSpace,rankTest, ierror)
+IF(rank.NE.rankTest) CALL Abort(__STAMP__,'ERROR in WriteArrayToHDF5: Rank of available filespace does not correspond to the input rank!')
+! Get the dimensions and max dimensions of the filespace
+CALL H5SGET_SIMPLE_EXTENT_DIMS_F(FileSpace, dimsTest, maxDimsTest, ierror)
+IF(ANY(dimsTest.NE.nValGlobal)) THEN
+  IPWRITE(UNIT_stdOut,*) 'Dataset name:            ', TRIM(DatasetName)
+  IPWRITE(UNIT_stdOut,*) 'Dimensions of filespace: ', dimsTest
+  IPWRITE(UNIT_stdOut,*) 'Dimensions of input:     ', nValGlobal
+  CALL Abort(__STAMP__,'ERROR in WriteArrayToHDF5: Dimensions of available filespace do not correspond to the input dimensions!')
+END IF
+
 ! Create property list for collective dataset write
 CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)
 #if USE_MPI
@@ -1023,14 +1039,20 @@ END IF
 IF(PRESENT(IntArray))  buf=C_LOC(IntArray)
 IF(PRESENT(RealArray)) buf=C_LOC(RealArray)
 IF(PRESENT(StrArray))  buf=C_LOC(StrArray(1))
-CALL H5DWRITE_F(DSet_ID,Type_ID,buf,iError,file_space_id=filespace,mem_space_id=memspace,xfer_prp=PList_ID)
+IF(ANY(Dimsf.EQ.0)) THEN
+  CALL H5DWRITE_F(DSet_ID,Type_ID,C_NULL_PTR,iError,file_space_id=filespace,mem_space_id=memspace,xfer_prp=PList_ID)
+ELSE
+  CALL H5DWRITE_F(DSet_ID,Type_ID,buf,iError,file_space_id=filespace,mem_space_id=memspace,xfer_prp=PList_ID)
+END IF
 
 IF(PRESENT(StrArray)) CALL H5TCLOSE_F(Type_ID, iError)
 ! Close the property list, dataspaces and dataset.
 CALL H5PCLOSE_F(dsetparams, iError)
 CALL H5PCLOSE_F(PList_ID, iError)
+! Close dataspaces
 CALL H5SCLOSE_F(FileSpace, iError)
 CALL H5SCLOSE_F(MemSpace, iError)
+! Close the dataset
 CALL H5DCLOSE_F(DSet_ID, iError)
 
 LOGWRITE(*,*)'...DONE!'

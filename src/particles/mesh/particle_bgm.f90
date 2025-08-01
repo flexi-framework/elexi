@@ -43,16 +43,18 @@ USE MOD_ReadInTools ,ONLY: prms
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-CALL prms%SetSection('BGM')
-
 ! Background mesh init variables
-CALL prms%CreateRealArrayOption('Part-FIBGMdeltas'&
-  , 'Define the deltas for the Cartesian Fast-Init-Background-Mesh.'//&
-  ' They should be of the similar size as the smallest cells of the used mesh for simulation.'&
-  , '1. , 1. , 1.')
-CALL prms%CreateRealArrayOption('Part-FactorFIBGM'&
-  , 'Factor with which the background mesh will be scaled.'&
-  , '1. , 1. , 1.')
+CALL prms%CreateRealArrayOption(    'Part-FIBGMdeltas'          , 'Define the deltas for the cartesian Fast-Init-Background-Mesh.'//&
+                                                                  ' They should be of the similar size as the smallest cells of' //&
+                                                                  ' the used mesh for simulation.'                                 &
+                                                                , '0. , 0. , 0.')
+CALL prms%CreateRealArrayOption(    'Part-FactorFIBGM'          , 'Factor with which the background mesh will be scaled.'          &
+                                                                , '1. , 1. , 1.')
+CALL prms%CreateRealOption(         'Part-HaloEpsVelo'          , 'Maximum velocity to be considered for halo region'              &
+                                                                , '0.')
+CALL prms%CreateRealOption(         'Part-SafetyFactor'         , 'Factor to scale the halo region with MPI'                       &
+                                                                , '1.')
+CALL prms%CreateLogicalOption(      'CalcHaloInfo'              , 'Output halo info to ElemData','.FALSE.')
 
 END SUBROUTINE DefineParametersParticleBGM
 
@@ -69,6 +71,7 @@ USE MOD_Preproc
 USE MOD_CalcTimeStep           ,ONLY: CalcTimeStep
 USE MOD_DG                     ,ONLY: DGTimeDerivative_weakForm
 USE MOD_Mesh_Vars              ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_Mesh_Vars              ,ONLY: ElemInfo_Shared,NodeCoords_Shared
 USE MOD_Particle_Globals       ,ONLY: VECNORM,ElementOnNode
 USE MOD_Particle_Periodic_BC   ,ONLY: InitPeriodicBC
@@ -85,7 +88,6 @@ USE MOD_Particle_Tracking_Vars ,ONLY: TrackingMethod,Distance,ListDistance
 USE MOD_ReadInTools            ,ONLY: GETREAL,GetRealArray,PrintOption
 USE MOD_TimeDisc_Vars          ,ONLY: dt,t
 #if USE_MPI
-USE MOD_Mesh_Vars              ,ONLY: nGlobalElems
 USE MOD_Mesh_Vars              ,ONLY: SideInfo_Shared,ElemInfo_Shared_Win
 USE MOD_Mesh_Vars              ,ONLY: nNonUniqueGlobalSides,nNonUniqueGlobalNodes
 USE MOD_Mesh_Vars              ,ONLY: nComputeNodeElems,offsetComputeNodeElem
@@ -146,6 +148,11 @@ INTEGER                        :: BGMCellXmax,BGMCellXmin,BGMCellYmax,BGMCellYmi
 INTEGER                        :: BGMiminglob,BGMimaxglob,BGMjminglob,BGMjmaxglob,BGMkminglob,BGMkmaxglob
 REAL                           :: deltaT
 INTEGER                        :: errType
+! Automatic FIBGM
+INTEGER                        :: iDim
+INTEGER                        :: nFIBGMElems, nFIBGMElems_target
+REAL                           :: weight, delta
+REAL                           :: aFIBGMdeltas(3),aFIBGMweights(3),aFIBGMmaxima(3)
 #if USE_MPI
 INTEGER                        :: iStage
 INTEGER                        :: iSide
@@ -190,37 +197,6 @@ REAL                           :: StartT,EndT
 INTEGER,ALLOCATABLE            :: NumberOfElements(:)
 #endif /*CODE_ANALYZE && USE_MPI*/
 !===================================================================================================================================
-
-! Read parameter for FastInitBackgroundMesh (FIBGM)
-GEO%FIBGMdeltas(1:3) = GETREALARRAY('Part-FIBGMdeltas',3)
-GEO%FactorFIBGM(1:3) = GETREALARRAY('Part-FactorFIBGM',3)
-GEO%FIBGMdeltas(1:3) = 1./GEO%FactorFIBGM(1:3) * GEO%FIBGMdeltas(1:3)
-
-! Ensure BGM does not protrude beyond mesh when divisible by FIBGMdeltas
-BGMiminglob = 0 + moveBGMindex
-BGMimaxglob = FLOOR((GEO%xmaxglob-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
-BGMimaxglob = MERGE(BGMimaxglob,BGMimaxglob-1,MODULO(GEO%xmaxglob-GEO%xminglob,GEO%FIBGMdeltas(1)).NE.0)
-BGMjminglob = 0 + moveBGMindex
-BGMjmaxglob = FLOOR((GEO%ymaxglob-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
-BGMjmaxglob = MERGE(BGMjmaxglob,BGMjmaxglob-1,MODULO(GEO%ymaxglob-GEO%yminglob,GEO%FIBGMdeltas(2)).NE.0)
-BGMkminglob = 0 + moveBGMindex
-BGMkmaxglob = FLOOR((GEO%zmaxglob-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
-BGMkmaxglob = MERGE(BGMkmaxglob,BGMkmaxglob-1,MODULO(GEO%zmaxglob-GEO%zminglob,GEO%FIBGMdeltas(3)).NE.0)
-
-GEO%FIBGMiminglob = BGMiminglob
-GEO%FIBGMimaxglob = BGMimaxglob
-GEO%FIBGMjminglob = BGMjminglob
-GEO%FIBGMjmaxglob = BGMjmaxglob
-GEO%FIBGMkminglob = BGMkminglob
-GEO%FIBGMkmaxglob = BGMkmaxglob
-
-CALL PrintOption('Total FIBGM Cells (x,y,z)','INFO',IntArrayOpt=(/               &
-                                                    BGMimaxglob - BGMiminglob + 1&
-                                                   ,BGMjmaxglob - BGMjminglob + 1&
-                                                   ,BGMkmaxglob - BGMkminglob + 1/))
-
-! Read periodic vectors from parameter file
-CALL InitPeriodicBC()
 
 #if USE_MPI
 #if USE_LOADBALANCE
@@ -270,31 +246,6 @@ IF (.NOT.PerformLoadBalance) THEN
         BoundsOfElem_Shared(2,2,iElem) = MAXVAL(NodeCoords_Shared(2,firstNodeID:lastNodeID))
         BoundsOfElem_Shared(1,3,iElem) = MINVAL(NodeCoords_Shared(3,firstNodeID:lastNodeID))
         BoundsOfElem_Shared(2,3,iElem) = MAXVAL(NodeCoords_Shared(3,firstNodeID:lastNodeID))
-
-        ! Flag elements depending on radius
-        origin(1:3) = (/ SUM(   BoundsOfElem_Shared(1:2,1,iElem)), &
-                         SUM(   BoundsOfElem_Shared(1:2,2,iElem)), &
-                         SUM(   BoundsOfElem_Shared(1:2,3,iElem)) /) / 2.
-        ! Calculate halo element outer radius
-        radius    = VECNORM ((/ BoundsOfElem_Shared(2  ,1,iElem)-BoundsOfElem_Shared(1,1,iElem), &
-                                BoundsOfElem_Shared(2  ,2,iElem)-BoundsOfElem_Shared(1,2,iElem), &
-                                BoundsOfElem_Shared(2  ,3,iElem)-BoundsOfElem_Shared(1,3,iElem) /) / 2.)
-
-        xmin = origin(1) - radius
-        xmax = origin(1) + radius
-        ymin = origin(2) - radius
-        ymax = origin(2) + radius
-        zmin = origin(3) - radius
-        zmax = origin(3) + radius
-
-        ! BGM indices must be >0 --> move by 1
-        ! >> - Halo region extended by one in each direction to catch elements directly on the edge of a FIGBM cell
-        ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
-        ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
-        ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
-        ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
-        ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
-        ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
     END DO ! iElem = firstElem, lastElem
 
     CASE(TRACING,REFMAPPING)
@@ -330,30 +281,6 @@ IF (.NOT.PerformLoadBalance) THEN
         BoundsOfElem_Shared(2,2,iElem) = ymax
         BoundsOfElem_Shared(1,3,iElem) = zmin
         BoundsOfElem_Shared(2,3,iElem) = zmax
-
-        ! Flag elements depending on radius
-        origin(1:3) = (/ SUM(   BoundsOfElem_Shared(1:2,1,iElem)), &
-                         SUM(   BoundsOfElem_Shared(1:2,2,iElem)), &
-                         SUM(   BoundsOfElem_Shared(1:2,3,iElem)) /) / 2.
-        ! Calculate halo element outer radius
-        radius    = VECNORM ((/ BoundsOfElem_Shared(2  ,1,iElem)-BoundsOfElem_Shared(1,1,iElem), &
-                                BoundsOfElem_Shared(2  ,2,iElem)-BoundsOfElem_Shared(1,2,iElem), &
-                                BoundsOfElem_Shared(2  ,3,iElem)-BoundsOfElem_Shared(1,3,iElem) /) / 2.)
-
-        xmin = origin(1) - radius
-        xmax = origin(1) + radius
-        ymin = origin(2) - radius
-        ymax = origin(2) + radius
-        zmin = origin(3) - radius
-        zmax = origin(3) + radius
-
-        ! BGM indices must be >0 --> move by 1
-        ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
-        ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
-        ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
-        ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
-        ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
-        ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
       END DO ! iElem = firstElem, lastElem
   END SELECT
 #if USE_LOADBALANCE
@@ -361,7 +288,6 @@ END IF
 #endif /*USE_LOADBALANCE*/
 
 #if USE_MPI
-CALL BARRIER_AND_SYNC(ElemToBGM_Shared_Win   ,MPI_COMM_SHARED)
 CALL BARRIER_AND_SYNC(BoundsOfElem_Shared_Win,MPI_COMM_SHARED)
 #endif  /*USE_MPI*/
 
@@ -378,6 +304,154 @@ IF (ALLOCATED(GEO%FIBGM)) THEN
   DEALLOCATE(GEO%FIBGM)
 END IF
 #endif /*USE_LOADBALANCE*/
+
+! ! Read parameter for FastInitBackgroundMesh (FIBGM)
+GEO%FIBGMdeltas(1:3) = GETREALARRAY('Part-FIBGMdeltas',3)
+GEO%AutomaticFIBGM   = ALL(GEO%FIBGMdeltas.EQ.0)
+
+IF (.NOT.GEO%AutomaticFIBGM) THEN
+  ! Read parameter for FastInitBackgroundMesh (FIBGM)
+  GEO%FactorFIBGM(1:3) = GETREALARRAY('Part-FactorFIBGM',3)
+  GEO%FIBGMdeltas(1:3) = GEO%FIBGMdeltas(1:3)/GEO%FactorFIBGM(1:3)
+ELSE
+  CALL PrintOption('Automatic calculation of FIBGM size','INFO',LogOpt=GEO%AutomaticFIBGM)
+  ! Generate FIBGM parameter automatically
+
+  ! Average length weighted
+  ! > Determine FIBGMdeltas by averaging the bounding box of all elements weighted by the size of the box in the distinct direction
+  aFIBGMdeltas  = 0.
+  aFIBGMweights = 0.
+  DO iElem = firstElem, lastElem
+    DO iDim = 1, 3
+      ! Weighted running average
+      ! weight           = BoundsOfElem_Shared(2,i,iElem) - BoundsOfElem_Shared(1,i,iElem)
+      ! aFIBGMweights(i) = aFIBGMweights(i) + weight
+      ! delta            = weight**2.
+      ! aFIBGMdeltas(i)  = aFIBGMdeltas(i) + (delta - aFIBGMdeltas(i)*weight)
+      weight = BoundsOfElem_Shared(2,iDim,iElem) - BoundsOfElem_Shared(1,iDim,iElem)
+      delta  = weight**2.
+      aFIBGMweights(iDim) = aFIBGMweights(iDim) + weight
+      aFIBGMdeltas( iDim) = aFIBGMdeltas( iDim) + delta
+    END DO ! i = 1, 3
+  END DO ! iElem = firstElem, lastElem
+#if USE_MPI
+  CALL MPI_ALLREDUCE(MPI_IN_PLACE,aFIBGMdeltas ,3,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+  CALL MPI_ALLREDUCE(MPI_IN_PLACE,aFIBGMweights,3,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+#endif
+  aFIBGMdeltas   = aFIBGMdeltas/aFIBGMweights
+
+  ! Min
+  ! Determine a maximum FIBGMdeltas size by the smallest element in such a way that not too many elemems are in this FIBGM element
+  aFIBGMmaxima   = HUGE(1.)
+  DO iElem = firstElem, lastElem
+    DO iDim = 1, 3
+      aFIBGMmaxima(iDim) = MIN(aFIBGMmaxima(1), BoundsOfElem_Shared(2,iDim,iElem)-BoundsOfElem_Shared(1,iDim,iElem))
+    END DO ! i = 1, 3
+  END DO ! iElem = firstElem, lastElem
+#if USE_MPI
+  CALL MPI_ALLREDUCE(MPI_IN_PLACE,aFIBGMmaxima,3,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_FLEXI,iError)
+#endif
+  ! Similar to Octree 50 (~25 including SideElems) Elements per FIBGM cell
+  aFIBGMmaxima = aFIBGMmaxima * 25.**(1./3.)
+
+  ! Use the minimum of both possible deltas
+  GEO%FIBGMdeltas    = MIN(aFIBGMdeltas, aFIBGMmaxima)
+
+  nFIBGMElems_target = CEILING(nGlobalElems*10**(3./2.))
+  nFIBGMElems        = CEILING((GEO%xmaxglob-GEO%xminglob)/GEO%FIBGMdeltas(1) * &
+                               (GEO%ymaxglob-GEO%yminglob)/GEO%FIBGMdeltas(2) * &
+                               (GEO%zmaxglob-GEO%zminglob)/GEO%FIBGMdeltas(3))
+
+  IF (nFIBGMElems.GT.nFIBGMElems_target) THEN
+    ! Fallback to prevent too small FIBGM cells
+
+    ! Scale GEO%FIBGMdeltas1 to have about sqrt(1000) * nglobalElems in total in 3D
+    ! Use the values of FIBGMdeltas1 because they do not have the minimum size of the elements included
+    nFIBGMElems_target = CEILING(nGlobalElems*10**(3./2.))
+    nFIBGMElems        = CEILING((GEO%xmaxglob-GEO%xminglob)/aFIBGMdeltas(1) * &
+                                 (GEO%ymaxglob-GEO%yminglob)/aFIBGMdeltas(2) * &
+                                 (GEO%zmaxglob-GEO%zminglob)/aFIBGMdeltas(3))
+
+    ! Needed for periodic vectors
+    GEO%FIBGMdeltas(1) = MIN(GEO%FIBGMdeltas(1),GEO%xmaxglob-GEO%xminglob)
+    GEO%FIBGMdeltas(2) = MIN(GEO%FIBGMdeltas(2),GEO%ymaxglob-GEO%yminglob)
+    GEO%FIBGMdeltas(3) = MIN(GEO%FIBGMdeltas(3),GEO%zmaxglob-GEO%zminglob)
+  END IF
+END IF
+
+! Read periodic vectors from parameter file
+!
+! > If AutoFIBGM: GEO%FIBGMdeltas may be adjusted here
+CALL InitPeriodicBC()
+
+IF(GEO%AutomaticFIBGM) THEN
+  ! LBWRITE(UNIT_stdOut,'(A,E18.8,A,E18.8,A,E18.8)') " | Automatically determined Part-FIBGMdeltas: "&
+  !                                                       , GEO%FIBGMdeltas(1), ", ", GEO%FIBGMdeltas(2), ", ", GEO%FIBGMdeltas(3)
+  CALL PrintOption('Auto FIBGM Deltas (x,y,z)','INFO',RealArrayOpt=(/               &
+                                                       GEO%FIBGMdeltas(1)           &
+                                                     , GEO%FIBGMdeltas(2)           &
+                                                     , GEO%FIBGMdeltas(3)           /))
+END IF
+
+! Ensure BGM does not protrude beyond mesh when divisible by FIBGMdeltas
+BGMiminglob = 0 + moveBGMindex
+BGMimaxglob = FLOOR((GEO%xmaxglob-GEO%xminglob)/GEO%FIBGMdeltas(1)) + moveBGMindex
+BGMimaxglob = MERGE(BGMimaxglob,BGMimaxglob-1,MODULO(GEO%xmaxglob-GEO%xminglob,GEO%FIBGMdeltas(1)).NE.0)
+BGMjminglob = 0 + moveBGMindex
+BGMjmaxglob = FLOOR((GEO%ymaxglob-GEO%yminglob)/GEO%FIBGMdeltas(2)) + moveBGMindex
+BGMjmaxglob = MERGE(BGMjmaxglob,BGMjmaxglob-1,MODULO(GEO%ymaxglob-GEO%yminglob,GEO%FIBGMdeltas(2)).NE.0)
+BGMkminglob = 0 + moveBGMindex
+BGMkmaxglob = FLOOR((GEO%zmaxglob-GEO%zminglob)/GEO%FIBGMdeltas(3)) + moveBGMindex
+BGMkmaxglob = MERGE(BGMkmaxglob,BGMkmaxglob-1,MODULO(GEO%zmaxglob-GEO%zminglob,GEO%FIBGMdeltas(3)).NE.0)
+
+GEO%FIBGMiminglob = BGMiminglob
+GEO%FIBGMimaxglob = BGMimaxglob
+GEO%FIBGMjminglob = BGMjminglob
+GEO%FIBGMjmaxglob = BGMjmaxglob
+GEO%FIBGMkminglob = BGMkminglob
+GEO%FIBGMkmaxglob = BGMkmaxglob
+
+#if USE_LOADBALANCE
+IF (.NOT.PerformLoadBalance) THEN
+#endif /*USE_LOADBALANCE*/
+  CALL PrintOption('Total FIBGM Cells (x,y,z)','INFO',IntArrayOpt=(/                &
+                                                      BGMimaxglob - BGMiminglob + 1 &
+                                                     ,BGMjmaxglob - BGMjminglob + 1 &
+                                                     ,BGMkmaxglob - BGMkminglob + 1 /))
+
+  DO iElem = firstElem, lastElem
+    ! Flag elements depending on radius
+    origin(1:3) = (/ SUM(   BoundsOfElem_Shared(1:2,1,iElem)), &
+                     SUM(   BoundsOfElem_Shared(1:2,2,iElem)), &
+                     SUM(   BoundsOfElem_Shared(1:2,3,iElem)) /) / 2.
+    ! Calculate halo element outer radius
+    radius    = VECNORM ((/ BoundsOfElem_Shared(2  ,1,iElem)-BoundsOfElem_Shared(1,1,iElem), &
+                            BoundsOfElem_Shared(2  ,2,iElem)-BoundsOfElem_Shared(1,2,iElem), &
+                            BoundsOfElem_Shared(2  ,3,iElem)-BoundsOfElem_Shared(1,3,iElem) /) / 2.)
+
+    xmin = origin(1) - radius
+    xmax = origin(1) + radius
+    ymin = origin(2) - radius
+    ymax = origin(2) + radius
+    zmin = origin(3) - radius
+    zmax = origin(3) + radius
+
+    ! BGM indices must be >0 --> move by 1
+    ! >> - Halo region extended by one in each direction to catch elements directly on the edge of a FIGBM cell
+    ElemToBGM_Shared(1,iElem) = MAX(FLOOR((xmin-GEO%xminglob)/GEO%FIBGMdeltas(1)),0) + moveBGMindex
+    ElemToBGM_Shared(2,iElem) = MIN(FLOOR((xmax-GEO%xminglob)/GEO%FIBGMdeltas(1))    + moveBGMindex,GEO%FIBGMimaxglob)
+    ElemToBGM_Shared(3,iElem) = MAX(FLOOR((ymin-GEO%yminglob)/GEO%FIBGMdeltas(2)),0) + moveBGMindex
+    ElemToBGM_Shared(4,iElem) = MIN(FLOOR((ymax-GEO%yminglob)/GEO%FIBGMdeltas(2))    + moveBGMindex,GEO%FIBGMjmaxglob)
+    ElemToBGM_Shared(5,iElem) = MAX(FLOOR((zmin-GEO%zminglob)/GEO%FIBGMdeltas(3)),0) + moveBGMindex
+    ElemToBGM_Shared(6,iElem) = MIN(FLOOR((zmax-GEO%zminglob)/GEO%FIBGMdeltas(3))    + moveBGMindex,GEO%FIBGMkmaxglob)
+END DO ! iElem = firstElem, lastElem
+#if USE_LOADBALANCE
+END IF
+#endif /*USE_LOADBALANCE*/
+
+#if USE_MPI
+CALL BARRIER_AND_SYNC(ElemToBGM_Shared_Win   ,MPI_COMM_SHARED)
+#endif  /*USE_MPI*/
 
 #if USE_MPI
 SafetyFactor  = GETREAL('Part-SafetyFactor')
@@ -1081,9 +1155,9 @@ IF (myComputeNodeRank.EQ.0) THEN
   ! Temporary array
   ALLOCATE(FIBGM_Sort(MAXVAL(FIBGM_nElems)))
 
-  DO kBGM = BGMCellZmin,BGMCellZmax
-    DO jBGM = BGMCellYmin,BGMCellYmax
-      DO iBGM = BGMCellXmin,BGMCellXmax
+  DO kBGM = BGMkmin,BGMkmax
+    DO jBGM = BGMjmin,BGMjmax
+      DO iBGM = BGMimin,BGMimax
         IF(FIBGM_nElems(iBGM,jBGM,kBGM).GT.1) THEN
           ASSOCIATE(FIBGM_ElemLoc => FIBGM_Element(FIBGM_offsetElem(iBGM,jBGM,kBGM)+1:&
                                                    FIBGM_offsetElem(iBGM,jBGM,kBGM)+  &

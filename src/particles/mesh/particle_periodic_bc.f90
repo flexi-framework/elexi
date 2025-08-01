@@ -92,7 +92,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                :: iPV
+INTEGER                :: iPV,iDim
 REAL                   :: eps(1:3)!,dummy
 !===================================================================================================================================
 
@@ -170,11 +170,18 @@ IF (CartesianPeriodic) THEN
   END IF
 END IF
 
+
+IF(GEO%AutomaticFIBGM) THEN
+  ! Adjust Automatic FIBGM to be a integer divide of periodic vectors
+  DO iDim = 1,3
+    IF (SUM(GEO%PeriodicVectors(iDim,:)).GT.0) &
+      GEO%FIBGMDeltas(iDim) = SUM(GEO%PeriodicVectors(iDim,:))/NINT(SUM(GEO%PeriodicVectors(iDim,:))/GEO%FIBGMDeltas(iDim))
+  END DO ! iDim = 1, 3
+END IF
+
 ! check if periodic vector is multiple of FIBGM-deltas
 ! some tolerance
-eps(1) = 1.E-9*(GEO%FIBGMDeltas(1))
-eps(2) = 1.E-9*(GEO%FIBGMDeltas(2))
-eps(3) = 1.E-9*(GEO%FIBGMDeltas(3))
+eps = 1.E-9*(GEO%FIBGMDeltas)
 
 IF (ABS(SUM(GEO%PeriodicVectors(1,:))-NINT(SUM(GEO%PeriodicVectors(1,:))/GEO%FIBGMDeltas(1))*GEO%FIBGMDeltas(1)) &
     .GT.eps(1)) THEN

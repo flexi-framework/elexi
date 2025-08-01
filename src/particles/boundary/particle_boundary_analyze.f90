@@ -302,15 +302,15 @@ END IF
 ! Zero impacts occurred in the complete domain.
 ! > Root writes empty dummy container to .h5 file (required for subsequent file access in ParaView)
 IF (ImpactnGlob.EQ.0 .AND. MPIRoot) THEN
-CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-CALL WriteArray(           DataSetName  = 'ImpactData'                   ,&
-                           rank         = 2                              ,&
-                           nValGlobal   = (/ImpactDataSize,ImpactnGlob/) ,&
-                           nVal         = (/ImpactDataSize,ImpactnLoc/)  ,&
-                           offset       = (/0             ,ImpactOffset/),&
-                           collective   = .TRUE.                         ,&
-                           RealArray    = PartStateBoundary(1:ImpactDataSize,1:ImpactnLoc))
-CALL CloseDataFile()
+  CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteArray(           DataSetName  = 'ImpactData'                   ,&
+                             rank         = 2                              ,&
+                             nValGlobal   = (/ImpactDataSize,ImpactnGlob/) ,&
+                             nVal         = (/ImpactDataSize,ImpactnLoc/)  ,&
+                             offset       = (/0             ,ImpactOffset/),&
+                             collective   = .FALSE.                        ,&
+                             RealArray    = PartStateBoundary(1:ImpactDataSize,1:ImpactnLoc))
+  CALL CloseDataFile()
 END IF ! locnPart_max.EQ.0 .AND. MPIRoot
 #if USE_MPI
 CALL DistributedWriteArray(FileString                                    ,&

@@ -38,7 +38,8 @@ CONTAINS
 SUBROUTINE DefineParametersParticleMesh()
 ! MODULES
 USE MOD_Globals
-USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+USE MOD_ReadInTools            ,ONLY: prms,addStrListEntry
+USE MOD_Particle_BGM           ,ONLY: DefineParametersParticleBGM
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -49,19 +50,10 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 
-! Halo region
-CALL prms%CreateRealOption(         'Part-SafetyFactor'         , 'Factor to scale the halo region with MPI'                       &
-                                                                , '1.')
-CALL prms%CreateRealOption(         'Part-HaloEpsVelo'          , 'Maximum velocity to be considered for halo region'              &
-                                                                , '0.')
-CALL prms%CreateLogicalOption(      'CalcHaloInfo'              , 'Output halo info to ElemData','.FALSE.')
+CALL prms%SetSection("Particle Mesh")
+
 ! Background mesh init variables
-CALL prms%CreateRealArrayOption(    'Part-FIBGMdeltas'          , 'Define the deltas for the cartesian Fast-Init-Background-Mesh.'//&
-                                                                  ' They should be of the similar size as the smallest cells of' //&
-                                                                  ' the used mesh for simulation when multiplied with FactorFIBGM.'&
-                                                                , '1. , 1. , 1.')
-CALL prms%CreateRealArrayOption(    'Part-FactorFIBGM'          , 'Factor with which the background mesh will be scaled.'          &
-                                                                , '1. , 1. , 1.')
+CALL DefineParametersParticleBGM()
 
 ! Periodic vectors
 ! CALL prms%CreateIntOption(          'Part-nPeriodicVectors'     , 'Number of the periodic vectors j=1,...,n.'                    //&

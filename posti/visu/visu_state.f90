@@ -285,8 +285,9 @@ USE MOD_Particle_Init       ,ONLY: DefineParametersParticles
 #endif
 #if FV_ENABLED
 USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis,DefineParametersFV_Basis
-USE MOD_FV_Vars             ,ONLY: FV_Elems
+USE MOD_FV_Vars             ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
 USE MOD_Indicator_Vars      ,ONLY: IndValue
+USE MOD_Mesh_Vars           ,ONLY: nSides
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 USE MOD_Restart             ,ONLY: SupersampleFVCell
 USE MOD_Restart_Vars        ,ONLY: NFVRestartSuper
@@ -373,18 +374,7 @@ IF (meshMode_loc.EQ.2)THEN
   CALL InitFV_Basis()
   CALL InitMortar()
 END IF
-
-IF (.NOT.ALLOCATED(FV_Elems)) THEN
-  ALLOCATE(FV_Elems(nElems)) ! holds information if element is DG (0) or FV (1)
-  FV_Elems = 0.
-END IF
-IF (.NOT.ALLOCATED(IndValue)) THEN
-  ALLOCATE(IndValue(nElems)) ! holds information if element is DG (0) or FV (1)
-  IndValue = 0.
-END IF
 #endif
-
-CALL InitRestart(statefile)
 
 ! Call mesh init if the mesh file changed or we need a different mesh mode
 IF ((changedMeshFile).OR.(changedMeshMode)) THEN
@@ -393,6 +383,27 @@ IF ((changedMeshFile).OR.(changedMeshMode)) THEN
   ELSE;                          CALL InitMesh(meshMode=meshMode_loc,MeshFile_IN=MeshFile)
   END IF
 END IF
+
+#if FV_ENABLED
+IF (.NOT.ALLOCATED(FV_Elems)) THEN
+  ALLOCATE(FV_Elems(nElems))        ! holds information if element is DG (0) or FV (1)
+  FV_Elems = 0.
+END IF
+IF (.NOT.ALLOCATED(FV_Elems_master)) THEN
+  ALLOCATE(FV_Elems_master(nSides)) ! holds information if element is DG (0) or FV (1)
+  FV_Elems_master = 0.
+END IF
+IF (.NOT.ALLOCATED(FV_Elems_slave)) THEN
+  ALLOCATE(FV_Elems_slave( nSides)) ! holds information if element is DG (0) or FV (1)
+  FV_Elems_slave  = 0.
+END IF
+IF (.NOT.ALLOCATED(IndValue)) THEN
+  ALLOCATE(IndValue(nElems))        ! holds information if element is DG (0) or FV (1)
+  IndValue = 0.
+END IF
+#endif
+
+CALL InitRestart(statefile)
 
 ! Initialize EOS since some quantities need gas properties like R and kappa
 CALL InitEOS()

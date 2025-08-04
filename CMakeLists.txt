@@ -126,8 +126,8 @@ INCLUDE(SetBuildType)
 # =========================================================================
 # append relative filename-macro for __FILENAME__ in __STAMP__ of abort function (see flexi.h)
 # subst replacement is GNU make specific
-IF("${CMAKE_GENERATOR}" MATCHES "Unix Makefiles")
-  SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
+IF("${CMAKE_GENERATOR}" STREQUAL "Unix Makefiles")
+SET(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
 ENDIF()
 
 # add basedir for location of corresponding userblock-file

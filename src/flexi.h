@@ -27,8 +27,9 @@
 #elif PGI
 #  define NO_ISNAN
 #endif
+
 #ifndef __FILENAME__
-#define __FILENAME__ __FILE__
+#  define __FILENAME__ __FILE__
 #endif
 #define __STAMP__ __FILENAME__,__LINE__,__DATE__,__TIME__
 
@@ -52,15 +53,12 @@
 #define MPI_INTEGER_INT_KIND MPI_INTEGER
 #endif
 
-#ifdef GNU
-#define CHECKSAFEINT(x,k)  IF(x>HUGE(INT( 1,KIND=k)).OR.x<-HUGE(INT( 1,KIND=k))) CALL Abort(__STAMP__,'Integer conversion failed: out of range!')
-#define CHECKSAFEREAL(x,k) IF(x>HUGE(REAL(1,KIND=k)).OR.x<-HUGE(REAL(1,KIND=k))) CALL Abort(__STAMP__,'Real conversion failed: out of range!')
-#elif CRAY
-#define CHECKSAFEINT(x,k)
-#define CHECKSAFEREAL(x,k)
+#ifdef CRAY
+#  define CHECKSAFEINT(x,k)
+#  define CHECKSAFEREAL(x,k)
 #else
-#define CHECKSAFEINT(x,k)  IF(x>HUGE(1_  ## k).OR.x<-HUGE(1_  ## k)) CALL Abort(__STAMP__,'Integer conversion failed: out of range!')
-#define CHECKSAFEREAL(x,k) IF(x>HUGE(1._ ## k).OR.x<-HUGE(1._ ## k)) CALL Abort(__STAMP__,'Real conversion failed: out of range!')
+#  define CHECKSAFEINT(x,k)  IF(x>HUGE(INT( 1,KIND=k)).OR.x<-HUGE(INT( 1,KIND=k))) CALL Abort(__STAMP__,'Integer conversion failed: out of range!')
+#  define CHECKSAFEREAL(x,k) IF(x>HUGE(REAL(1,KIND=k)).OR.x<-HUGE(REAL(1,KIND=k))) CALL Abort(__STAMP__,'Real conversion failed: out of range!')
 #endif
 
 ! Time Step Minimum: dt_Min
@@ -303,24 +301,24 @@
 !#define DEBUGMESH
 
 #if FV_ENABLED
-#define FV_SIZE 1
+#  define FV_SIZE 1
 #else
-#define FV_SIZE 0
+#  define FV_SIZE 0
 #endif
 
 #if !(FV_ENABLED)
-#define FV_Elems(x) 0
-#define FV_Elems_master(x) 0
-#define FV_Elems_slave(x) 0
-#define FV_Elems_Sum(x) 0
+#  define FV_Elems(x) 0
+#  define FV_Elems_master(x) 0
+#  define FV_Elems_slave(x) 0
+#  define FV_Elems_Sum(x) 0
 #endif
 
 ! Compute viscous contributions in volume integral
 ! NOT if FV-Blending or if non-parabolic
 #if (FV_ENABLED>=2) || !PARABOLIC
-#define VOLINT_VISC 0
+#  define VOLINT_VISC 0
 #else
-#define VOLINT_VISC 1
+#  define VOLINT_VISC 1
 #endif
 
 #define KILL(x) SWRITE(*,*) __FILE__,__LINE__,x; stop
@@ -338,18 +336,18 @@
 
 ! PURE debug switch
 #if DEBUG
-#define PPURE
+#  define PPURE
 #else
-#define PPURE PURE
+#  define PPURE PURE
 #endif
 
 !2d functionality
 #if (PP_dim==2)
-#define ZDIM(a) 0
-#define PP_NZ   0
-#define DIMV    1:2
+#  define ZDIM(a) 0
+#  define PP_NZ   0
+#  define DIMV    1:2
 #else
-#define ZDIM(a) a
-#define PP_NZ   PP_N
-#define DIMV    1:3
+#  define ZDIM(a) a
+#  define PP_NZ   PP_N
+#  define DIMV    1:3
 #endif

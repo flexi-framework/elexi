@@ -197,27 +197,38 @@
 #if USE_LOADBALANCE
 ! Load Balance (LB) position in array for measuring the time that is spent on specific operations
 #define LB_DG            1
-#define LB_DGANALYZE     2
-#define LB_DGCOMM        3
-#define LB_FV            4
-#define LB_FVCOMM        5
-#define LB_EMISSION      6
-#define LB_TRACK         7
-#define LB_INTERPOLATION 8
-#define LB_PUSH          9
-#define LB_PARTCOMM      10
-#define LB_SURFFLUX      11
-#define LB_DEPOSITION    12
-#define LB_COLLISION     13
+#define LB_DGSURF        2
+#define LB_DGSURFMPI     3
+#define LB_DGMORTAR      4
+#define LB_DGANALYZE     5
+#define LB_DGCOMM        6
+#define LB_FV            7
+#define LB_FVSURF        8
+#define LB_FVMORTAR      9
+#define LB_FVCOMM        10
+#define LB_EMISSION      11
+#define LB_TRACK         12
+#define LB_INTERPOLATION 13
+#define LB_PUSH          14
+#define LB_PARTCOMM      15
+#define LB_SURFFLUX      16
+#define LB_DEPOSITION    17
+#define LB_COLLISION     18
 
-#define LB_NTIMES        13
+#define LB_NTIMES        18
 
 ! Macros for LB timings
 #define MeasureStartTime()               CALL LBStartTime(tLBStart)
 #define MeasurePauseTime_DG()            CALL LBPauseTime(LB_DG           ,tLBStart)
+#define MeasurePauseTime_DGSURF()        CALL LBPauseTime(LB_DGSURF       ,tLBStart)
+#define MeasurePauseTime_DGSURFMPI()     CALL LBPauseTime(LB_DGSURFMPI    ,tLBStart)
+#define MeasurePauseTime_DGMORTAR()      CALL LBPauseTime(LB_DGMORTAR     ,tLBStart)
 #define MeasurePauseTime_DGANALYZE()     CALL LBPauseTime(LB_DGANALYZE    ,tLBStart)
 #define MeasurePauseTime_DGCOMM()        CALL LBPauseTime(LB_DGCOMM       ,tLBStart)
 #define MeasurePauseTime_FV()            CALL LBPauseTime(LB_FV           ,tLBStart)
+#define MeasurePauseTime_FVSURF()        CALL LBPauseTime(LB_FVSURF       ,tLBStart)
+#define MeasurePauseTime_FVSURFMPI()     CALL LBPauseTime(LB_FVSURFMPI    ,tLBStart)
+#define MeasurePauseTime_FVMORTAR()      CALL LBPauseTime(LB_FVMORTAR     ,tLBStart)
 #define MeasurePauseTime_FVCOMM()        CALL LBPauseTime(LB_FVCOMM       ,tLBStart)
 #define MeasurePauseTime_EMISSION()      CALL LBPauseTime(LB_EMISSION     ,tLBStart)
 #define MeasurePauseTime_TRACK()         CALL LBPauseTime(LB_TRACK        ,tLBStart)
@@ -225,10 +236,18 @@
 #define MeasurePauseTime_PUSH()          CALL LBPauseTime(LB_PUSH         ,tLBStart)
 #define MeasurePauseTime_PARTCOMM()      CALL LBPauseTime(LB_PARTCOMM     ,tLBStart)
 #define MeasurePauseTime_SURFFLUX()      CALL LBPauseTime(LB_SURFFLUX     ,tLBStart)
+#define MeasurePauseTime_DEPOSITION()    CALL LBPauseTime(LB_DEPOSITION   ,tLBStart)
+#define MeasurePauseTime_COLLISION()     CALL LBPauseTime(LB_COLLISION    ,tLBStart)
 #define MeasureSplitTime_DG()            CALL LBSplitTime(LB_DG           ,tLBStart)
+#define MeasureSplitTime_DGSURF()        CALL LBSplitTime(LB_DGSURF       ,tLBStart)
+#define MeasureSplitTime_DGSURFMPI()     CALL LBSplitTime(LB_DGSURFMPI    ,tLBStart)
+#define MeasureSplitTime_DGMORTAR()      CALL LBSplitTime(LB_DGMORTAR     ,tLBStart)
+#define MeasureSplitTime_MODAL()         CALL LBSplitTime(LB_MODAL        ,tLBStart)
 #define MeasureSplitTime_DGANALYZE()     CALL LBSplitTime(LB_DGANALYZE    ,tLBStart)
 #define MeasureSplitTime_DGCOMM()        CALL LBSplitTime(LB_DGCOMM       ,tLBStart)
 #define MeasureSplitTime_FV()            CALL LBSplitTime(LB_FV           ,tLBStart)
+#define MeasureSplitTime_FVSURF()        CALL LBSplitTime(LB_FVSURF       ,tLBStart)
+#define MeasureSplitTime_FVMORTAR()      CALL LBSplitTime(LB_FVMORTAR     ,tLBStart)
 #define MeasureSplitTime_FVCOMM()        CALL LBSplitTime(LB_FVCOMM       ,tLBStart)
 #define MeasureSplitTime_EMISSION()      CALL LBSplitTime(LB_EMISSION     ,tLBStart)
 #define MeasureSplitTime_TRACK()         CALL LBSplitTime(LB_TRACK        ,tLBStart)
@@ -244,9 +263,15 @@
 ! Macros for LB timings
 ! #define MeasureStartTime()               CALL NOP_INLINE(0) ! do nothing
 ! #define MeasurePauseTime_DG()            CALL NOP_INLINE(0) ! do nothing
+! #define MeasurePauseTime_DGSURF()        CALL NOP_INLINE(0) ! do nothing
+! #define MeasurePauseTime_DGSURFMPI()     CALL NOP_INLINE(0) ! do nothing
+! #define MeasurePauseTime_DGMORTAR()      CALL NOP_INLINE(0) ! do nothing
 ! #define MeasurePauseTime_DGANALYZE()     CALL NOP_INLINE(0) ! do nothing
 ! #define MeasurePauseTime_DGCOMM()        CALL NOP_INLINE(0) ! do nothing
 ! #define MeasurePauseTime_FV()            CALL NOP_INLINE(0) ! do nothing
+! #define MeasurePauseTime_FVSURF()        CALL NOP_INLINE(0) ! do nothing
+! #define MeasurePauseTime_FVSURFMPI()     CALL NOP_INLINE(0) ! do nothing
+! #define MeasurePauseTime_FVMORTAR()      CALL NOP_INLINE(0) ! do nothing
 ! #define MeasurePauseTime_FVCOMM()        CALL NOP_INLINE(0) ! do nothing
 ! #define MeasurePauseTime_EMISSION()      CALL NOP_INLINE(0) ! do nothing
 ! #define MeasurePauseTime_TRACK()         CALL NOP_INLINE(0) ! do nothing
@@ -254,7 +279,13 @@
 ! #define MeasurePauseTime_PUSH()          CALL NOP_INLINE(0) ! do nothing
 ! #define MeasurePauseTime_PARTCOMM()      CALL NOP_INLINE(0) ! do nothing
 ! #define MeasurePauseTime_SURFFLUX()      CALL NOP_INLINE(0) ! do nothing
+! #define MeasurePauseTime_DEPOSITION()    CALL NOP_INLINE(0) ! do nothing
+! #define MeasurePauseTime_COLLISION()     CALL NOP_INLINE(0) ! do nothing
 ! #define MeasureSplitTime_DG()            CALL NOP_INLINE(0) ! do nothing
+! #define MeasureSplitTime_DGSURF()        CALL NOP_INLINE(0) ! do nothing
+! #define MeasureSplitTime_DGSURFMPI()     CALL NOP_INLINE(0) ! do nothing
+! #define MeasureSplitTime_DGMORTAR()      CALL NOP_INLINE(0) ! do nothing
+! #define MeasureSplitTime_MODAL()         CALL NOP_INLINE(0) ! do nothing
 ! #define MeasureSplitTime_DGANALYZE()     CALL NOP_INLINE(0) ! do nothing
 ! #define MeasureSplitTime_DGCOMM()        CALL NOP_INLINE(0) ! do nothing
 ! #define MeasureSplitTime_FV()            CALL NOP_INLINE(0) ! do nothing
@@ -271,9 +302,15 @@
 ! #define MeasureElemSplitTime()           CALL NOP_INLINE(0) ! do nothing
 #define MeasureStartTime()               ! do nothing
 #define MeasurePauseTime_DG()            ! do nothing
+#define MeasurePauseTime_DGSURF()        ! do nothing
+#define MeasurePauseTime_DGSURFMPI()     ! do nothing
+#define MeasurePauseTime_DGMORTAR()      ! do nothing
 #define MeasurePauseTime_DGANALYZE()     ! do nothing
 #define MeasurePauseTime_DGCOMM()        ! do nothing
 #define MeasurePauseTime_FV()            ! do nothing
+#define MeasurePauseTime_FVSURF()        ! do nothing
+#define MeasurePauseTime_FVSURFMPI()     ! do nothing
+#define MeasurePauseTime_FVMORTAR()      ! do nothing
 #define MeasurePauseTime_FVCOMM()        ! do nothing
 #define MeasurePauseTime_EMISSION()      ! do nothing
 #define MeasurePauseTime_TRACK()         ! do nothing
@@ -281,10 +318,18 @@
 #define MeasurePauseTime_PUSH()          ! do nothing
 #define MeasurePauseTime_PARTCOMM()      ! do nothing
 #define MeasurePauseTime_SURFFLUX()      ! do nothing
+#define MeasurePauseTime_DEPOSITION()    ! do nothing
+#define MeasurePauseTime_COLLISION()     ! do nothing
 #define MeasureSplitTime_DG()            ! do nothing
+#define MeasureSplitTime_DGSURF()        ! do nothing
+#define MeasureSplitTime_DGSURFMPI()     ! do nothing
+#define MeasureSplitTime_DGMORTAR()      ! do nothing
+#define MeasureSplitTime_MODAL()         ! do nothing
 #define MeasureSplitTime_DGANALYZE()     ! do nothing
 #define MeasureSplitTime_DGCOMM()        ! do nothing
 #define MeasureSplitTime_FV()            ! do nothing
+#define MeasureSplitTime_FVSURF()        ! do nothing
+#define MeasureSplitTime_FVMORTAR()      ! do nothing
 #define MeasureSplitTime_FVCOMM()        ! do nothing
 #define MeasureSplitTime_EMISSION()      ! do nothing
 #define MeasureSplitTime_TRACK()         ! do nothing

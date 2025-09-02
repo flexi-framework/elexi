@@ -125,9 +125,7 @@ nDOFElem=(PP_N+1)**PP_dim
 nTotalU=PP_nVar*nDOFElem*nElems
 
 ! Fill the solution vector U with the initial solution by interpolation, if not filled through restart already
-IF(.NOT.DoRestart)THEN
-  CALL FillIni(PP_N,Elem_xGP,U)
-END IF
+IF (.NOT.DoRestart) CALL FillIni(PP_N,Elem_xGP,U)
 
 DGInitIsDone=.TRUE.
 LBWRITE(UNIT_stdOut,'(A)')' INIT DG DONE!'
@@ -302,7 +300,7 @@ USE MOD_DG_Vars             ,ONLY: V,V_slave,V_master
 USE MOD_EOS                 ,ONLY: ConsToEntropy
 #endif
 #if USE_LOADBALANCE
-USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBPauseTime,LBSplitTime
+USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBSplitTime
 #endif /*USE_LOADBALANCE*/
 #if USE_PARTICLES
 USE MOD_Particle_Tools      ,ONLY: UpdateNextFreePosition,ReduceMaxParticleNumber
@@ -324,10 +322,10 @@ IMPLICIT NONE
 REAL,INTENT(IN)                   :: t                      !< Current time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if USE_LOADBALANCE
-REAL                              :: tLBStart
-#endif /*USE_LOADBALANCE*/
 REAL,DIMENSION(:,:,:,:,:),POINTER :: U_pointer
+#if USE_LOADBALANCE
+REAL                              :: tLBStart               !< local timer for loadbalancing
+#endif /*USE_LOADBALANCE*/
 !==================================================================================================================================
 
 ! -----------------------------------------------------------------------------
@@ -355,20 +353,21 @@ REAL,DIMENSION(:,:,:,:,:),POINTER :: U_pointer
 ! CALL VNullify(nTotalU,Ut)
 
 ! 1. Filter the solution vector if applicable, filter_pointer points to cut-off filter or LAF filter (see filter.f90)
-MeasureStartTime()          ! LoadBalance
+! TODO: LB: This gets applied only selectively, assign the load to the correct elements
 IF(FilterType.GT.0) CALL Filter_Pointer(U,FilterMat)
 
+MeasureStartTime()          ! LoadBalance
 ! 2. Convert volume solution to primitive
 CALL ConsToPrim(PP_N,UPrim,U)
-MeasureSplitTime_DG()       ! LoadBalance
-
 ! Compute entropy variables
 #if PP_EntropyVars == 1
-Call ConsToEntropy(PP_N,V,U)
+CALL ConsToEntropy(PP_N,V,U)
+MeasureSplitTime_DG()       ! LoadBalance
 U_pointer => V
 #else
 U_pointer => U
-#endif
+#endif /*PP_EntropyVars == 1*/
+MeasureSplitTime_DG()       ! LoadBalance
 
 ! 3. Prolong the solution to the face integration points for flux computation (and do overlapping communication)
 ! -----------------------------------------------------------------------------------------------------------
@@ -393,28 +392,22 @@ U_pointer => U
 ! 3.1)
 MeasureStartTime()          ! LoadBalance
 CALL StartReceiveMPIData(U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,SEND),SendID=2) ! Receive MINE / U_slave: slave -> master
-MeasureSplitTime_DGCOMM()   ! LoadBalance
+CALL ProlongToFaceCons(PP_N,U_pointer,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+!> MPI_IRECV is non-blocking, so we can include it in the loadbalance timing
+MeasureSplitTime_DGSURFMPI()! LoadBalance
+CALL U_MortarCons(U_master,U_slave,doMPISides=.TRUE.)
+CALL StartSendMPIData(   U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,RECV),SendID=2) ! SEND YOUR / U_slave: slave -> master
+MeasureSplitTime_DGMORTAR() ! LoadBalance
+
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
 CALL StartReceiveMPIData(FV_U_slave,DataSizeSide,1,nSides,MPIRequest_FV_U(:,SEND),SendID=2) ! Receive MINE / FV_U_slave: slave -> master
-#endif
-MeasureSplitTime_DG()       ! LoadBalance
-
-CALL ProlongToFaceCons(PP_N,U_pointer,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
-MeasureSplitTime_DG()       ! LoadBalance
-#if (FV_ENABLED == 2) && (PP_NodeType==1)
 CALL ProlongToFaceCons(PP_N,U_pointer,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.TRUE.,pureFV=.TRUE.)
-MeasureSplitTime_FV()       ! LoadBalance
-#endif /*FV_ENABLED*/
-
-MeasureStartTime()          ! LoadBalance
-CALL U_MortarCons(U_master,U_slave,doMPISides=.TRUE.)
-MeasureSplitTime_DG()       ! LoadBalance
-CALL StartSendMPIData(   U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,RECV),SendID=2) ! SEND YOUR / U_slave: slave -> master
-MeasureSplitTime_DGCOMM()   ! LoadBalance
-#if (FV_ENABLED == 2) && (PP_NodeType==1)
+MeasureSplitTime_FVSURFMPI()! LoadBalance
 CALL U_MortarCons(FV_U_master,FV_U_slave,doMPISides=.TRUE.)
 CALL StartSendMPIData(FV_U_slave,DataSizeSide,1,nSides,MPIRequest_FV_U(:,RECV),SendID=2) ! SEND YOUR / FV_U_slave: slave -> master
+MeasureSplitTime_FVMORTAR() ! LoadBalance
 #endif
+
 #if FV_ENABLED
 ! 3.2)
 CALL FV_Elems_Mortar(FV_Elems_master,FV_Elems_slave,doMPISides=.TRUE.)
@@ -429,7 +422,7 @@ CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.TRUE.)
 CALL StartSendMPIData(   FV_multi_slave,DataSizeSidePrim,1,nSides,MPIRequest_FV_gradU(:,RECV),SendID=2)
                                                                  ! SEND YOUR / FV_multi_slave: slave -> master
 #endif /*FV_RECONSTRUCT*/
-MeasureSplitTime_FV()
+MeasureSplitTime_FVMORTAR() ! LoadBalance
 #endif /*FV_ENABLED*/
 #endif /*USE_MPI*/
 
@@ -437,17 +430,17 @@ MeasureSplitTime_FV()
 ! 3.1)
 MeasureStartTime()          ! LoadBalance
 CALL ProlongToFaceCons(PP_N,U_pointer,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
-MeasureSplitTime_DG()       ! LoadBalance
+MeasureSplitTime_DGSURF()   ! LoadBalance
+CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)
+MeasureSplitTime_DGMORTAR() ! LoadBalance
+
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
 CALL ProlongToFaceCons(PP_N,U_pointer,FV_U_master,FV_U_slave,L_Minus,L_Plus,doMPISides=.FALSE.,pureFV=.TRUE.)
-MeasureSplitTime_FV()       ! LoadBalance
-#endif /*FV_ENABLED*/
-
-CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)
-MeasureSplitTime_DG()       ! LoadBalance
-#if (FV_ENABLED == 2) && (PP_NodeType==1)
+MeasureSplitTime_FVSURF()   ! LoadBalance
 CALL U_MortarCons(FV_U_master,FV_U_slave,doMPISides=.FALSE.)
+MeasureSplitTime_FVMORTAR() ! LoadBalance
 #endif
+
 #if FV_ENABLED
 ! 3.2)
 CALL FV_Elems_Mortar(FV_Elems_master,FV_Elems_slave,doMPISides=.FALSE.)
@@ -456,7 +449,7 @@ CALL FV_Elems_Mortar(FV_Elems_master,FV_Elems_slave,doMPISides=.FALSE.)
 CALL FV_PrepareSurfGradient(UPrim,FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 #endif /*FV_RECONSTRUCT*/
-MeasureSplitTime_FV()
+MeasureSplitTime_FVMORTAR() ! LoadBalance
 #endif /*FV_ENABLED*/
 
 #if USE_MPI
@@ -475,22 +468,25 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_U)     ! FV_U_slave: slave -
 #if FV_RECONSTRUCT
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_gradU) ! FV_multi_slave: slave -> master
 #endif /*FV_RECONSTRUCT*/
+MeasureSplitTime_FVCOMM()   ! LoadBalance
 #endif /*FV_ENABLED*/
 #endif /*USE_MPI*/
 
 ! 4. Convert face data from conservative to primitive variables
 !    Attention: For FV with 2nd order reconstruction U_master/slave and therewith UPrim_master/slave are still only 1st order
 ! TODO: Linadv?
-MeasureStartTime()          ! LoadBalance
 CALL GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
-MeasureSplitTime_DG()       ! LoadBalance
+MeasureSplitTime_DGSURF()   ! LoadBalance
 #if (FV_ENABLED == 2) && (PP_NodeType==1)
 CALL GetPrimitiveStateSurface(FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave)
+MeasureSplitTime_FVSURF()   ! LoadBalance
 #endif
+
 #if FV_ENABLED
 #if USE_MPI
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems) ! FV_Elems_master: master -> slave
-#endif
+MeasureSplitTime_FVCOMM()   ! LoadBalance
+#endif /*USE_MPI*/
 ! Build four-states-array for the 4 different combinations DG/DG(0), FV/DG(1), DG/FV(2) and FV/FV(3) a face can be.
 FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
 #endif /*FV_ENABLED*/
@@ -557,9 +553,7 @@ MeasureSplitTime_FV()
 ! 6. Lifting
 ! Compute the gradients using Lifting (BR1 scheme,BR2 scheme ...)
 ! The communication of the gradients is initialized within the lifting routines
-MeasureStartTime()          ! LoadBalance
 CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
-MeasureSplitTime_DG()       ! LoadBalance
 #endif /*PARABOLIC*/
 
 #if USE_PARTICLES
@@ -605,15 +599,13 @@ MeasureSplitTime_DG()       ! LoadBalance
 #if FV_ENABLED
 ! [ 9. Volume integral (advective and viscous) for all FV elements ]
 CALL FV_VolInt(UPrim,Ut)
-MeasureSplitTime_FV()
 #endif /*FV_ENABLED*/
-
 
 #if (FV_ENABLED >= 2) && PARABOLIC
 ! [10. Compute viscous volume integral contribution separately and add to Ut (FV-blending only)]
 CALL VolInt_Visc(Ut)
-MeasureSplitTime_FV()
 #endif
+MeasureSplitTime_FV()
 
 #if PARABOLIC && USE_MPI
 #if EDDYVISCOSITY
@@ -669,7 +661,6 @@ CALL FV_ConsToPrim(PP_nVarPrim,PP_nVar,UPrim_master,UPrim_slave,U_master,U_slave
 ! 10.2)
 CALL GetConservativeStateSurface(UPrim_master, UPrim_slave, U_master, U_slave, FV_Elems_master, FV_Elems_slave, 1)
 #endif /*FV_RECONSTRUCT*/
-MeasureSplitTime_FV()
 #endif /*FV_ENABLED*/
 
 #if USE_MPI
@@ -677,12 +668,11 @@ MeasureSplitTime_FV()
 MeasureStartTime()          ! LoadBalance
 CALL StartReceiveMPIData(Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,SEND),SendID=1)
                                                                               ! Receive YOUR / Flux_slave: master -> slave
-MeasureSplitTime_DGCOMM()   ! LoadBalance
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.TRUE.)
-MeasureSplitTime_DG()       ! LoadBalance
 CALL StartSendMPIData(   Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,RECV),SendID=1)
                                                                               ! Send MINE  /   Flux_slave: master -> slave
-MeasureSplitTime_DGCOMM()   ! LoadBalance
+!> MPI_ISEND is non-blocking, so we can include it in the loadbalance timing
+MeasureSplitTime_DGSURF()   ! LoadBalance
 
 #if ((FV_ENABLED == 2) && (PP_NodeType == 1))
 CALL StartReceiveMPIData(FV_Flux_slave, DataSizeSide, 1,nSides,MPIRequest_FV_Flux( :,SEND),SendID=1)
@@ -690,46 +680,55 @@ CALL StartReceiveMPIData(FV_Flux_slave, DataSizeSide, 1,nSides,MPIRequest_FV_Flu
 CALL FillFlux(t,FV_Flux_master,FV_Flux_slave,FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave,doMPISides=.TRUE.,pureFV=.TRUE.)
 CALL StartSendMPIData(   FV_Flux_slave, DataSizeSide, 1,nSides,MPIRequest_FV_Flux( :,RECV),SendID=1)
                                                                               ! Send MINE  /   Flux_slave: master -> slave
+MeasureSplitTime_FVSURF()   ! LoadBalance
 #endif /*((FV_ENABLED == 2) && (PP_NodeType == 1))*/
 #endif /*USE_MPI*/
 
-MeasureStartTime()          ! LoadBalance
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.FALSE.)
+!> MPI_ISEND is non-blocking, so we can include it in the loadbalance timing
+MeasureSplitTime_DGSURF()   ! LoadBalance
+
 ! 11.4)
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
+MeasureSplitTime_DGMORTAR() ! LoadBalance
 
 #if ((FV_ENABLED == 2) && (PP_NodeType == 1))
-MeasureSplitTime_DG()       ! LoadBalance
 ! 11.3)
 CALL FillFlux(t,FV_Flux_master,FV_Flux_slave,FV_U_master,FV_U_slave,FV_UPrim_master,FV_UPrim_slave,doMPISides=.FALSE.)
+MeasureSplitTime_FVSURF()   ! LoadBalance
 ! 11.4)
 CALL Flux_MortarCons(FV_Flux_master,FV_Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
 ! 11.5)
 MeasureStartTime()          ! LoadBalance
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,FV_Flux_master,FV_Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
+! MeasureSplitTime_FVSURF()   ! LoadBalance
+MeasureSplitTime_DGSURF()   ! LoadBalance
 #else
 ! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
 #endif
-MeasureSplitTime_DG()       ! LoadBalance
+MeasureSplitTime_DGSURF()   ! LoadBalance
 
 #if USE_MPI
 ! 11.4)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux )                       ! Flux_slave: master -> slave
 MeasureSplitTime_DGCOMM()   ! LoadBalance
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
+MeasureSplitTime_DGMORTAR() ! LoadBalance
+
 #if ((FV_ENABLED == 2) && (PP_NodeType == 1))
-! 11.4)
+! 11.5)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Flux )                       ! Flux_slave: master -> slave
+MeasureSplitTime_FVCOMM()   ! LoadBalance
 CALL Flux_MortarCons(FV_Flux_master,FV_Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
+MeasureSplitTime_FVMORTAR() ! LoadBalance
 ! 11.5)
-MeasureStartTime()          ! LoadBalance
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,FV_Flux_master,FV_Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
+MeasureSplitTime_FVSURF()   ! LoadBalance
 #else
-! 11.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
 #endif
-MeasureSplitTime_DG()       ! LoadBalance
+MeasureSplitTime_DGSURF()   ! LoadBalance
 #endif /*USE_MPI*/
 
 ! 12. Swap to right sign :)
@@ -741,7 +740,7 @@ IF (t.GT.PreviousTime .AND. .NOT.postiMode) THEN
   MeasureStartTime()          ! LoadBalance
   ! Receive particles, locate and finish communication
   CALL MPIParticleRecv()
-  MeasurePauseTime_PARTCOMM() ! LoadBalance
+  MeasureSplitTime_PARTCOMM() ! LoadBalance
 #endif /*USE_MPI*/
   ! Find next free position in particle array
   CALL UpdateNextFreePosition()
@@ -754,12 +753,15 @@ END IF
 ! Calculate particle source and start communication
 IF(doCalcPartSource) CALL CalcSourcePart()
 #endif /*USE_PARTICLES && PARTICLES_COUPLING >= 2*/
-MeasureStartTime()          ! LoadBalance
+
 ! 13. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
+MeasureStartTime()          ! LoadBalance
 IF(doCalcSource) CALL CalcSource(Ut,t)
 IF(doSponge)     CALL Sponge(Ut)
 IF(doTCSource)   CALL TestcaseSource(Ut)
-MeasureSplitTime_DG()       ! LoadBalance
+! TODO: LB: This gets applied only selectively, assign the load to the correct elements
+!MeasureSplitTime_DG()       ! LoadBalance
+
 ! TODO: This should have better latency hiding
 !       > Issue: Particle communication must be finished before CalcSourcePart
 #if USE_PARTICLES && PARTICLES_COUPLING >= 2
@@ -772,8 +774,8 @@ CALL ReduceMaxParticleNumber()
 #endif /*USE_PARTICLES*/
 
 ! 14. Perform overintegration and apply Jacobian
-! Perform overintegration (projection filtering type overintegration)
 MeasureStartTime()          ! LoadBalance
+! Perform overintegration (projection filtering type overintegration)
 SELECT CASE (OverintegrationType)
   CASE (OVERINTEGRATIONTYPE_CONSCUTOFF )
     CALL Overintegration(Ut)
@@ -786,11 +788,10 @@ SELECT CASE (OverintegrationType)
   CASE (OVERINTEGRATIONTYPE_CUTOFF)
     CALL Overintegration(Ut)
     CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
-    MeasureSplitTime_DG()   ! LoadBalance
   CASE DEFAULT
     CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.)
-    MeasureSplitTime_DG()   ! LoadBalance
 END SELECT
+MeasureSplitTime_DG()   ! LoadBalance
 
 END SUBROUTINE DGTimeDerivative_weakForm
 

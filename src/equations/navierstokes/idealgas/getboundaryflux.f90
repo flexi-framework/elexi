@@ -684,11 +684,11 @@ USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_ExactFunc_Vars,ONLY: JetRadius
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Riemann      ,ONLY: ViscousFlux
-#endif */PARABOLIC*/
+#endif /*PARABOLIC*/
 USE MOD_Riemann      ,ONLY: Riemann
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: muSGS_master
-#endif */EDDYVISCOSITY*/
+#endif /*EDDYVISCOSITY*/
 #if TESTCASE_BC
 USE MOD_TestCase     ,ONLY: GetBoundaryFluxTestcase
 #endif /*TESTCASE_BC*/

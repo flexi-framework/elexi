@@ -151,7 +151,8 @@ INTEGER                        :: errType
 ! Automatic FIBGM
 INTEGER                        :: iDim
 INTEGER                        :: nFIBGMElems, nFIBGMElems_target
-REAL                           :: weight, delta
+REAL                           :: a,b
+REAL                           :: weight,delta
 REAL                           :: aFIBGMdeltas(3),aFIBGMweights(3),aFIBGMmaxima(3)
 #if USE_MPI
 INTEGER                        :: iStage
@@ -171,7 +172,7 @@ INTEGER                        :: firstHaloElem,lastHaloElem
 LOGICAL,ALLOCATABLE            :: MPISideElem(:)
 LOGICAL                        :: MPIProcHalo(1:nProcessors)
 LOGICAL                        :: ProcHasExchangeElem
-INTEGER                        :: nProcHalo,nMPIProcHalo,firstProcHalo,lastProcHalo
+INTEGER                        :: ProcID,nProcHalo,nMPIProcHalo,firstProcHalo,lastProcHalo
 INTEGER                        :: GlobalElemRank
 INTEGER                        :: nBorderElems,offsetBorderElems,nComputeNodeBorderElems
 INTEGER                        :: sendint,recvint
@@ -752,8 +753,22 @@ ELSE
       ! END ASSOCIATE
 
       ! compare distance of centers with sum of element outer radii+halo_eps
-      IF (VECNORM(BoundsOfElemCenter(1:3)-MPISideBoundsOfElemCenter_Shared(1:3,iElem)) &
-          .GT. halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter_Shared(4,iElem) ) CYCLE
+      ! IF (VECNORM(BoundsOfElemCenter(1:3)-MPISideBoundsOfElemCenter_Shared(1:3,iElem)) &
+      !     .GT. halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter_Shared(4,iElem) ) CYCLE
+
+      ! Directional distance calculation due to tolerance problems that lead to "non-symmetric exchange procs"
+      ProcID = ElemInfo_Shared(ELEM_RANK,ElemID)
+      IF (ProcID.LT.myrank) THEN
+        a = VECNORM(BoundsOfElemCenter(1:3) - MPISideBoundsOfElemCenter_Shared(1:3,iElem))
+        b = halo_eps + BoundsOfElemCenter(4) + MPISideBoundsOfElemCenter_Shared(4,iElem)
+      ELSE
+        a = VECNORM(MPISideBoundsOfElemCenter_Shared(1:3,iElem) - BoundsOfElemCenter(1:3))
+        b = halo_eps + MPISideBoundsOfElemCenter_Shared(4,iElem) + BoundsOfElemCenter(4)
+      END IF ! ProcID.LE.myrank
+
+      ! compare distance of centers with sum of element outer radii+halo_eps
+      IF (a.GT.b) CYCLE
+
       ElemInsideHalo = .TRUE.
       EXIT
     END DO ! iElem = 1, ComputeNodeBorderElems

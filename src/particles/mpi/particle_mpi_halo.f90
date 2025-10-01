@@ -74,11 +74,12 @@ REAL                           :: origin(3),radius
 INTEGER                        :: iElem,ElemID,firstElem,lastElem,NbElemID,HaloElem
 INTEGER                        :: iSide,SideID,firstSide,lastSide,iLocSide
 INTEGER                        :: iMortar,nMortarElems,NbSideID
-INTEGER                        :: iProc,HaloProc
+INTEGER                        :: iProc,ProcID,HaloProc
 INTEGER                        :: nExchangeSides
 INTEGER,ALLOCATABLE            :: ExchangeSides(:)
 REAL                           :: BoundsOfElemCenter(1:4)
 REAL,ALLOCATABLE               :: MPISideBoundsOfElemCenter(:,:)
+REAL                           :: a,b
 INTEGER                        :: ExchangeProcLeader
 LOGICAL,ALLOCATABLE            :: MPISideElem(:)
 LOGICAL                        :: ProcHasExchangeElem
@@ -510,9 +511,20 @@ ElemLoop:  DO iElem = 1,nComputeNodeTotalElems
 
   DO iSide = 1, nExchangeSides
     ! compare distance of centers with sum of element outer radii+halo_eps
-    IF (VECNORM(BoundsOfElemCenter(1:3)-MPISideBoundsOfElemCenter(1:3,iSide)) &
-      .GT. MPI_halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide)) THEN
+    ! IF (VECNORM(BoundsOfElemCenter(1:3)-MPISideBoundsOfElemCenter(1:3,iSide)) &
+    !   .GT. MPI_halo_eps+BoundsOfElemCenter(4)+MPISideBoundsOfElemCenter(4,iSide)) THEN
 
+    ! Directional distance calculation due to tolerance problems that lead to "non-symmetric exchange procs"
+    ProcID = ElemInfo_Shared(ELEM_RANK,ElemID)
+    IF (ProcID.LT.myrank) THEN
+      a = VECNORM(BoundsOfElemCenter(1:3) - MPISideBoundsOfElemCenter(1:3,iSide))
+      b = MPI_halo_eps + BoundsOfElemCenter(4) + MPISideBoundsOfElemCenter(4,iSide)
+    ELSE
+      a = VECNORM(MPISideBoundsOfElemCenter(1:3,iSide) - BoundsOfElemCenter(1:3))
+      b = MPI_halo_eps + MPISideBoundsOfElemCenter(4,iSide) + BoundsOfElemCenter(4)
+    END IF ! ProcID.LE.myrank
+
+    IF (a.GT.b) THEN
       ! Also check periodic directions. Only MPI sides of the local proc are
       ! taken into account, so do not perform additional case distinction
       SELECT CASE(GEO%nPeriodicVectors)
@@ -840,7 +852,7 @@ END SUBROUTINE FinalizePartExchangeProcs
 
 PURE FUNCTION HaloBoxInProc(CartNodes,CartProc,halo_eps,nPeriodicVectors,PeriodicVectors)
 !===================================================================================================================================
-! Check if bounding box is on proc by comparing against the other bounding box extended by halo_eps
+! Check if bounding box is on process by comparing against the other bounding box extended by halo_eps
 !===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING

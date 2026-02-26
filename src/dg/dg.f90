@@ -297,7 +297,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 #endif
 #if PP_EntropyVars==1
 USE MOD_DG_Vars             ,ONLY: V,V_slave,V_master
-USE MOD_EOS                 ,ONLY: ConsToEntropy
+USE MOD_EOS                 ,ONLY: ConsToPrimToEntropy
 #endif
 #if USE_LOADBALANCE
 USE MOD_LoadBalance_Timers  ,ONLY: LBStartTime,LBSplitTime
@@ -357,15 +357,14 @@ REAL                              :: tLBStart               !< local timer for l
 IF(FilterType.GT.0) CALL Filter_Pointer(U,FilterMat)
 
 MeasureStartTime()          ! LoadBalance
+#if PP_EntropyVars == 0
 ! 2. Convert volume solution to primitive
 CALL ConsToPrim(PP_N,UPrim,U)
-! Compute entropy variables
-#if PP_EntropyVars == 1
-CALL ConsToEntropy(PP_N,V,U)
-MeasureSplitTime_DG()       ! LoadBalance
-U_pointer => V
-#else
 U_pointer => U
+! Compute entropy variables
+#else
+CALL ConsToPrimToEntropy(PP_N,UPrim,V,U)
+U_pointer => V
 #endif /*PP_EntropyVars == 1*/
 MeasureSplitTime_DG()       ! LoadBalance
 

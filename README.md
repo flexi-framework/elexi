@@ -93,6 +93,7 @@ Navigate to the directory of the tutorial **cavity** and run [ƎLexi][elexi]
 
 [nrg]:           https://numericsresearchgroup.org/index.html
 [flexi]:         https://numericsresearchgroup.org/flexi_index.html
+[elexi]:         https://numericsresearchgroup.org/codes.html#codes_particle
 [publications]:  https://numericsresearchgroup.org/publications.html#services
 [userguide]:     https://numericsresearchgroup.org/userguide/pdf/userguide.pdf
 [readthedocs]:   https://numericsresearchgroup.org/userguide/html/index.html
